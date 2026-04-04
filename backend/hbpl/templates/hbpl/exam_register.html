@@ -1,0 +1,64 @@
+{% extends 'hbpl/base.html' %}
+
+{% block title %}Exam Registration{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
+<div class="max-w-2xl mx-auto">
+<section class="bg-white rounded-2xl shadow-xl p-8">
+  <h1 class="text-3xl font-bold">Exam Registration</h1>
+  <p class="mt-2 text-slate-600">Fill student details for HBPL general aptitude exam registration.</p>
+
+  <form method="post" class="mt-6 space-y-5">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+      <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="grid gap-5 md:grid-cols-2">
+      <div>
+        <label class="mb-1 block text-sm font-medium">Full Name</label>
+        {{ form.full_name }}
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium">Roll Number</label>
+        {{ form.roll_number }}
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium">Date of Birth</label>
+        {{ form.date_of_birth }}
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium">Phone</label>
+        {{ form.phone }}
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium">Email</label>
+        {{ form.email }}
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium">Class</label>
+        {{ form.class_name }}
+      </div>
+      <div class="md:col-span-2">
+        <label class="mb-1 block text-sm font-medium">School Name</label>
+        {{ form.school_name }}
+      </div>
+      <div class="md:col-span-2">
+        <label class="mb-1 block text-sm font-medium">Address</label>
+        {{ form.address }}
+      </div>
+    </div>
+
+    {% for field in form %}
+      {% for error in field.errors %}
+        <p class="text-xs text-red-600">{{ error }}</p>
+      {% endfor %}
+    {% endfor %}
+
+    <button type="submit" class="w-full rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700">Submit Registration</button>
+  </form>
+</section>
+</div>
+</div>
+{% endblock %}

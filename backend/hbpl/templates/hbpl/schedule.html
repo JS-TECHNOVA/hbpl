@@ -1,0 +1,69 @@
+{% extends 'hbpl/base.html' %}
+
+{% block title %}Schedule{% endblock %}
+
+{% block content %}
+<div class="min-h-screen py-12 bg-gradient-to-b from-background via-muted/30 to-background">
+<div class="container mx-auto px-4">
+<div class="text-center mb-10 animate-fade-in">
+  <p class="text-xs md:text-sm tracking-[0.25em] uppercase text-muted-foreground mb-3">HBPL Cricket Tournament</p>
+  <h1 class="text-4xl md:text-5xl font-bold mb-4">Match <span class="bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent ml-2">Schedule & Results</span></h1>
+  <p class="text-sm md:text-lg text-muted-foreground max-w-3xl mx-auto">View upcoming HBPL 2026 fixtures and relive highlights from the 2025 season.</p>
+</div>
+
+<section class="mt-6">
+  <h2 class="text-2xl font-semibold">HBPL 2026 - May Tournament Schedule</h2>
+  <p class="text-sm md:text-base text-muted-foreground mt-2 max-w-3xl">All league matches, semi-finals, and the grand final will be played in May 2026. Fixtures below are subject to minor changes based on ground conditions.</p>
+  <div class="mt-4 space-y-3">
+    {% for match in matches_2026 %}
+      <article class="rounded-xl border border-border bg-card p-4 shadow-card hover:shadow-hover transition-all duration-300 hover:-translate-y-1 animate-scale-in">
+        <div class="flex flex-wrap items-center gap-2 text-xs mb-3">
+          <span class="rounded bg-muted px-2 py-1">{{ match.date }}</span>
+          <span class="rounded bg-muted px-2 py-1">{{ match.time|default:'4:00 PM' }}</span>
+          <span class="rounded bg-muted px-2 py-1">{{ match.venue }}</span>
+          <span class="rounded bg-secondary text-secondary-foreground px-2 py-1">{{ match.stage }}</span>
+        </div>
+        <div class="flex items-center gap-4">
+          <p class="flex-1 text-right text-sm md:text-lg font-semibold">{{ match.team1 }}</p>
+          <div class="px-4 py-2 bg-muted rounded-lg font-bold text-muted-foreground text-xs md:text-sm">VS</div>
+          <p class="flex-1 text-sm md:text-lg font-semibold">{{ match.team2 }}</p>
+        </div>
+      </article>
+    {% empty %}
+      <p class="text-slate-600">No upcoming fixtures available.</p>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="mt-10">
+  <h2 class="text-2xl font-semibold">HBPL 2025 Completed Matches</h2>
+  <p class="text-sm md:text-base text-muted-foreground mt-2 max-w-3xl">All seven matches from the May 2025 HBPL season are listed below: four league matches, two semi-finals, and one grand final.</p>
+  <div class="mt-4 space-y-3">
+    {% for match in matches_2025 %}
+      <article class="rounded-xl border border-border bg-card p-4 shadow-card hover:shadow-hover transition-all duration-300 hover:-translate-y-1 animate-scale-in">
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+          <span class="rounded bg-secondary text-secondary-foreground px-2 py-1">{{ match.stage }}</span>
+          <span class="rounded bg-muted px-2 py-1">{{ match.date }}</span>
+          <span class="rounded bg-muted px-2 py-1">{{ match.venue }}</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 my-3">
+          <div class="p-4 bg-muted/50 rounded-lg">
+            <p class="font-semibold text-sm md:text-base mb-1">{{ match.team1 }}</p>
+            <p class="text-lg md:text-xl font-bold">{{ match.team1_score }}</p>
+          </div>
+          <div class="p-4 bg-muted/50 rounded-lg">
+            <p class="font-semibold text-sm md:text-base mb-1">{{ match.team2 }}</p>
+            <p class="text-lg md:text-xl font-bold">{{ match.team2_score }}</p>
+          </div>
+        </div>
+        <p class="mt-1 text-sm text-muted-foreground">Result: {{ match.result }}</p>
+        <p class="text-sm text-muted-foreground">Player of the Match: {{ match.player_of_match }}</p>
+      </article>
+    {% empty %}
+      <p class="text-slate-600">No 2025 results available.</p>
+    {% endfor %}
+  </div>
+</section>
+</div>
+</div>
+{% endblock %}

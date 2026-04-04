@@ -1,0 +1,45 @@
+{% extends 'hbpl/base.html' %}
+
+{% block title %}Volunteer{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-white text-gray-800">
+<section class="bg-gradient-to-r from-red-500 to-purple-500 text-white py-16 text-center">
+  <h1 class="text-4xl font-bold mb-2">Community Volunteers</h1>
+  <p class="text-lg">Celebrating the spirit of teamwork and dedication behind HBPL.</p>
+</section>
+
+<div class="max-w-4xl mx-auto text-center px-6 mt-10">
+  <p class="text-gray-700 leading-relaxed">Volunteers are the backbone of the Harpur Belahi Premier League. Their dedication and passion are the driving forces behind every successful match, event, and community initiative.</p>
+</div>
+
+<div class="max-w-6xl mx-auto px-6 py-12">
+<div class="grid gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+  {% for volunteer in volunteers %}
+    <article class="bg-white shadow-md rounded-2xl overflow-hidden text-center border hover:shadow-lg transition">
+      <div class="h-64 bg-gray-100">
+        {% if volunteer.image %}
+          <img src="{{ volunteer.image.url }}" alt="{{ volunteer.name }}" class="w-full h-64 object-cover" />
+        {% elif volunteer.img %}
+          <img src="{{ volunteer.img }}" alt="{{ volunteer.name }}" class="w-full h-64 object-cover" />
+        {% else %}
+          <div class="flex h-full items-center justify-center text-slate-400">No image</div>
+        {% endif %}
+      </div>
+      <div class="p-4">
+        <h2 class="font-semibold">{{ volunteer.name }}</h2>
+        <p class="text-sm text-slate-600">{{ volunteer.role }}</p>
+      </div>
+    </article>
+  {% empty %}
+    <p class="text-slate-600">No volunteers available.</p>
+  {% endfor %}
+</div>
+</div>
+
+<div class="text-center py-10">
+  <h2 class="text-xl font-medium mb-4">Want to join our volunteer team?</h2>
+  <a href="mailto:info@hbpl.com" class="bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-3 rounded-full shadow-md transition inline-block">Contact Us</a>
+</div>
+</div>
+{% endblock %}

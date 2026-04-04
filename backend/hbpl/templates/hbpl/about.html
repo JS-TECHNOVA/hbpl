@@ -1,0 +1,79 @@
+{% extends 'hbpl/base.html' %}
+
+{% block title %}About HBPL{% endblock %}
+
+{% block content %}
+<div class="min-h-screen py-12 bg-gradient-to-b from-background via-muted/30 to-background">
+  <div class="container mx-auto px-4">
+    <div class="grid md:grid-cols-2 gap-10 items-center mb-16 animate-fade-in">
+      <div>
+        <p class="text-xs md:text-sm tracking-[0.25em] uppercase text-muted-foreground mb-3">About Harpur Belahi Premier League</p>
+        <h1 class="text-4xl md:text-5xl font-bold mb-4">A Home for <span class="bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent ml-2">Sports & Studies</span></h1>
+        <p class="text-lg md:text-xl text-muted-foreground max-w-3xl">
+          HBPL is more than a cricket tournament. We are a community initiative that runs both a professionally managed premier league and a district-level general aptitude competition for Classes 5 to 10.
+        </p>
+      </div>
+
+      <div class="grid gap-4">
+        <div class="bg-card border border-border rounded-xl p-5 shadow-card">
+          <h3 class="font-semibold mb-1">Cricket League</h3>
+          <p class="text-sm text-muted-foreground">Structured fixtures, live scoring, and competitive yet friendly matches for local teams.</p>
+        </div>
+        <div class="bg-card border border-border rounded-xl p-5 shadow-card">
+          <h3 class="font-semibold mb-1">General Aptitude Competition</h3>
+          <p class="text-sm text-muted-foreground">A district-level exam for Classes 5-10 that tests reasoning, academics, and general awareness.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-card border border-border rounded-lg p-8 md:p-12 shadow-card mb-12">
+      <h2 class="text-3xl font-bold mb-6">Our Story</h2>
+      <div class="space-y-4 text-muted-foreground">
+        <p>Founded in 2025, the Harpur Belahi Premier League started as a small community effort to give local cricketers a professional platform. Over time, HBPL has grown into a structured league with clear rules, fixtures, and a passionate fan base.</p>
+        <p>As we worked with schools and families, we realized that young people needed equal opportunities in academics. That is how the HBPL General Aptitude Competition was born - a written exam that lets students from Class 5 to 10 showcase their knowledge and logical thinking.</p>
+        <p>Today, HBPL stands at the intersection of sports and education. We are committed to building confident players, curious learners, and a strong, connected community in and around Harpur Belahi.</p>
+      </div>
+    </div>
+
+    <div class="mb-12">
+      <h2 class="text-3xl font-bold mb-8 text-center">What HBPL Stands For</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="bg-card border border-border rounded-lg p-6 shadow-card hover:shadow-hover transition-all duration-300 animate-scale-in">
+          <h3 class="text-xl font-semibold mb-2">Our Mission</h3>
+          <p class="text-muted-foreground">To promote both cricket excellence and academic growth by offering a premier league and a structured general aptitude competition.</p>
+        </div>
+        <div class="bg-card border border-border rounded-lg p-6 shadow-card hover:shadow-hover transition-all duration-300 animate-scale-in">
+          <h3 class="text-xl font-semibold mb-2">Excellence</h3>
+          <p class="text-muted-foreground">We maintain high standards in tournament organization and exam conduct, from facilities and officials to question design.</p>
+        </div>
+        <div class="bg-card border border-border rounded-lg p-6 shadow-card hover:shadow-hover transition-all duration-300 animate-scale-in">
+          <h3 class="text-xl font-semibold mb-2">Holistic Growth</h3>
+          <p class="text-muted-foreground">We believe champions are built on and off the field - giving students opportunities to shine in sports and studies.</p>
+        </div>
+        <div class="bg-card border border-border rounded-lg p-6 shadow-card hover:shadow-hover transition-all duration-300 animate-scale-in">
+          <h3 class="text-xl font-semibold mb-2">Community & Passion</h3>
+          <p class="text-muted-foreground">HBPL is powered by local volunteers, educators, and cricket lovers who want to uplift Harpur Belahi youth.</p>
+        </div>
+        <div class="bg-card border border-border rounded-lg p-6 shadow-card hover:shadow-hover transition-all duration-300 animate-scale-in">
+          <h3 class="text-xl font-semibold mb-2">Innovation</h3>
+          <p class="text-muted-foreground">From live scoring and fixtures to a digital exam portal and downloadable syllabus, we embrace technology for a better experience.</p>
+        </div>
+        <div class="bg-card border border-border rounded-lg p-6 shadow-card hover:shadow-hover transition-all duration-300 animate-scale-in">
+          <h3 class="text-xl font-semibold mb-2">Opportunity for All</h3>
+          <p class="text-muted-foreground">School students (Class 5-10) and local teams get equal access to compete, learn, and celebrate together.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-gradient-hero text-primary-foreground rounded-lg p-8 md:p-12">
+      <h2 class="text-3xl font-bold mb-8 text-center">HBPL At a Glance</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+        <div class="text-center"><div class="text-4xl md:text-5xl font-bold mb-2">20+</div><div class="text-sm md:text-base opacity-90">Cricket Matches</div></div>
+        <div class="text-center"><div class="text-4xl md:text-5xl font-bold mb-2">8</div><div class="text-sm md:text-base opacity-90">League Teams</div></div>
+        <div class="text-center"><div class="text-4xl md:text-5xl font-bold mb-2">200+</div><div class="text-sm md:text-base opacity-90">Student Participants</div></div>
+        <div class="text-center"><div class="text-4xl md:text-5xl font-bold mb-2">10+</div><div class="text-sm md:text-base opacity-90">Partner Schools</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

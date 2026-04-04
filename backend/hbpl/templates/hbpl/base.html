@@ -1,0 +1,150 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}HBPL{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/output.css' %}">
+</head>
+<body class="min-h-screen bg-background text-foreground">
+  <header class="sticky top-0 z-50 bg-background/90 backdrop-blur-lg border-b border-border shadow-sm">
+    <nav class="container mx-auto px-4 py-2.5 flex items-center justify-between">
+      <a href="{% url 'hbpl:home' %}" class="group flex items-center gap-2">
+        <img src="{% static 'images/hbpl_logo-removebg-preview.png' %}" alt="HBPL Logo" class="h-8 w-8 rounded-full bg-white/5 p-0.5 shadow-md" />
+        <div>
+          <h1 class="text-lg font-extrabold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent leading-none">HBPL</h1>
+          <p class="text-[10px] text-muted-foreground tracking-wide">Premier League</p>
+        </div>
+      </a>
+
+      <div class="hidden items-center gap-2 md:flex">
+        <a href="{% url 'hbpl:home' %}" class="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-300 {% if request.path == '/' %}bg-primary text-primary-foreground shadow-md{% else %}text-foreground hover:text-primary hover:bg-muted/40{% endif %}">Home</a>
+        <a href="{% url 'hbpl:about' %}" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-300 {% if request.path == '/about/' %}bg-primary text-primary-foreground shadow-md{% else %}text-foreground hover:text-primary hover:bg-muted/40{% endif %}">About</a>
+        <a href="{% url 'hbpl:management' %}" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-300 {% if request.path == '/management/' %}bg-primary text-primary-foreground shadow-md{% else %}text-foreground hover:text-primary hover:bg-muted/40{% endif %}">Management</a>
+        <a href="{% url 'hbpl:teams' %}" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-300 {% if request.path == '/teams/' %}bg-primary text-primary-foreground shadow-md{% else %}text-foreground hover:text-primary hover:bg-muted/40{% endif %}">Teams</a>
+        <a href="{% url 'hbpl:schedule' %}" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-300 {% if request.path == '/schedule/' %}bg-primary text-primary-foreground shadow-md{% else %}text-foreground hover:text-primary hover:bg-muted/40{% endif %}">Schedule</a>
+        <a href="{% url 'hbpl:hbpl-2025' %}" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-300 {% if request.path == '/hbpl-2025/' %}bg-primary text-primary-foreground shadow-md{% else %}text-foreground hover:text-primary hover:bg-muted/40{% endif %}">Previous Session</a>
+        <a href="{% url 'hbpl:gallery' %}" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-300 {% if request.path == '/gallery/' %}bg-primary text-primary-foreground shadow-md{% else %}text-foreground hover:text-primary hover:bg-muted/40{% endif %}">Gallery</a>
+        <a href="{% url 'hbpl:volunteer' %}" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-300 {% if request.path == '/volunteer/' %}bg-primary text-primary-foreground shadow-md{% else %}text-foreground hover:text-primary hover:bg-muted/40{% endif %}">Community Volunteer</a>
+        <a href="{% url 'hbpl:exam-portal' %}" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-300 {% if request.path == '/exam-portal/' %}bg-primary text-primary-foreground shadow-md{% else %}text-foreground hover:text-primary hover:bg-muted/40{% endif %}">Exam Portal</a>
+        {% if request.user.is_staff %}
+          <a href="{% url 'hbpl:exam-bulk-download' %}" class="px-4 py-2 rounded-lg font-medium bg-primary text-primary-foreground">Admin Actions</a>
+        {% endif %}
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="lang-toggle" type="button" class="rounded-full p-1.5 text-xs hover:bg-muted transition-all" aria-label="Language">⌘</button>
+        <button id="theme-toggle" type="button" class="rounded-full p-1.5 text-xs hover:bg-muted transition-all" aria-label="Toggle theme">☀</button>
+        <button id="menu-toggle" type="button" class="md:hidden rounded-full p-2 hover:bg-muted transition-all" aria-label="Toggle menu">☰</button>
+      </div>
+    </nav>
+
+    <div id="mobile-menu" class="hidden md:hidden bg-background/95 backdrop-blur-md border-t border-border px-4 py-4">
+      <div class="flex flex-col gap-2">
+        <a href="{% url 'hbpl:home' %}" class="block px-4 py-3 rounded-lg text-center font-medium transition-all duration-300 {% if request.path == '/' %}bg-primary text-primary-foreground{% else %}text-foreground hover:bg-muted hover:text-primary{% endif %}">Home</a>
+        <a href="{% url 'hbpl:about' %}" class="block px-4 py-3 rounded-lg text-center font-medium transition-all duration-300 {% if request.path == '/about/' %}bg-primary text-primary-foreground{% else %}text-foreground hover:bg-muted hover:text-primary{% endif %}">About</a>
+        <a href="{% url 'hbpl:management' %}" class="block px-4 py-3 rounded-lg text-center font-medium transition-all duration-300 {% if request.path == '/management/' %}bg-primary text-primary-foreground{% else %}text-foreground hover:bg-muted hover:text-primary{% endif %}">Management</a>
+        <a href="{% url 'hbpl:teams' %}" class="block px-4 py-3 rounded-lg text-center font-medium transition-all duration-300 {% if request.path == '/teams/' %}bg-primary text-primary-foreground{% else %}text-foreground hover:bg-muted hover:text-primary{% endif %}">Teams</a>
+        <a href="{% url 'hbpl:schedule' %}" class="block px-4 py-3 rounded-lg text-center font-medium transition-all duration-300 {% if request.path == '/schedule/' %}bg-primary text-primary-foreground{% else %}text-foreground hover:bg-muted hover:text-primary{% endif %}">Schedule</a>
+        <a href="{% url 'hbpl:hbpl-2025' %}" class="block px-4 py-3 rounded-lg text-center font-medium transition-all duration-300 {% if request.path == '/hbpl-2025/' %}bg-primary text-primary-foreground{% else %}text-foreground hover:bg-muted hover:text-primary{% endif %}">Previous Session</a>
+        <a href="{% url 'hbpl:gallery' %}" class="block px-4 py-3 rounded-lg text-center font-medium transition-all duration-300 {% if request.path == '/gallery/' %}bg-primary text-primary-foreground{% else %}text-foreground hover:bg-muted hover:text-primary{% endif %}">Gallery</a>
+        <a href="{% url 'hbpl:volunteer' %}" class="block px-4 py-3 rounded-lg text-center font-medium transition-all duration-300 {% if request.path == '/volunteer/' %}bg-primary text-primary-foreground{% else %}text-foreground hover:bg-muted hover:text-primary{% endif %}">Community Volunteer</a>
+        <a href="{% url 'hbpl:exam-portal' %}" class="block px-4 py-3 rounded-lg text-center font-medium transition-all duration-300 {% if request.path == '/exam-portal/' %}bg-primary text-primary-foreground{% else %}text-foreground hover:bg-muted hover:text-primary{% endif %}">Exam Portal</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    {% if messages %}
+      <div class="container mx-auto px-4 py-4 mb-2 space-y-2">
+        {% for message in messages %}
+          <div class="rounded-lg border px-4 py-3 text-sm {% if message.tags == 'success' %}border-green-200 bg-green-50 text-green-800{% elif message.tags == 'error' %}border-red-200 bg-red-50 text-red-800{% else %}border-slate-200 bg-white text-slate-700{% endif %}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="bg-card border-t border-border mt-auto">
+    <div class="container mx-auto px-4 py-12">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div class="space-y-4">
+          <h3 class="text-lg font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">HBPL</h3>
+          <p class="text-sm text-muted-foreground">
+            Harpur Belahi Premier League — where cricket passion meets excellence. Join us for the most exciting tournament of the year.
+          </p>
+        </div>
+
+        <div class="space-y-4">
+          <h4 class="font-semibold">Quick Links</h4>
+          <ul class="space-y-2 text-sm text-muted-foreground">
+            <li><a href="{% url 'hbpl:about' %}" class="hover:text-primary transition-colors">About HBPL</a></li>
+            <li><a href="{% url 'hbpl:teams' %}" class="hover:text-primary transition-colors">Teams</a></li>
+            <li><a href="{% url 'hbpl:schedule' %}" class="hover:text-primary transition-colors">Schedule</a></li>
+            <li><a href="{% url 'hbpl:exam-portal' %}" class="hover:text-primary transition-colors">HBPL Exam Portal</a></li>
+          </ul>
+        </div>
+
+        <div class="space-y-4">
+          <h4 class="font-semibold">Contact Us</h4>
+          <ul class="space-y-3 text-sm text-muted-foreground">
+            <li>Harpur Belahi, near Panchayat Bhawan, Kushinagar U.P.</li>
+            <li>6388 735 208, 83057 80087</li>
+            <li>85430 42960, 97921 57285</li>
+            <li>63928 43291, 88741 02613</li>
+            <li>info@hbpl.com</li>
+          </ul>
+        </div>
+
+        <div class="space-y-4">
+          <h4 class="font-semibold">Follow Us</h4>
+          <div class="flex gap-3">
+            <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" class="h-10 w-10 rounded-full bg-muted hover:bg-primary hover:text-primary-foreground flex items-center justify-center transition-all duration-300 hover:scale-110 text-xs">f</a>
+            <a href="https://youtu.be/jMcLEBvqt2s?si=r8ko0DwAxMet2RdL" target="_blank" rel="noopener noreferrer" class="h-10 w-10 rounded-full bg-muted hover:bg-secondary hover:text-secondary-foreground flex items-center justify-center transition-all duration-300 hover:scale-110 text-xs">yt</a>
+            <a href="https://www.instagram.com/hbpl_3?igsh=Z3Y3NmY1MnI4ejVo" target="_blank" rel="noopener noreferrer" class="h-10 w-10 rounded-full bg-muted hover:bg-accent hover:text-accent-foreground flex items-center justify-center transition-all duration-300 hover:scale-110 text-xs">ig</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="border-t border-gray-300 mt-6 pt-4 text-center text-xs text-gray-600">
+        © {% now "Y" %} HBPL | Crafted with ❤️ by
+        <a href="https://www.jstechnova.in" target="_blank" rel="noopener noreferrer" class="text-[#6c3cff] font-semibold hover:underline">
+          JS Technova
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <a href="https://wa.me/916388735208" target="_blank" rel="noopener noreferrer" class="fixed bottom-4 right-4 z-50 bg-green-500 hover:bg-green-600 text-white rounded-full h-12 w-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110" aria-label="Chat on WhatsApp">◔</a>
+  <a href="tel:+916388735208" class="fixed bottom-4 left-4 z-50 bg-blue-600 hover:bg-blue-700 text-white rounded-full h-12 w-12 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110" aria-label="Call us on phone">☎</a>
+
+  <script>
+    (function () {
+      var root = document.documentElement;
+      var saved = localStorage.getItem("theme");
+      if (saved === "dark" || !saved) {
+        root.classList.add("dark");
+      }
+
+      var themeBtn = document.getElementById("theme-toggle");
+      if (themeBtn) {
+        themeBtn.addEventListener("click", function () {
+          root.classList.toggle("dark");
+          localStorage.setItem("theme", root.classList.contains("dark") ? "dark" : "light");
+        });
+      }
+
+      var menuBtn = document.getElementById("menu-toggle");
+      var mobileMenu = document.getElementById("mobile-menu");
+      if (menuBtn && mobileMenu) {
+        menuBtn.addEventListener("click", function () {
+          mobileMenu.classList.toggle("hidden");
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

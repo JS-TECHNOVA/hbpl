@@ -1,0 +1,116 @@
+{% extends 'hbpl/base.html' %}
+
+{% block title %}Gallery{% endblock %}
+
+{% block content %}
+<div class="min-h-screen py-12">
+<div class="container mx-auto px-4">
+<div class="text-center mb-12 animate-fade-in">
+  <h1 class="text-4xl md:text-5xl font-bold mb-6">Photo <span class="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Gallery</span></h1>
+  <p class="text-xl text-muted-foreground max-w-3xl mx-auto">Relive the most memorable moments from HBPL tournaments</p>
+</div>
+
+<div class="flex flex-wrap justify-center gap-3 mb-12">
+  <button type="button" data-filter="all" class="gallery-filter px-6 py-2 rounded-lg font-medium transition-all duration-300 bg-primary text-primary-foreground shadow-glow">All</button>
+  <button type="button" data-filter="action" class="gallery-filter px-6 py-2 rounded-lg font-medium transition-all duration-300 bg-muted text-muted-foreground hover:bg-muted/80">Action</button>
+  <button type="button" data-filter="ceremony" class="gallery-filter px-6 py-2 rounded-lg font-medium transition-all duration-300 bg-muted text-muted-foreground hover:bg-muted/80">Ceremony</button>
+  <button type="button" data-filter="team" class="gallery-filter px-6 py-2 rounded-lg font-medium transition-all duration-300 bg-muted text-muted-foreground hover:bg-muted/80">Team</button>
+</div>
+
+<div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+  {% for image in images %}
+    <article data-category="{{ image.category|default:'team'|lower }}" class="gallery-item group relative aspect-square rounded-lg overflow-hidden cursor-pointer shadow-card hover:shadow-hover transition-all duration-300 hover:-translate-y-1 animate-scale-in">
+      <div class="aspect-square bg-slate-100">
+        {% if image.image %}
+          <img src="{{ image.image.url }}" alt="{{ image.title }}" class="gallery-image w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 filter brightness-90 group-hover:brightness-100" />
+        {% else %}
+          <div class="flex h-full items-center justify-center text-slate-400">No image</div>
+        {% endif %}
+      </div>
+      <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end">
+        <div class="p-4 w-full">
+          <h2 class="font-semibold text-white">{{ image.title }}</h2>
+          <p class="text-sm text-gray-300">{{ image.category }}</p>
+        </div>
+      </div>
+      <div class="hidden p-4 bg-card">
+        <h2 class="font-semibold">{{ image.title }}</h2>
+        <p class="text-sm text-muted-foreground">{{ image.category }}</p>
+      </div>
+    </article>
+  {% empty %}
+    <p class="text-slate-600">No gallery images available.</p>
+  {% endfor %}
+</div>
+<div class="mt-16 bg-gradient-hero text-primary-foreground rounded-lg p-8 md:p-12 text-center">
+  <h2 class="text-3xl font-bold mb-4">Share Your HBPL Moments</h2>
+  <p class="text-lg mb-6 opacity-90 max-w-2xl mx-auto">Have great photos from HBPL matches? Share them with us and get featured in our gallery!</p>
+  <a href="mailto:gallery@hbpl.com" class="px-8 py-3 bg-card text-card-foreground rounded-lg font-semibold hover:bg-card/90 transition-colors inline-block">Submit Photos</a>
+</div>
+</div>
+</div>
+
+<div id="lightbox" class="hidden fixed inset-0 bg-black/90 backdrop-blur-sm z-50 items-center justify-center p-4">
+  <button id="lightbox-close" class="absolute top-4 right-4 h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors text-white">X</button>
+  <div class="max-w-5xl w-full aspect-video rounded-lg overflow-hidden shadow-lg animate-scale-in">
+    <img id="lightbox-image" src="" alt="Gallery image" class="w-full h-full object-cover" />
+  </div>
+</div>
+
+<script>
+  (function () {
+    var filterButtons = document.querySelectorAll('.gallery-filter');
+    var items = document.querySelectorAll('.gallery-item');
+
+    filterButtons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var filter = btn.getAttribute('data-filter');
+
+        filterButtons.forEach(function (b) {
+          b.classList.remove('bg-primary', 'text-primary-foreground', 'shadow-glow');
+          b.classList.add('bg-muted', 'text-muted-foreground');
+        });
+
+        btn.classList.remove('bg-muted', 'text-muted-foreground');
+        btn.classList.add('bg-primary', 'text-primary-foreground', 'shadow-glow');
+
+        items.forEach(function (item) {
+          var category = (item.getAttribute('data-category') || '').toLowerCase();
+          if (filter === 'all' || category.indexOf(filter) !== -1) {
+            item.classList.remove('hidden');
+          } else {
+            item.classList.add('hidden');
+          }
+        });
+      });
+    });
+
+    var lightbox = document.getElementById('lightbox');
+    var lightboxImage = document.getElementById('lightbox-image');
+    var closeBtn = document.getElementById('lightbox-close');
+
+    items.forEach(function (item) {
+      item.addEventListener('click', function () {
+        var img = item.querySelector('.gallery-image');
+        if (!img || !lightbox || !lightboxImage) return;
+        lightboxImage.src = img.src;
+        lightbox.classList.remove('hidden');
+        lightbox.classList.add('flex');
+      });
+    });
+
+    if (closeBtn && lightbox) {
+      closeBtn.addEventListener('click', function () {
+        lightbox.classList.add('hidden');
+        lightbox.classList.remove('flex');
+      });
+      lightbox.addEventListener('click', function (e) {
+        if (e.target === lightbox) {
+          lightbox.classList.add('hidden');
+          lightbox.classList.remove('flex');
+        }
+      });
+    }
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends 'hbpl/base.html' %}
+
+{% block title %}Teams{% endblock %}
+
+{% block content %}
+<div class="min-h-screen py-12">
+<div class="container mx-auto px-4">
+<div class="text-center mb-16 animate-fade-in">
+  <h1 class="text-4xl md:text-5xl font-bold mb-6">Participating <span class="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Teams</span></h1>
+  <p class="text-xl text-muted-foreground max-w-3xl mx-auto">Meet the {{ teams|length }} teams competing for the HBPL championship trophy</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+  {% for team in teams %}
+    <article class="group cursor-pointer hover:shadow-hover transition-all duration-300 hover:-translate-y-1 overflow-hidden bg-card border border-border rounded-lg">
+      <div class="bg-gradient-to-br from-primary/10 to-secondary/10 p-6 flex items-center justify-center">
+        <div class="h-24 w-24 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-2xl">{{ team.name|first }}</div>
+      </div>
+      <div class="p-6 text-center">
+        <h3 class="text-xl font-bold text-foreground mb-2">{{ team.name }}</h3>
+        <p class="text-sm text-muted-foreground mb-1"><span class="font-semibold text-foreground">Captain:</span> {{ team.captain }}</p>
+        <p class="text-sm text-muted-foreground mt-3">{{ team.description }}</p>
+      </div>
+    </article>
+  {% empty %}
+    <p class="text-slate-600">No teams available.</p>
+  {% endfor %}
+</div>
+<div class="mt-16 bg-card border border-border rounded-lg p-8 md:p-12 text-center shadow-card">
+  <h2 class="text-2xl font-bold mb-4">Team Requirements</h2>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-left max-w-4xl mx-auto">
+    <div><h3 class="font-semibold text-primary mb-2">Squad Size</h3><p class="text-muted-foreground text-sm">Each team must have 9-11 registered players</p></div>
+    <div><h3 class="font-semibold text-primary mb-2">Registration</h3><p class="text-muted-foreground text-sm">Complete registration form with all player details</p></div>
+    <div><h3 class="font-semibold text-primary mb-2">Equipment</h3><p class="text-muted-foreground text-sm">Teams must have matching jerseys with player names</p></div>
+  </div>
+</div>
+</div>
+</div>
+{% endblock %}

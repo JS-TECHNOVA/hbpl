@@ -1,0 +1,39 @@
+{% extends 'hbpl/base.html' %}
+
+{% block title %}Management{% endblock %}
+
+{% block content %}
+<div class="min-h-screen py-12">
+<div class="container mx-auto px-4">
+<div class="text-center mb-16 animate-fade-in">
+  <h1 class="text-4xl md:text-5xl font-bold mb-6">Meet Our <span class="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Management Team</span></h1>
+  <p class="text-xl text-muted-foreground max-w-3xl mx-auto">The dedicated professionals who make HBPL a world-class cricket tournament</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+  {% for member in members %}
+    <article class="bg-card border border-border rounded-lg overflow-hidden shadow-card hover:shadow-hover transition-all duration-300 hover:-translate-y-1 animate-scale-in">
+      <div class="h-56 bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10 flex items-center justify-center">
+        {% if member.image %}
+          <img src="{{ member.image.url }}" alt="{{ member.name }}" class="h-40 w-40 rounded-full object-cover border-4 border-white shadow-md" />
+        {% else %}
+          <div class="h-40 w-40 rounded-full bg-gray-200 flex items-center justify-center text-3xl font-bold text-gray-400">{{ member.name|first }}</div>
+        {% endif %}
+      </div>
+      <div class="p-6">
+        <h2 class="text-2xl font-bold mb-1">{{ member.name }}</h2>
+        <p class="text-primary font-semibold mb-3">{{ member.role }}</p>
+        <p class="text-muted-foreground mb-4 text-sm leading-relaxed">{{ member.description }}</p>
+      </div>
+    </article>
+  {% empty %}
+    <p class="text-slate-600">No management members available.</p>
+  {% endfor %}
+</div>
+<div class="mt-16 bg-gradient-hero text-primary-foreground rounded-lg p-8 md:p-12 text-center">
+  <h2 class="text-3xl font-bold mb-4">Want to Join Our Team?</h2>
+  <p class="text-lg mb-6 opacity-90 max-w-2xl mx-auto">We're always looking for passionate cricket enthusiasts to help us grow HBPL.</p>
+  <a href="mailto:info@hbpl.com" class="inline-block rounded-lg px-6 py-3 bg-secondary text-secondary-foreground">Contact Us</a>
+</div>
+</div>
+</div>
+{% endblock %}

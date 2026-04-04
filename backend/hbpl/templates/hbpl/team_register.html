@@ -1,0 +1,64 @@
+{% extends 'hbpl/base.html' %}
+
+{% block title %}Team Registration{% endblock %}
+
+{% block content %}
+<div class="min-h-screen py-12">
+<div class="container mx-auto px-4 max-w-3xl">
+<div class="text-center mb-12 animate-fade-in">
+  <h1 class="text-4xl md:text-5xl font-bold mb-6">Team <span class="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Registration</span></h1>
+  <p class="text-xl text-muted-foreground">Register your team for the upcoming HBPL tournament</p>
+</div>
+
+<section class="bg-card border border-border rounded-lg p-8 md:p-12 shadow-card animate-scale-in">
+  <h1 class="text-3xl font-bold">Team Registration</h1>
+  <p class="mt-2 text-slate-600">Register your cricket team for the upcoming HBPL tournament.</p>
+
+  <form method="post" class="mt-6 space-y-5">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+      <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="grid gap-5 md:grid-cols-2">
+      <div>
+        <label class="mb-1 block text-sm font-medium">Team Name</label>
+        {{ form.team_name }}
+        {% for error in form.team_name.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium">Captain Name</label>
+        {{ form.captain_name }}
+        {% for error in form.captain_name.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium">Email</label>
+        {{ form.email }}
+        {% for error in form.email.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium">Phone</label>
+        {{ form.phone }}
+        {% for error in form.phone.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium">Player Count (11-15)</label>
+        {{ form.player_count }}
+        {% for error in form.player_count.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
+      </div>
+      <div class="md:col-span-2">
+        <label class="mb-1 block text-sm font-medium">Message</label>
+        {{ form.message }}
+        {% for error in form.message.errors %}<p class="mt-1 text-xs text-red-600">{{ error }}</p>{% endfor %}
+      </div>
+    </div>
+
+    <button type="submit" class="w-full rounded-lg bg-primary px-5 py-3 font-semibold text-primary-foreground hover:opacity-90">Register Team</button>
+  </form>
+</section>
+<div class="mt-8 text-center text-sm text-muted-foreground">
+  <p>Need help with registration? Contact us at <a href="mailto:register@hbpl.club" class="text-primary hover:underline">register@hbpl.club</a></p>
+</div>
+</div>
+</div>
+{% endblock %}

@@ -1,0 +1,157 @@
+{% extends 'hbpl/base.html' %}
+
+{% load static %}
+
+{% block title %}HBPL Home{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-background text-foreground">
+  <section class="relative h-[720px] flex items-center justify-center overflow-hidden">
+    <div class="absolute inset-0 bg-cover bg-center">
+      <img src="{% static 'assets/hero-cricket.jpg' %}" alt="HBPL Hero" class="h-full w-full object-cover" />
+      <div class="absolute inset-0 bg-gradient-to-b from-background/80 via-background/70 to-background/95"></div>
+    </div>
+
+    <div class="relative z-10 text-center px-4 max-w-4xl mx-auto animate-fade-in pt-12">
+      <img src="{% static 'images/hbpl_logo-removebg-preview.png' %}" alt="HBPL Logo" class="mx-auto mb-6 h-28 w-28 rounded-full bg-white/5 p-2 shadow-md" />
+
+      <span class="inline-flex items-center gap-2 mb-4 px-4 py-1 text-[11px] md:text-xs tracking-[0.22em] uppercase rounded-full bg-muted/60 text-muted-foreground border border-border">
+        <span class="inline-block h-1.5 w-1.5 rounded-full bg-primary"></span>
+        Harpur Belahi Premier League • General Aptitude Competition (Class 5–10)
+      </span>
+
+      <h1 class="text-5xl md:text-7xl font-extrabold mb-4 leading-tight">
+        <span class="bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+          Where Cricket Meets Classroom Excellence
+        </span>
+      </h1>
+
+      <p class="text-base md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto">
+        HBPL is for both a high-energy cricket league and a district-level general aptitude competition for Classes 5 to 10 helping young players and students grow on and off the field.
+      </p>
+
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <a href="https://forms.gle/i96EQf9S1Xbkvgi28" target="_blank" rel="noopener noreferrer" class="text-sm md:text-base px-8 py-3 rounded-lg bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">Register Cricket Team</a>
+        <a href="{% url 'hbpl:exam-portal' %}" class="text-sm md:text-base px-8 py-3 rounded-lg bg-secondary text-secondary-foreground hover:scale-105 transition-all duration-300">Explore Exam Portal</a>
+      </div>
+
+      <p class="mt-4 text-xs md:text-sm text-muted-foreground max-w-xl mx-auto">
+        For school students (Classes 5 to 10) and local cricket teams from Harpur Belahi and nearby areas.
+      </p>
+    </div>
+  </section>
+
+  <section class="py-16 bg-gradient-to-r from-background via-muted/40 to-background border-y border-border/40">
+    <div class="container mx-auto px-4 text-center">
+      <h2 class="text-3xl md:text-4xl font-bold mb-4">Tournament Countdown</h2>
+      <p class="text-muted-foreground mb-8">125 days left in tournament! Get ready for the ultimate showdown!</p>
+      <div id="home-countdown" data-target="{{ next_match_date|date:'Y-m-d' }}" class="flex gap-4 justify-center"></div>
+    </div>
+  </section>
+
+  <section class="py-20 bg-background relative overflow-hidden">
+    <div class="container mx-auto px-4 relative z-10">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl md:text-4xl font-bold mb-4">Why HBPL is Different</h2>
+        <p class="text-muted-foreground max-w-2xl mx-auto">HBPL is not just a cricket league. We bring together professional cricket management and an academic aptitude competition so that young people can excel in both sports and studies.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="bg-card border border-border rounded-xl p-8 shadow-md hover:shadow-lg hover:-translate-y-2 transition-all duration-300">
+          <div class="h-12 w-12 rounded-lg bg-gradient-to-br from-primary to-secondary text-primary-foreground flex items-center justify-center text-lg mx-auto mb-5">🏆</div>
+          <h3 class="text-xl font-semibold mb-2 text-center">Premier Cricket League</h3>
+          <p class="text-muted-foreground text-center">Structured tournament with fixtures, standings, and scores.</p>
+        </div>
+        <div class="bg-card border border-border rounded-xl p-8 shadow-md hover:shadow-lg hover:-translate-y-2 transition-all duration-300">
+          <div class="h-12 w-12 rounded-lg bg-gradient-to-br from-primary to-secondary text-primary-foreground flex items-center justify-center text-lg mx-auto mb-5">🎓</div>
+          <h3 class="text-xl font-semibold mb-2 text-center">General Aptitude Competition</h3>
+          <p class="text-muted-foreground text-center">District-level exam for classes 5 to 10.</p>
+        </div>
+        <div class="bg-card border border-border rounded-xl p-8 shadow-md hover:shadow-lg hover:-translate-y-2 transition-all duration-300">
+          <div class="h-12 w-12 rounded-lg bg-gradient-to-br from-primary to-secondary text-primary-foreground flex items-center justify-center text-lg mx-auto mb-5">👥</div>
+          <h3 class="text-xl font-semibold mb-2 text-center">For Players & Students</h3>
+          <p class="text-muted-foreground text-center">One platform for sports and academics.</p>
+        </div>
+        <div class="bg-card border border-border rounded-xl p-8 shadow-md hover:shadow-lg hover:-translate-y-2 transition-all duration-300">
+          <div class="h-12 w-12 rounded-lg bg-gradient-to-br from-primary to-secondary text-primary-foreground flex items-center justify-center text-lg mx-auto mb-5">📄</div>
+          <h3 class="text-xl font-semibold mb-2 text-center">Transparent Management</h3>
+          <p class="text-muted-foreground text-center">Clear process for schools and teams.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="py-16 bg-muted/40">
+    <div class="container mx-auto px-4">
+      <div class="text-center mb-10">
+        <h2 class="text-2xl md:text-3xl font-bold mb-3">How HBPL Works</h2>
+        <p class="text-muted-foreground max-w-2xl mx-auto text-sm md:text-base">Simple steps for both cricket teams and schools: register, receive fixtures or syllabus, participate, and celebrate results.</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="bg-card border border-border rounded-xl p-5 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300"><div class="text-primary font-bold text-sm mb-1">01</div><h3 class="font-semibold mb-2 text-base md:text-lg">Register</h3><p class="text-xs md:text-sm text-muted-foreground">Cricket teams and schools complete registration through the HBPL platform.</p></div>
+        <div class="bg-card border border-border rounded-xl p-5 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300"><div class="text-primary font-bold text-sm mb-1">02</div><h3 class="font-semibold mb-2 text-base md:text-lg">Get Schedule & Syllabus</h3><p class="text-xs md:text-sm text-muted-foreground">Teams receive match fixtures while students receive exam dates and syllabus.</p></div>
+        <div class="bg-card border border-border rounded-xl p-5 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300"><div class="text-primary font-bold text-sm mb-1">03</div><h3 class="font-semibold mb-2 text-base md:text-lg">Play & Perform</h3><p class="text-xs md:text-sm text-muted-foreground">Matches are played on ground; students appear in the offline aptitude exam.</p></div>
+        <div class="bg-card border border-border rounded-xl p-5 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300"><div class="text-primary font-bold text-sm mb-1">04</div><h3 class="font-semibold mb-2 text-base md:text-lg">Results & Awards</h3><p class="text-xs md:text-sm text-muted-foreground">Scores, rankings, and toppers are announced with medals and certificates.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="py-20 bg-gradient-to-r from-muted/40 via-background to-muted/40 border-y border-border">
+    <div class="container mx-auto px-4 grid md:grid-cols-2 gap-10 items-center">
+      <div>
+        <span class="inline-flex items-center gap-2 mb-4 px-4 py-1 text-xs tracking-widest uppercase rounded-full bg-accent/10 text-accent border border-accent/40">
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-accent"></span>
+          New - HBPL General Aptitude Competition 2026
+        </span>
+        <h2 class="text-3xl md:text-4xl font-bold mb-4">HBPL Exam Portal</h2>
+        <p class="text-muted-foreground mb-4 max-w-xl">Along with world-class cricket, HBPL also nurtures young scholars through the HBPL General Aptitude Competition for classes 5 to 10.</p>
+        <p class="text-muted-foreground mb-6 max-w-xl">The exam is conducted offline and rewards top performers with medals, certificates, and recognition on the HBPL stage.</p>
+        <div class="flex flex-wrap gap-4 mb-4">
+          <a href="{% url 'hbpl:exam-portal' %}" class="text-sm md:text-base px-6 py-3 rounded-lg bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">Explore Exam Portal</a>
+          <a href="/syllabus.pdf" download class="inline-flex items-center gap-2 text-sm md:text-base px-4 py-2 rounded-full border border-accent/60 text-accent hover:bg-accent/10 transition-colors">Download Syllabus</a>
+        </div>
+        <p class="text-xs md:text-sm text-muted-foreground max-w-md">Registrations are accepted through participating schools. Check the Exam Portal page for important dates, centers, and detailed pattern.</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="bg-card border border-border rounded-xl p-5 shadow-sm flex gap-3 items-start"><div><h3 class="font-semibold mb-1">For Classes 5-10</h3><p class="text-xs text-muted-foreground">Open to students from Class 5 to 10 across Harpur Belahi and nearby areas.</p></div></div>
+        <div class="bg-card border border-border rounded-xl p-5 shadow-sm flex gap-3 items-start"><div><h3 class="font-semibold mb-1">Offline Exam</h3><p class="text-xs text-muted-foreground">90 minutes, 90 marks, multi-subject objective paper with no negative marking.</p></div></div>
+        <div class="bg-card border border-border rounded-xl p-5 shadow-sm flex gap-3 items-start sm:col-span-2"><div><h3 class="font-semibold mb-1">Awards & Recognition</h3><p class="text-xs text-muted-foreground">Toppers are featured on the HBPL Exam Portal with medals, certificates, and public felicitation.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="py-20 bg-gradient-to-br from-primary via-secondary to-accent text-primary-foreground text-center">
+    <div class="container mx-auto px-4">
+      <h2 class="text-3xl md:text-4xl font-bold mb-4">Ready to Join the Action?</h2>
+      <a href="https://forms.gle/i96EQf9S1Xbkvgi28" target="_blank" rel="noopener noreferrer" class="inline-block text-base px-8 py-3 rounded-lg bg-secondary text-secondary-foreground hover:scale-105 transition-transform duration-300">Register Now</a>
+    </div>
+  </section>
+</div>
+
+<script>
+  (function () {
+    var host = document.getElementById("home-countdown");
+    var targetDate = host ? host.getAttribute("data-target") : null;
+    var target = targetDate ? new Date(targetDate + "T00:00:00").getTime() : 0;
+    if (!host || !target) return;
+
+    function tick() {
+      var now = Date.now();
+      var diff = Math.max(0, target - now);
+      var days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      var hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      var minutes = Math.floor((diff / (1000 * 60)) % 60);
+      var seconds = Math.floor((diff / 1000) % 60);
+      host.innerHTML = ""
+        + '<div class="flex flex-col items-center animate-scale-in"><div class="bg-card border border-border rounded-lg p-4 min-w-[70px] shadow-card"><div class="text-3xl font-bold text-primary tabular-nums">' + String(days).padStart(2, "0") + '</div></div><div class="text-xs text-muted-foreground mt-2 font-medium">Days</div></div>'
+        + '<div class="flex flex-col items-center animate-scale-in"><div class="bg-card border border-border rounded-lg p-4 min-w-[70px] shadow-card"><div class="text-3xl font-bold text-primary tabular-nums">' + String(hours).padStart(2, "0") + '</div></div><div class="text-xs text-muted-foreground mt-2 font-medium">Hours</div></div>'
+        + '<div class="flex flex-col items-center animate-scale-in"><div class="bg-card border border-border rounded-lg p-4 min-w-[70px] shadow-card"><div class="text-3xl font-bold text-primary tabular-nums">' + String(minutes).padStart(2, "0") + '</div></div><div class="text-xs text-muted-foreground mt-2 font-medium">Minutes</div></div>'
+        + '<div class="flex flex-col items-center animate-scale-in"><div class="bg-card border border-border rounded-lg p-4 min-w-[70px] shadow-card"><div class="text-3xl font-bold text-primary tabular-nums">' + String(seconds).padStart(2, "0") + '</div></div><div class="text-xs text-muted-foreground mt-2 font-medium">Seconds</div></div>';
+    }
+
+    tick();
+    setInterval(tick, 1000);
+  })();
+</script>
+{% endblock %}
