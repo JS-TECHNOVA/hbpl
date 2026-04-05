@@ -1,11 +1,27 @@
 from django.contrib.auth import authenticate
+from django.core.files.base import ContentFile
 from rest_framework import generics, status
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import Team, Match, ManagementMember, GalleryImage, Volunteer, TeamRegistration, ExamRegistration
+from .models import (
+    Team,
+    Match,
+    ManagementMember,
+    GalleryImage,
+    Volunteer,
+    TeamRegistration,
+    ExamRegistration,
+    ExamImportantDate,
+    ExamSupportSchool,
+    ExamSyllabusItem,
+    ExamSamplePaper,
+    ExamCenterDetail,
+    ExamFaq,
+    ExamTopper,
+)
 from .serializers import (
     TeamSerializer,
     MatchSerializer,
@@ -17,6 +33,13 @@ from .serializers import (
     ExamResultLookupSerializer,
     ExamResultResponseSerializer,
     AdminExamRegistrationSerializer,
+    ExamImportantDateSerializer,
+    ExamSupportSchoolSerializer,
+    ExamSyllabusItemSerializer,
+    ExamSamplePaperSerializer,
+    ExamCenterDetailSerializer,
+    ExamFaqSerializer,
+    ExamTopperSerializer,
 )
 from .serializers import (
     AdminVolunteerSerializer,
@@ -24,6 +47,13 @@ from .serializers import (
     AdminManagementMemberSerializer,
     AdminTeamSerializer,
     AdminMatchSerializer,
+    AdminExamImportantDateSerializer,
+    AdminExamSupportSchoolSerializer,
+    AdminExamSyllabusItemSerializer,
+    AdminExamSamplePaperSerializer,
+    AdminExamCenterDetailSerializer,
+    AdminExamFaqSerializer,
+    AdminExamTopperSerializer,
 )
 
 
@@ -96,6 +126,55 @@ class ExamResultLookupView(APIView):
 
         result_serializer = ExamResultResponseSerializer(registration, context={"request": request})
         return Response(result_serializer.data)
+
+
+class ExamImportantDateListView(generics.ListAPIView):
+    queryset = ExamImportantDate.objects.all()
+    serializer_class = ExamImportantDateSerializer
+
+
+class ExamSupportSchoolListView(generics.ListAPIView):
+    queryset = ExamSupportSchool.objects.all()
+    serializer_class = ExamSupportSchoolSerializer
+
+
+class ExamSyllabusItemListView(generics.ListAPIView):
+    queryset = ExamSyllabusItem.objects.all()
+    serializer_class = ExamSyllabusItemSerializer
+
+
+class ExamSamplePaperListView(generics.ListAPIView):
+    queryset = ExamSamplePaper.objects.all()
+    serializer_class = ExamSamplePaperSerializer
+
+
+class ExamCenterDetailListView(generics.ListAPIView):
+    queryset = ExamCenterDetail.objects.all()
+    serializer_class = ExamCenterDetailSerializer
+
+
+class ExamFaqListView(generics.ListAPIView):
+    queryset = ExamFaq.objects.all()
+    serializer_class = ExamFaqSerializer
+
+
+class ExamTopperListView(generics.ListAPIView):
+    queryset = ExamTopper.objects.select_related("student")
+    serializer_class = ExamTopperSerializer
+
+
+class ExamPortalContentView(APIView):
+    def get(self, request, *args, **kwargs):
+        context = {"request": request}
+        return Response({
+            "important_dates": ExamImportantDateSerializer(ExamImportantDate.objects.all(), many=True, context=context).data,
+            "support_schools": ExamSupportSchoolSerializer(ExamSupportSchool.objects.all(), many=True, context=context).data,
+            "syllabus_items": ExamSyllabusItemSerializer(ExamSyllabusItem.objects.all(), many=True, context=context).data,
+            "sample_papers": ExamSamplePaperSerializer(ExamSamplePaper.objects.all(), many=True, context=context).data,
+            "center_details": ExamCenterDetailSerializer(ExamCenterDetail.objects.all(), many=True, context=context).data,
+            "faqs": ExamFaqSerializer(ExamFaq.objects.all(), many=True, context=context).data,
+            "toppers": ExamTopperSerializer(ExamTopper.objects.select_related("student"), many=True, context=context).data,
+        })
 
 
 # ── Admin views (require token auth + is_staff) ───────────────────────────────
@@ -216,3 +295,139 @@ class AdminMatchDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsStaffUser]
     serializer_class = AdminMatchSerializer
     queryset = Match.objects.all()
+
+
+class AdminExamImportantDateListCreateView(generics.ListCreateAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    serializer_class = AdminExamImportantDateSerializer
+    queryset = ExamImportantDate.objects.all()
+
+
+class AdminExamImportantDateDetailView(generics.RetrieveUpdateDestroyAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    serializer_class = AdminExamImportantDateSerializer
+    queryset = ExamImportantDate.objects.all()
+
+
+class AdminExamSupportSchoolListCreateView(generics.ListCreateAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    serializer_class = AdminExamSupportSchoolSerializer
+    queryset = ExamSupportSchool.objects.all()
+
+
+class AdminExamSupportSchoolDetailView(generics.RetrieveUpdateDestroyAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    serializer_class = AdminExamSupportSchoolSerializer
+    queryset = ExamSupportSchool.objects.all()
+
+
+class AdminExamSyllabusItemListCreateView(generics.ListCreateAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    serializer_class = AdminExamSyllabusItemSerializer
+    queryset = ExamSyllabusItem.objects.all()
+
+
+class AdminExamSyllabusItemDetailView(generics.RetrieveUpdateDestroyAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    serializer_class = AdminExamSyllabusItemSerializer
+    queryset = ExamSyllabusItem.objects.all()
+
+
+class AdminExamSamplePaperListCreateView(generics.ListCreateAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    serializer_class = AdminExamSamplePaperSerializer
+    queryset = ExamSamplePaper.objects.all()
+
+
+class AdminExamSamplePaperDetailView(generics.RetrieveUpdateDestroyAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    serializer_class = AdminExamSamplePaperSerializer
+    queryset = ExamSamplePaper.objects.all()
+
+
+class AdminExamCenterDetailListCreateView(generics.ListCreateAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    serializer_class = AdminExamCenterDetailSerializer
+    queryset = ExamCenterDetail.objects.all()
+
+
+class AdminExamCenterDetailDetailView(generics.RetrieveUpdateDestroyAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    serializer_class = AdminExamCenterDetailSerializer
+    queryset = ExamCenterDetail.objects.all()
+
+
+class AdminExamFaqListCreateView(generics.ListCreateAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    serializer_class = AdminExamFaqSerializer
+    queryset = ExamFaq.objects.all()
+
+
+class AdminExamFaqDetailView(generics.RetrieveUpdateDestroyAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    serializer_class = AdminExamFaqSerializer
+    queryset = ExamFaq.objects.all()
+
+
+class AdminExamTopperListCreateView(generics.ListCreateAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    serializer_class = AdminExamTopperSerializer
+    queryset = ExamTopper.objects.select_related("student")
+
+
+class AdminExamTopperDetailView(generics.RetrieveUpdateDestroyAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    serializer_class = AdminExamTopperSerializer
+    queryset = ExamTopper.objects.select_related("student")
+
+
+class AdminGenerateExamDocumentsView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+
+    def post(self, request, pk, *args, **kwargs):
+        registration = generics.get_object_or_404(ExamRegistration, pk=pk)
+        doc_type = str(request.data.get("type", "both")).lower()
+
+        if doc_type in {"admit", "both"}:
+            admit_content = (
+                f"HBPL Admit Card\\n"
+                f"Student: {registration.full_name}\\n"
+                f"Roll Number: {registration.roll_number}\\n"
+                f"DOB: {registration.date_of_birth}\\n"
+            )
+            registration.admit_card_file.save(
+                f"admit_{registration.roll_number}.txt",
+                ContentFile(admit_content.encode("utf-8")),
+                save=False,
+            )
+
+        if doc_type in {"certificate", "both"}:
+            cert_content = (
+                f"HBPL Participation Certificate\\n"
+                f"This certifies that {registration.full_name} participated in HBPL General Aptitude Competition.\\n"
+                f"Roll Number: {registration.roll_number}\\n"
+            )
+            registration.participation_certificate_file.save(
+                f"certificate_{registration.roll_number}.txt",
+                ContentFile(cert_content.encode("utf-8")),
+                save=False,
+            )
+
+        registration.save(update_fields=["admit_card_file", "participation_certificate_file", "updated_at"])
+        serializer = AdminExamRegistrationSerializer(registration, context={"request": request})
+        return Response(serializer.data)

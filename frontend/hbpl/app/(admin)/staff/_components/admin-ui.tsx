@@ -4,6 +4,7 @@ import { useRef, type ReactNode } from 'react';
 import { Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import Image from 'next/image';
 
 export function SectionHeader({ title, action }: { title: string; action?: ReactNode }) {
   return (
@@ -39,7 +40,7 @@ export function ImageUploadField({
     <div className="space-y-1">
       <label className="block text-sm font-medium">{label}</label>
       {currentUrl ? (
-        <img src={currentUrl} alt="current" className="w-20 h-20 object-cover rounded-lg border mb-1" />
+        <Image src={currentUrl} alt="current" width={80} height={80} className="w-20 h-20 object-cover rounded-lg border mb-1" />
       ) : null}
       <input
         ref={inputRef}

@@ -1,5 +1,6 @@
 import { Users } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import Image from "next/image";
 
 interface TeamCardProps {
   name: string;
@@ -18,7 +19,9 @@ const TeamCard = ({ name, captain, logo, description, onClick }: TeamCardProps) 
       <CardHeader className="bg-gradient-to-br from-primary/10 to-secondary/10 p-6">
         <div className="flex items-center justify-center">
           {logo ? (
-            <img 
+            <Image
+              width={96}
+              height={96}
               src={logo} 
               alt={`${name} logo`} 
               className="h-24 w-24 object-contain transition-transform duration-300 group-hover:scale-110"

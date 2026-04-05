@@ -224,7 +224,6 @@ MANAGEMENT = [
         "role": "Chairman",
         "description": "A dedicated leader with a Master's in Education, presently working as a Technical Supervisor at Maa Maha Maya, Ambikapur. A passionate Math and Science community educator, guiding students for CG Vyapam exams. With 15 years of cricket experience, he's played state-level trials and achieved 15 hat-tricks, including two 5-wicket overs in local tournaments.",
         "email": "rajesh@hbpl.com",
-        "image_key": "alokhnath",
         "order": 1,
     },
     {
@@ -232,7 +231,6 @@ MANAGEMENT = [
         "role": "Vice Chairperson | Technical Director",
         "description": "Sonu Kushwaha, Vice Chairperson and Technical Director of HBPL, holds a B.Tech in Computer Science Engineering and an M.Tech in Artificial Intelligence, showcasing his expertise in advanced technologies. He is the CEO and Co-Founder of JS Technova and JS Technova Institute and also serves as Assistant Professor in CSE at BBD University, Lucknow, guiding and mentoring future engineers.",
         "email": "priya@hbpl.com",
-        "image_key": "sonu",
         "order": 2,
     },
     {
@@ -240,7 +238,6 @@ MANAGEMENT = [
         "role": "CEO of HBPL",
         "description": "Now, meet the man who drives the engine of HBPL forward — our CEO, Mr. Pawan Kushwaha! A Mechanical Engineer (B.Tech) with expertise in machinery and project handling, he ensures smooth execution, performance, and innovation in every part of the league. Under his leadership, HBPL moves with precision and power — just like a well-tuned machine.",
         "email": "pawan@hbpl.com",
-        "image_key": "pawan",
         "order": 3,
     },
     {
@@ -248,7 +245,6 @@ MANAGEMENT = [
         "role": "Facilities Manager",
         "description": "As Facilities Manager of HBPL, Harendra Kushwaha stands out for his teamwork, planning, and dedication. A Mechanical Engineer with hands-on experience in technical projects, he applies the same discipline and focus to cricket administration—building unity, structure, and opportunity for youth in Harpur Belahi.",
         "email": "amit@hbpl.com",
-        "image_key": "harendra",
         "order": 4,
     },
     {
@@ -256,7 +252,6 @@ MANAGEMENT = [
         "role": "Tournament Director",
         "description": "As Tournament Director of HBPL, Sunil Kushwaha stands out for his teamwork, planning, and dedication. A Mechanical Engineer with hands-on experience in technical projects, he applies the same discipline and focus to cricket administration—building unity, structure, and opportunity for youth in Harpur Belahi.",
         "email": "amit@hbpl.com",
-        "image_key": "sunil",
         "order": 5,
     },
     {
@@ -264,7 +259,6 @@ MANAGEMENT = [
         "role": "Operations Manager",
         "description": "Every successful event needs a manager who can handle challenges with a smile — and that's our Operations Manager, Mr. Amar Kushwaha! With a strong educational background and currently serving as a D.E.O at Harpur Belahi, he also works actively as a social worker, building partnerships and managing tournament funding and logistics.",
         "email": "anjali@hbpl.com",
-        "image_key": "amar",
         "order": 6,
     },
     {
@@ -272,7 +266,6 @@ MANAGEMENT = [
         "role": "Event Coordinator",
         "description": "Let's now welcome the creative force behind every successful event — our Event Coordinator, Mr. Ramekbal Kushwaha! An all-rounder and fast bowler for the Toofan Cricket Club, he brings years of cricketing experience and unmatched energy to organizing and coordinating events.",
         "email": "anjali@hbpl.com",
-        "image_key": "ramekbal",
         "order": 7,
     },
     {
@@ -280,7 +273,6 @@ MANAGEMENT = [
         "role": "Chief Medical Officer",
         "description": "Next, the man who cares for the health, fitness, and well-being of every player — our Chief Medical Officer (CMO), Dr. Santosh Gupta! He is the Director of Himanshu Multispecialist Hospital and holds a BAMS degree. His dedication ensures every player performs at their best — fit, strong, and healthy.",
         "email": "Santosh@hbpl.com",
-        "image_key": "santosh",
         "order": 8,
     },
     {
@@ -288,24 +280,23 @@ MANAGEMENT = [
         "role": "Finance & Sponsorship Head",
         "description": "Finally, meet the man who balances the numbers, manages sponsorships, and fuels the financial engine of HBPL — our Finance & Sponsorships Head, Mr. Nuraalam! An all-rounder on and off the field, and a star batsman for the Toofan Cricket Club, he ensures that HBPL continues to grow with solid support, strong partnerships, and perfect planning.",
         "email": "mohammed@hbpl.com",
-        "image_key": "nuraalam",
         "order": 9,
     },
 ]
 
 GALLERY_IMAGES = [
-    {"title": "HBPL Match 1", "category": "Action", "image_key": "g1"},
-    {"title": "HBPL Match 2", "category": "Ceremony", "image_key": "g2"},
-    {"title": "HBPL Match 3", "category": "Team", "image_key": "g3"},
-    {"title": "HBPL Match 4", "category": "Action", "image_key": "g1"},
-    {"title": "HBPL Match 5", "category": "Ceremony", "image_key": "g2"},
-    {"title": "HBPL Match 6", "category": "Team", "image_key": "g3"},
-    {"title": "HBPL Match 7", "category": "Action", "image_key": "g1"},
-    {"title": "HBPL Match 8", "category": "Ceremony", "image_key": "g2"},
-    {"title": "HBPL Match 9", "category": "Team", "image_key": "g3"},
-    {"title": "HBPL Match 10", "category": "Action", "image_key": "g1"},
-    {"title": "HBPL Match 11", "category": "Ceremony", "image_key": "g2"},
-    {"title": "HBPL Match 12", "category": "Team", "image_key": "g3"},
+    {"title": "HBPL Match 1", "category": "Action"},
+    {"title": "HBPL Match 2", "category": "Ceremony"},
+    {"title": "HBPL Match 3", "category": "Team"},
+    {"title": "HBPL Match 4", "category": "Action"},
+    {"title": "HBPL Match 5", "category": "Ceremony"},
+    {"title": "HBPL Match 6", "category": "Team"},
+    {"title": "HBPL Match 7", "category": "Action"},
+    {"title": "HBPL Match 8", "category": "Ceremony"},
+    {"title": "HBPL Match 9", "category": "Team"},
+    {"title": "HBPL Match 10", "category": "Action"},
+    {"title": "HBPL Match 11", "category": "Ceremony"},
+    {"title": "HBPL Match 12", "category": "Team"},
 ]
 
 VOLUNTEERS = [

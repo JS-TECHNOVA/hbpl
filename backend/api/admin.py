@@ -23,7 +23,7 @@ class ManagementMemberAdmin(admin.ModelAdmin):
 
 @admin.register(GalleryImage)
 class GalleryImageAdmin(admin.ModelAdmin):
-    list_display = ["title", "category", "image_key"]
+    list_display = ["title", "category"]
     list_filter = ["category"]
 
 

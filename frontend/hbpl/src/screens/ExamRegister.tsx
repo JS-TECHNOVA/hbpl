@@ -21,7 +21,6 @@ import { submitExamRegistration } from '@/lib/api';
 
 const schema = z.object({
   full_name: z.string().trim().min(2, 'Enter the student name').max(200),
-  roll_number: z.string().trim().min(2, 'Enter the roll number').max(50),
   date_of_birth: z.string().min(1, 'Select the date of birth'),
   phone: z.string().trim().min(10, 'Enter a valid phone number').max(15),
   email: z.union([z.literal(''), z.string().trim().email('Enter a valid email address')]),
@@ -49,12 +48,13 @@ const ExamRegister = () => {
   const { toast } = useToast();
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [studentImage, setStudentImage] = useState<File | null>(null);
+  const [signatureImage, setSignatureImage] = useState<File | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       full_name: '',
-      roll_number: '',
       date_of_birth: '',
       phone: '',
       email: '',
@@ -73,6 +73,8 @@ const ExamRegister = () => {
         school_name: values.school_name || '',
         class_name: values.class_name || '',
         address: values.address || '',
+        student_image: studentImage,
+        signature_image: signatureImage,
       });
       setSubmitted(true);
       toast({ title: 'Registration Successful', description: 'Your details have been submitted.' });
@@ -118,13 +120,6 @@ const ExamRegister = () => {
                     <FormMessage />
                   </FormItem>
                 )} />
-                <FormField control={form.control} name="roll_number" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Roll Number <span className="text-red-500">*</span></FormLabel>
-                    <FormControl><Input placeholder="e.g. HBPL-001" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
                 <FormField control={form.control} name="date_of_birth" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Date of Birth <span className="text-red-500">*</span></FormLabel>
@@ -149,7 +144,20 @@ const ExamRegister = () => {
                 <FormField control={form.control} name="class_name" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Class</FormLabel>
-                    <FormControl><Input placeholder="e.g. Class 10" {...field} /></FormControl>
+                    <FormControl>
+                      <select
+                        {...field}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="">Select class</option>
+                        <option value="Class 5">Class 5</option>
+                        <option value="Class 6">Class 6</option>
+                        <option value="Class 7">Class 7</option>
+                        <option value="Class 8">Class 8</option>
+                        <option value="Class 9">Class 9</option>
+                        <option value="Class 10">Class 10</option>
+                      </select>
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -167,6 +175,30 @@ const ExamRegister = () => {
                     <FormMessage />
                   </FormItem>
                 )} />
+                <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <FormItem>
+                    <FormLabel>Student Photo</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.webp"
+                        onChange={(event) => setStudentImage(event.target.files?.[0] ?? null)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                  <FormItem>
+                    <FormLabel>Signature Image</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.webp"
+                        onChange={(event) => setSignatureImage(event.target.files?.[0] ?? null)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                </div>
               </div>
 
               <Button type="submit" className="w-full" disabled={isSubmitting}>

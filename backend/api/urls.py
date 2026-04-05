@@ -11,12 +11,21 @@ urlpatterns = [
     path("register/", views.TeamRegistrationCreateView.as_view(), name="register"),
     path("exam/registrations/", views.ExamRegistrationCreateView.as_view(), name="exam-registration-create"),
     path("exam/results/lookup/", views.ExamResultLookupView.as_view(), name="exam-result-lookup"),
+    path("exam/portal/content/", views.ExamPortalContentView.as_view(), name="exam-portal-content"),
+    path("exam/important-dates/", views.ExamImportantDateListView.as_view(), name="exam-important-dates"),
+    path("exam/support-schools/", views.ExamSupportSchoolListView.as_view(), name="exam-support-schools"),
+    path("exam/syllabus/", views.ExamSyllabusItemListView.as_view(), name="exam-syllabus"),
+    path("exam/sample-papers/", views.ExamSamplePaperListView.as_view(), name="exam-sample-papers"),
+    path("exam/centers/", views.ExamCenterDetailListView.as_view(), name="exam-centers"),
+    path("exam/faqs/", views.ExamFaqListView.as_view(), name="exam-faqs"),
+    path("exam/toppers/", views.ExamTopperListView.as_view(), name="exam-toppers"),
 
     # ── Admin endpoints (require Token auth + is_staff) ───────────────────────
     path("admin/login/", views.AdminLoginView.as_view(), name="admin-login"),
     path("admin/me/", views.AdminMeView.as_view(), name="admin-me"),
     path("admin/exam/registrations/", views.AdminExamListView.as_view(), name="admin-exam-list"),
     path("admin/exam/registrations/<int:pk>/", views.AdminExamDetailView.as_view(), name="admin-exam-detail"),
+    path("admin/exam/registrations/<int:pk>/generate-docs/", views.AdminGenerateExamDocumentsView.as_view(), name="admin-exam-generate-docs"),
 ]
 
 urlpatterns += [
@@ -30,4 +39,18 @@ urlpatterns += [
     path("admin/teams/<int:pk>/", views.AdminTeamDetailView.as_view(), name="admin-team-detail"),
     path("admin/matches/", views.AdminMatchListCreateView.as_view(), name="admin-match-list"),
     path("admin/matches/<int:pk>/", views.AdminMatchDetailView.as_view(), name="admin-match-detail"),
+    path("admin/exam/important-dates/", views.AdminExamImportantDateListCreateView.as_view(), name="admin-exam-important-date-list"),
+    path("admin/exam/important-dates/<int:pk>/", views.AdminExamImportantDateDetailView.as_view(), name="admin-exam-important-date-detail"),
+    path("admin/exam/support-schools/", views.AdminExamSupportSchoolListCreateView.as_view(), name="admin-exam-support-school-list"),
+    path("admin/exam/support-schools/<int:pk>/", views.AdminExamSupportSchoolDetailView.as_view(), name="admin-exam-support-school-detail"),
+    path("admin/exam/syllabus/", views.AdminExamSyllabusItemListCreateView.as_view(), name="admin-exam-syllabus-list"),
+    path("admin/exam/syllabus/<int:pk>/", views.AdminExamSyllabusItemDetailView.as_view(), name="admin-exam-syllabus-detail"),
+    path("admin/exam/sample-papers/", views.AdminExamSamplePaperListCreateView.as_view(), name="admin-exam-sample-paper-list"),
+    path("admin/exam/sample-papers/<int:pk>/", views.AdminExamSamplePaperDetailView.as_view(), name="admin-exam-sample-paper-detail"),
+    path("admin/exam/centers/", views.AdminExamCenterDetailListCreateView.as_view(), name="admin-exam-center-list"),
+    path("admin/exam/centers/<int:pk>/", views.AdminExamCenterDetailDetailView.as_view(), name="admin-exam-center-detail"),
+    path("admin/exam/faqs/", views.AdminExamFaqListCreateView.as_view(), name="admin-exam-faq-list"),
+    path("admin/exam/faqs/<int:pk>/", views.AdminExamFaqDetailView.as_view(), name="admin-exam-faq-detail"),
+    path("admin/exam/toppers/", views.AdminExamTopperListCreateView.as_view(), name="admin-exam-topper-list"),
+    path("admin/exam/toppers/<int:pk>/", views.AdminExamTopperDetailView.as_view(), name="admin-exam-topper-detail"),
 ]

@@ -3,6 +3,7 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchVolunteers, type Volunteer } from "@/lib/api";
+import Image from "next/image";
 
 export default function CommunityVolunteers() {
   const { data: volunteers = [], isLoading, isError } = useQuery<Volunteer[]>({
@@ -50,11 +51,15 @@ export default function CommunityVolunteers() {
                 key={v.id}
                 className="bg-white shadow-md rounded-2xl overflow-hidden text-center border hover:shadow-lg transition"
               >
-                <img
-                  src={v.img}
-                  alt={v.name}
-                  className="w-full h-64 object-cover"
-                />
+                <div className="relative w-full h-64">
+                  <Image
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                    src={v.image_url ?? v.img}
+                    alt={v.name}
+                    className="object-cover"
+                  />
+                </div>
                 <div className="p-4">
                   <h3 className="text-lg font-semibold">{v.name}</h3>
                   <p className="text-sm text-gray-500">{v.role}</p>

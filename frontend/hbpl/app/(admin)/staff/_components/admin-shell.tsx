@@ -34,6 +34,7 @@ import { adminLogin, adminMe, type AdminUser } from '@/lib/api';
 export type AdminSection =
   | 'dashboard'
   | 'students'
+  | 'examPortal'
   | 'volunteers'
   | 'gallery'
   | 'management'
@@ -46,13 +47,14 @@ export const ADMIN_NAV: {
   href: string;
   icon: LucideIcon;
 }[] = [
-  { id: 'dashboard', label: 'Dashboard', href: '/admin', icon: BarChart3 },
-  { id: 'students', label: 'Exam Students', href: '/admin/exam-students', icon: BookOpen },
-  { id: 'volunteers', label: 'Volunteers', href: '/admin/volunteers', icon: Users },
-  { id: 'gallery', label: 'Gallery', href: '/admin/gallery', icon: Image },
-  { id: 'management', label: 'Management', href: '/admin/management', icon: Settings },
-  { id: 'teams', label: 'Teams', href: '/admin/teams', icon: Trophy },
-  { id: 'matches', label: 'Matches', href: '/admin/matches', icon: ChevronRight },
+  { id: 'dashboard', label: 'Dashboard', href: '/staff', icon: BarChart3 },
+  { id: 'students', label: 'Exam Students', href: '/staff/exam-students', icon: BookOpen },
+  { id: 'examPortal', label: 'Exam Portal', href: '/staff/exam-portal', icon: Settings },
+  { id: 'volunteers', label: 'Volunteers', href: '/staff/volunteers', icon: Users },
+  { id: 'gallery', label: 'Gallery', href: '/staff/gallery', icon: Image },
+  { id: 'management', label: 'Management', href: '/staff/management', icon: Settings },
+  { id: 'teams', label: 'Teams', href: '/staff/teams', icon: Trophy },
+  { id: 'matches', label: 'Matches', href: '/staff/matches', icon: ChevronRight },
 ];
 
 type AdminContextValue = {
@@ -84,12 +86,13 @@ function clearToken() {
 }
 
 function getActiveSection(pathname: string): AdminSection {
-  if (pathname.startsWith('/admin/exam-students')) return 'students';
-  if (pathname.startsWith('/admin/volunteers')) return 'volunteers';
-  if (pathname.startsWith('/admin/gallery')) return 'gallery';
-  if (pathname.startsWith('/admin/management')) return 'management';
-  if (pathname.startsWith('/admin/teams')) return 'teams';
-  if (pathname.startsWith('/admin/matches')) return 'matches';
+  if (pathname.startsWith('/staff/exam-students')) return 'students';
+  if (pathname.startsWith('/staff/exam-portal')) return 'examPortal';
+  if (pathname.startsWith('/staff/volunteers')) return 'volunteers';
+  if (pathname.startsWith('/staff/gallery')) return 'gallery';
+  if (pathname.startsWith('/staff/management')) return 'management';
+  if (pathname.startsWith('/staff/teams')) return 'teams';
+  if (pathname.startsWith('/staff/matches')) return 'matches';
   return 'dashboard';
 }
 

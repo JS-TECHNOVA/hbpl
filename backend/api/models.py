@@ -48,8 +48,6 @@ class ManagementMember(models.Model):
     role = models.CharField(max_length=200)
     description = models.TextField()
     email = models.EmailField()
-    # Key maps to a statically imported image in the Next.js frontend
-    image_key = models.CharField(max_length=50, blank=True)
     image = models.ImageField(upload_to="management/", blank=True, null=True)
     order = models.PositiveIntegerField(default=0)
 
@@ -69,8 +67,6 @@ class GalleryImage(models.Model):
 
     title = models.CharField(max_length=200)
     category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
-    # Key maps to a statically imported image (g1, g2, g3) in the Next.js frontend
-    image_key = models.CharField(max_length=10)
     image = models.ImageField(upload_to="gallery/", blank=True, null=True)
 
     def __str__(self):
@@ -119,8 +115,14 @@ class ExamRegistration(models.Model):
     class_name = models.CharField(max_length=50, blank=True)
     address = models.TextField(blank=True)
     notes = models.TextField(blank=True)
+    student_image = models.ImageField(upload_to="exam/students/", blank=True, null=True)
+    signature_image = models.ImageField(upload_to="exam/signatures/", blank=True, null=True)
     test_copy = models.FileField(upload_to="exam/test-copies/", blank=True, null=True)
     result_file = models.FileField(upload_to="exam/results/", blank=True, null=True)
+    admit_card_file = models.FileField(upload_to="exam/admit-cards/", blank=True, null=True)
+    participation_certificate_file = models.FileField(upload_to="exam/certificates/", blank=True, null=True)
+    publish_admit_card = models.BooleanField(default=False)
+    publish_participation_certificate = models.BooleanField(default=False)
     marks_obtained = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
     total_marks = models.DecimalField(max_digits=5, decimal_places=2, default=100)
     rank = models.PositiveIntegerField(blank=True, null=True)
@@ -138,3 +140,98 @@ class ExamRegistration(models.Model):
 
     def __str__(self):
         return f"{self.roll_number} — {self.full_name}"
+
+
+class ExamImportantDate(models.Model):
+    title = models.CharField(max_length=200)
+    date = models.DateField()
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "date", "id"]
+
+    def __str__(self):
+        return f"{self.title} ({self.date})"
+
+
+class ExamSupportSchool(models.Model):
+    name = models.CharField(max_length=200)
+    address = models.CharField(max_length=300, blank=True)
+    principal_name = models.CharField(max_length=200, blank=True)
+    principal_image = models.ImageField(upload_to="exam/support-schools/", blank=True, null=True)
+    contact_info = models.CharField(max_length=300, blank=True)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return self.name
+
+
+class ExamSyllabusItem(models.Model):
+    class_name = models.CharField(max_length=50)
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    pdf_file = models.FileField(upload_to="exam/syllabus/", blank=True, null=True)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return f"{self.class_name} — {self.title}"
+
+
+class ExamSamplePaper(models.Model):
+    class_name = models.CharField(max_length=50)
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    file = models.FileField(upload_to="exam/sample-papers/", blank=True, null=True)
+    external_url = models.URLField(blank=True)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return f"{self.class_name} — {self.title}"
+
+
+class ExamCenterDetail(models.Model):
+    center_name = models.CharField(max_length=200)
+    form_range = models.CharField(max_length=100, blank=True)
+    roll_range = models.CharField(max_length=100, blank=True)
+    extra_details = models.TextField(blank=True)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return self.center_name
+
+
+class ExamFaq(models.Model):
+    question = models.CharField(max_length=300)
+    answer = models.TextField()
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return self.question
+
+
+class ExamTopper(models.Model):
+    student = models.ForeignKey(ExamRegistration, on_delete=models.CASCADE, related_name="topper_entries")
+    rank = models.PositiveIntegerField(default=1)
+    highlight_text = models.CharField(max_length=200, blank=True)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "rank", "id"]
+
+    def __str__(self):
+        return f"Rank {self.rank}: {self.student.full_name}"

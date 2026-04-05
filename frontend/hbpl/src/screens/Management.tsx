@@ -14,8 +14,9 @@ import amar from "@/assets/amar.png";
 import ramekbal from "@/assets/ramekbal-removebg-preview.png";
 import santosh from "@/assets/Santosh_Gupta-removebg-preview.png";
 import Harendra from "@/assets/Harendra_Kushwaha-removebg-preview.png";
+import Image from "next/image";
 
-// Fallback static images keyed by image_key or partial name match
+// Fallback static images keyed by first name
 const STATIC_IMAGES: Record<string, string> = {
   alokhnath: alokhnath.src,
   sonu: sonu.src,
@@ -28,9 +29,8 @@ const STATIC_IMAGES: Record<string, string> = {
   harendra: Harendra.src,
 };
 
-function getStaticImage(member: { image_key: string; name: string }): string | undefined {
-  if (member.image_key && STATIC_IMAGES[member.image_key]) return STATIC_IMAGES[member.image_key];
-  const key = member.name.toLowerCase().split(" ")[0];
+function getStaticImage(name: string): string | undefined {
+  const key = name.toLowerCase().split(" ")[0];
   return STATIC_IMAGES[key];
 }
 
@@ -75,7 +75,7 @@ const Management = () => {
         {!isLoading && !isError && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {team.map((member, index) => {
-              const imgSrc = member.image_url ?? getStaticImage(member) ?? "";
+              const imgSrc = member.image_url ?? getStaticImage(member.name) ?? "";
               return (
                 <div
                   key={member.id}
@@ -85,7 +85,9 @@ const Management = () => {
                   {/* Avatar */}
                   <div className="h-56 bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10 flex items-center justify-center">
                     {imgSrc ? (
-                      <img
+                      <Image
+                        width={160}
+                        height={160}
                         src={imgSrc}
                         alt={member.name}
                         className="h-40 w-40 rounded-full object-cover border-4 border-white shadow-md"

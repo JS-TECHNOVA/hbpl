@@ -19,46 +19,49 @@ import {
 	TableHeader,
 	TableRow,
 } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import {
-	adminCreateVolunteer,
-	adminDeleteVolunteer,
-	adminFetchVolunteers,
-	adminUpdateVolunteer,
-	type AdminVolunteer,
+	adminCreateManagement,
+	adminDeleteManagement,
+	adminFetchManagement,
+	adminUpdateManagement,
+	type AdminManagementMember,
 } from '@/lib/api';
+import Image from 'next/image';
 import { useAdmin } from '../_components/admin-shell';
 import { ConfirmDelete, ImageUploadField, LoadingBlock, SectionHeader } from '../_components/admin-ui';
 
-export default function AdminVolunteersPage() {
+export default function AdminManagementPage() {
 	const { token } = useAdmin();
 	const { toast } = useToast();
 	const queryClient = useQueryClient();
-	const [editing, setEditing] = useState<AdminVolunteer | 'new' | null>(null);
-	const [deleting, setDeleting] = useState<AdminVolunteer | null>(null);
-	const [form, setForm] = useState({ name: '', role: '', img: '', order: '0' });
+	const [editing, setEditing] = useState<AdminManagementMember | 'new' | null>(null);
+	const [deleting, setDeleting] = useState<AdminManagementMember | null>(null);
+	const [form, setForm] = useState({ name: '', role: '', description: '', email: '', order: '0' });
 	const [pendingFiles, setPendingFiles] = useState<Record<string, File>>({});
 
-	const { data: volunteers = [], isLoading } = useQuery({
-		queryKey: ['admin-volunteers', token],
-		queryFn: () => adminFetchVolunteers(token),
+	const { data: members = [], isLoading } = useQuery({
+		queryKey: ['admin-management', token],
+		queryFn: () => adminFetchManagement(token),
 	});
 
 	const openNew = () => {
-		setForm({ name: '', role: '', img: '', order: '0' });
+		setForm({ name: '', role: '', description: '', email: '', order: '0' });
 		setPendingFiles({});
 		setEditing('new');
 	};
 
-	const openEdit = (volunteer: AdminVolunteer) => {
+	const openEdit = (member: AdminManagementMember) => {
 		setForm({
-			name: volunteer.name,
-			role: volunteer.role,
-			img: volunteer.img,
-			order: String(volunteer.order),
+			name: member.name,
+			role: member.role,
+			description: member.description,
+			email: member.email,
+			order: String(member.order),
 		});
 		setPendingFiles({});
-		setEditing(volunteer);
+		setEditing(member);
 	};
 
 	const saveMutation = useMutation({
@@ -66,21 +69,22 @@ export default function AdminVolunteersPage() {
 			const formData = new FormData();
 			formData.append('name', form.name);
 			formData.append('role', form.role);
-			formData.append('img', form.img);
+			formData.append('description', form.description);
+			formData.append('email', form.email);
 			formData.append('order', form.order);
 			if (pendingFiles.image) {
 				formData.append('image', pendingFiles.image);
 			}
 
 			if (editing === 'new') {
-				return adminCreateVolunteer(token, formData);
+				return adminCreateManagement(token, formData);
 			}
 
-			return adminUpdateVolunteer(token, editing!.id, formData);
+			return adminUpdateManagement(token, editing!.id, formData);
 		},
 		onSuccess: () => {
-			void queryClient.invalidateQueries({ queryKey: ['admin-volunteers'] });
-			void queryClient.invalidateQueries({ queryKey: ['volunteers'] });
+			void queryClient.invalidateQueries({ queryKey: ['admin-management'] });
+			void queryClient.invalidateQueries({ queryKey: ['management'] });
 			setEditing(null);
 			toast({ title: 'Saved' });
 		},
@@ -94,10 +98,10 @@ export default function AdminVolunteersPage() {
 	});
 
 	const deleteMutation = useMutation({
-		mutationFn: (id: number) => adminDeleteVolunteer(token, id),
+		mutationFn: (id: number) => adminDeleteManagement(token, id),
 		onSuccess: () => {
-			void queryClient.invalidateQueries({ queryKey: ['admin-volunteers'] });
-			void queryClient.invalidateQueries({ queryKey: ['volunteers'] });
+			void queryClient.invalidateQueries({ queryKey: ['admin-management'] });
+			void queryClient.invalidateQueries({ queryKey: ['management'] });
 			setDeleting(null);
 			toast({ title: 'Deleted' });
 		},
@@ -113,7 +117,7 @@ export default function AdminVolunteersPage() {
 	return (
 		<div className="space-y-4">
 			<SectionHeader
-				title="Volunteers"
+				title="Management"
 				action={
 					<Button size="sm" onClick={openNew}>
 						<Plus className="w-4 h-4 mr-1" />
@@ -136,23 +140,23 @@ export default function AdminVolunteersPage() {
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{volunteers.map((volunteer) => (
-								<TableRow key={volunteer.id}>
+							{members.map((member) => (
+								<TableRow key={member.id}>
 									<TableCell>
-										{volunteer.image_url ? (
-											<img src={volunteer.image_url} alt={volunteer.name} className="w-10 h-10 rounded-full object-cover" />
+										{member.image_url ? (
+											<Image src={member.image_url} alt={member.name} width={40} height={40} className="w-10 h-10 rounded-full object-cover" />
 										) : (
 											<div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-400">No img</div>
 										)}
 									</TableCell>
-									<TableCell className="font-medium">{volunteer.name}</TableCell>
-									<TableCell className="text-gray-500">{volunteer.role}</TableCell>
-									<TableCell>{volunteer.order}</TableCell>
+									<TableCell className="font-medium">{member.name}</TableCell>
+									<TableCell className="text-gray-500 text-sm">{member.role}</TableCell>
+									<TableCell>{member.order}</TableCell>
 									<TableCell className="text-right space-x-2">
-										<Button size="sm" variant="ghost" onClick={() => openEdit(volunteer)}>
+										<Button size="sm" variant="ghost" onClick={() => openEdit(member)}>
 											<Pencil className="w-4 h-4" />
 										</Button>
-										<Button size="sm" variant="ghost" className="text-red-500" onClick={() => setDeleting(volunteer)}>
+										<Button size="sm" variant="ghost" className="text-red-500" onClick={() => setDeleting(member)}>
 											<Trash2 className="w-4 h-4" />
 										</Button>
 									</TableCell>
@@ -164,9 +168,9 @@ export default function AdminVolunteersPage() {
 			)}
 			{editing ? (
 				<Dialog open onOpenChange={() => setEditing(null)}>
-					<DialogContent className="max-w-md">
+					<DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
 						<DialogHeader>
-							<DialogTitle>{editing === 'new' ? 'Add Volunteer' : 'Edit Volunteer'}</DialogTitle>
+							<DialogTitle>{editing === 'new' ? 'Add Member' : 'Edit Member'}</DialogTitle>
 						</DialogHeader>
 						<div className="space-y-3">
 							<div>
@@ -178,16 +182,24 @@ export default function AdminVolunteersPage() {
 								<Input value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value })} />
 							</div>
 							<div>
+								<label className="block text-sm font-medium mb-1">Email</label>
+								<Input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+							</div>
+							<div>
+								<label className="block text-sm font-medium mb-1">Description</label>
+								<Textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={4} />
+							</div>
+							<div>
 								<label className="block text-sm font-medium mb-1">Order</label>
 								<Input type="number" value={form.order} onChange={(event) => setForm({ ...form, order: event.target.value })} />
 							</div>
 							<ImageUploadField
-								label="Photo"
+								label="Profile Photo"
 								currentUrl={editing === 'new' ? null : editing.image_url}
 								fieldName="image"
 								onFileSelect={(name, file) => setPendingFiles((current) => ({ ...current, [name]: file }))}
 							/>
-							{pendingFiles.image ? <p className="text-xs text-green-600">New image selected: {pendingFiles.image.name}</p> : null}
+							{pendingFiles.image ? <p className="text-xs text-green-600">Selected: {pendingFiles.image.name}</p> : null}
 							<div className="flex gap-3 pt-2">
 								<Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="flex-1">
 									{saveMutation.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}

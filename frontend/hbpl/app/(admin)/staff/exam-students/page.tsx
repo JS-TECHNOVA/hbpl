@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle, Clock, Loader2, Upload } from 'lucide-react';
+import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,7 +22,7 @@ import {
 	TableRow,
 } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { adminFetchStudents, adminUpdateStudent, type AdminExamRegistration } from '@/lib/api';
+import { adminFetchStudents, adminGenerateStudentDocs, adminUpdateStudent, type AdminExamRegistration } from '@/lib/api';
 import { useAdmin } from '../_components/admin-shell';
 import { LoadingBlock, SectionHeader } from '../_components/admin-ui';
 
@@ -29,6 +30,8 @@ export default function AdminExamStudentsPage() {
 	const { token } = useAdmin();
 	const { toast } = useToast();
 	const queryClient = useQueryClient();
+	const studentImageRef = useRef<HTMLInputElement>(null);
+	const signatureImageRef = useRef<HTMLInputElement>(null);
 	const testCopyRef = useRef<HTMLInputElement>(null);
 	const resultFileRef = useRef<HTMLInputElement>(null);
 	const [search, setSearch] = useState('');
@@ -71,6 +74,22 @@ export default function AdminExamStudentsPage() {
 		},
 	});
 
+	const docsMutation = useMutation({
+		mutationFn: (docType: 'admit' | 'certificate' | 'both') => adminGenerateStudentDocs(token, selected!.id, docType),
+		onSuccess: (updated) => {
+			void queryClient.invalidateQueries({ queryKey: ['admin-students'] });
+			setSelected(updated);
+			toast({ title: 'Document generated' });
+		},
+		onError: (error) => {
+			toast({
+				title: 'Error',
+				description: error instanceof Error ? error.message : 'Document generation failed',
+				variant: 'destructive',
+			});
+		},
+	});
+
 	const buildFormData = (extra: Record<string, string | File>) => {
 		const formData = new FormData();
 		if (marks !== '') formData.append('marks_obtained', marks);
@@ -93,7 +112,8 @@ export default function AdminExamStudentsPage() {
 	const filteredStudents = students.filter((student) =>
 		student.full_name.toLowerCase().includes(search.toLowerCase()) ||
 		student.roll_number.toLowerCase().includes(search.toLowerCase()) ||
-		student.school_name.toLowerCase().includes(search.toLowerCase()),
+		student.school_name.toLowerCase().includes(search.toLowerCase()) ||
+		student.phone.toLowerCase().includes(search.toLowerCase()),
 	);
 
 	const publishedCount = students.filter((student) => student.result_status === 'published').length;
@@ -129,6 +149,7 @@ export default function AdminExamStudentsPage() {
 						<Table>
 							<TableHeader>
 								<TableRow>
+									<TableHead>Photo</TableHead>
 									<TableHead>Roll No.</TableHead>
 									<TableHead>Name</TableHead>
 									<TableHead>School</TableHead>
@@ -143,6 +164,13 @@ export default function AdminExamStudentsPage() {
 										className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
 										onClick={() => openStudent(student)}
 									>
+										<TableCell>
+											{student.student_image_url ? (
+												<Image src={student.student_image_url} alt={student.full_name} width={36} height={36} className="w-9 h-9 rounded-full object-cover" />
+											) : (
+												<div className="w-9 h-9 rounded-full bg-gray-200" />
+											)}
+										</TableCell>
 										<TableCell className="font-mono text-sm">{student.roll_number}</TableCell>
 										<TableCell className="font-medium">{student.full_name}</TableCell>
 										<TableCell className="text-gray-500">{student.school_name || '—'}</TableCell>
@@ -182,6 +210,42 @@ export default function AdminExamStudentsPage() {
 								</Badge>
 							</DialogTitle>
 						</DialogHeader>
+						<div className="grid grid-cols-2 gap-4">
+							<div className="rounded-xl border p-3 space-y-2">
+								<p className="text-sm font-medium">Student Photo</p>
+								{selected.student_image_url ? (
+									<Image src={selected.student_image_url} alt={selected.full_name} width={120} height={120} className="w-24 h-24 rounded-lg object-cover" />
+								) : <div className="w-24 h-24 rounded-lg bg-gray-200" />}
+								<input
+									ref={studentImageRef}
+									type="file"
+									accept=".jpg,.jpeg,.png,.webp"
+									className="hidden"
+									onChange={() => {
+										const file = studentImageRef.current?.files?.[0];
+										if (file) mutation.mutate(buildFormData({ student_image: file }));
+									}}
+								/>
+								<Button size="sm" variant="outline" onClick={() => studentImageRef.current?.click()} disabled={mutation.isPending}>Upload</Button>
+							</div>
+							<div className="rounded-xl border p-3 space-y-2">
+								<p className="text-sm font-medium">Signature</p>
+								{selected.signature_image_url ? (
+									<Image src={selected.signature_image_url} alt="Signature" width={180} height={90} className="w-36 h-20 rounded-lg object-contain bg-white" />
+								) : <div className="w-36 h-20 rounded-lg bg-gray-200" />}
+								<input
+									ref={signatureImageRef}
+									type="file"
+									accept=".jpg,.jpeg,.png,.webp"
+									className="hidden"
+									onChange={() => {
+										const file = signatureImageRef.current?.files?.[0];
+										if (file) mutation.mutate(buildFormData({ signature_image: file }));
+									}}
+								/>
+								<Button size="sm" variant="outline" onClick={() => signatureImageRef.current?.click()} disabled={mutation.isPending}>Upload</Button>
+							</div>
+						</div>
 						<div className="grid grid-cols-2 gap-3 text-sm bg-gray-50 dark:bg-gray-900 rounded-xl p-4">
 							<div className="text-gray-500">Roll No.</div>
 							<div className="font-medium">{selected.roll_number}</div>
@@ -280,6 +344,20 @@ export default function AdminExamStudentsPage() {
 									Publish Result
 								</Button>
 							)}
+							<Button variant="outline" onClick={() => docsMutation.mutate('admit')} disabled={docsMutation.isPending}>Generate Admit Card</Button>
+							<Button variant="outline" onClick={() => docsMutation.mutate('certificate')} disabled={docsMutation.isPending}>Generate Certificate</Button>
+							{selected.publish_admit_card ? (
+								<Button variant="outline" onClick={() => mutation.mutate(buildFormData({ publish_admit_card: 'false' }))}>Unpublish Admit Card</Button>
+							) : (
+								<Button variant="outline" onClick={() => mutation.mutate(buildFormData({ publish_admit_card: 'true' }))}>Publish Admit Card</Button>
+							)}
+							{selected.publish_participation_certificate ? (
+								<Button variant="outline" onClick={() => mutation.mutate(buildFormData({ publish_participation_certificate: 'false' }))}>Unpublish Certificate</Button>
+							) : (
+								<Button variant="outline" onClick={() => mutation.mutate(buildFormData({ publish_participation_certificate: 'true' }))}>Publish Certificate</Button>
+							)}
+							{selected.admit_card_url ? <a href={selected.admit_card_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 underline">View Admit Card</a> : null}
+							{selected.participation_certificate_url ? <a href={selected.participation_certificate_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 underline">View Certificate</a> : null}
 						</div>
 					</DialogContent>
 				</Dialog>

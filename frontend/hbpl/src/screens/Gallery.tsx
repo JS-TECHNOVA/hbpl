@@ -4,15 +4,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchGallery } from "@/lib/api";
-import g1 from "@/assets/g1.jpg";
-import g2 from "@/assets/g2.jpg";
-import g3 from "@/assets/g3.jpg";
-
-const imageMap: Record<string, string> = {
-  g1: g1.src,
-  g2: g2.src,
-  g3: g3.src,
-};
+import Image from "next/image";
 
 const Gallery = () => {
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -85,11 +77,17 @@ const Gallery = () => {
                 className="group relative aspect-square rounded-lg overflow-hidden cursor-pointer shadow-card hover:shadow-hover transition-all duration-300 hover:-translate-y-1 animate-scale-in"
                 style={{ animationDelay: `${index * 0.05}s` }}
               >
-                <img
-                  src={image.image_url ?? imageMap[image.image_key] ?? ''}
-                  alt={image.title}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 filter brightness-90 group-hover:brightness-100"
-                />
+                {image.image_url ? (
+                  <Image
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                    src={image.image_url}
+                    alt={image.title}
+                    className="object-cover group-hover:scale-110 transition-transform duration-500 filter brightness-90 group-hover:brightness-100"
+                  />
+                ) : (
+                  <div className="h-full w-full bg-muted" />
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end">
                   <div className="p-4 w-full">
                     <h3 className="font-semibold text-white">{image.title}</h3>
@@ -113,13 +111,17 @@ const Gallery = () => {
             >
               <X className="h-6 w-6 text-white" />
             </button>
-            <div className="max-w-5xl w-full aspect-video rounded-lg overflow-hidden shadow-lg animate-scale-in">
-              <img
-                src={selectedImage.image_url ?? imageMap[selectedImage.image_key] ?? ''}
-                alt={selectedImage.title}
-                className="w-full h-full object-cover"
-              />
-            </div>
+            {selectedImage.image_url ? (
+              <div className="relative max-w-5xl w-full aspect-video rounded-lg overflow-hidden shadow-lg animate-scale-in">
+                <Image
+                  fill
+                  sizes="90vw"
+                  src={selectedImage.image_url}
+                  alt={selectedImage.title}
+                  className="object-cover"
+                />
+              </div>
+            ) : null}
           </div>
         )}
 

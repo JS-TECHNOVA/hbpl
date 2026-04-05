@@ -20,6 +20,7 @@ import {
 	adminUpdateGallery,
 	type AdminGalleryImage,
 } from '@/lib/api';
+import Image from 'next/image';
 import { useAdmin } from '../_components/admin-shell';
 import { ConfirmDelete, ImageUploadField, LoadingBlock, SectionHeader } from '../_components/admin-ui';
 
@@ -54,7 +55,6 @@ export default function AdminGalleryPage() {
 			const formData = new FormData();
 			formData.append('title', form.title);
 			formData.append('category', form.category);
-			formData.append('image_key', '');
 			if (pendingFiles.image) {
 				formData.append('image', pendingFiles.image);
 			}
@@ -116,7 +116,7 @@ export default function AdminGalleryPage() {
 						<div key={image.id} className="bg-white dark:bg-gray-900 rounded-xl border dark:border-gray-800 overflow-hidden group">
 							<div className="aspect-video bg-gray-100 dark:bg-gray-800 relative">
 								{image.image_url ? (
-									<img src={image.image_url} alt={image.title} className="w-full h-full object-cover" />
+									<Image src={image.image_url} alt={image.title} fill sizes="(max-width: 1024px) 50vw, 25vw" className="object-cover" />
 								) : (
 									<div className="w-full h-full flex items-center justify-center text-xs text-gray-400">No image</div>
 								)}
