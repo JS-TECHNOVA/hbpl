@@ -216,7 +216,7 @@ class AdminExamRegistrationSerializer(serializers.ModelSerializer):
             "created_at", "updated_at",
         ]
         read_only_fields = [
-            "id", "roll_number", "created_at", "updated_at",
+            "id", "created_at", "updated_at",
             "student_image_url", "signature_image_url", "test_copy_url", "result_file_url",
             "admit_card_url", "participation_certificate_url",
         ]

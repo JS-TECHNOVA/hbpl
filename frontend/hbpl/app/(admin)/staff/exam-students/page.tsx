@@ -36,6 +36,7 @@ export default function AdminExamStudentsPage() {
 	const resultFileRef = useRef<HTMLInputElement>(null);
 	const [search, setSearch] = useState('');
 	const [selected, setSelected] = useState<AdminExamRegistration | null>(null);
+	const [rollNumber, setRollNumber] = useState('');
 	const [marks, setMarks] = useState('');
 	const [totalMarks, setTotalMarks] = useState('100');
 	const [rank, setRank] = useState('');
@@ -48,6 +49,7 @@ export default function AdminExamStudentsPage() {
 
 	const openStudent = (student: AdminExamRegistration) => {
 		setSelected(student);
+		setRollNumber(student.roll_number);
 		setMarks(student.marks_obtained ?? '');
 		setTotalMarks(student.total_marks ?? '100');
 		setRank(student.rank != null ? String(student.rank) : '');
@@ -59,6 +61,7 @@ export default function AdminExamStudentsPage() {
 		onSuccess: (updated) => {
 			void queryClient.invalidateQueries({ queryKey: ['admin-students'] });
 			setSelected(updated);
+			setRollNumber(updated.roll_number);
 			setMarks(updated.marks_obtained ?? '');
 			setTotalMarks(updated.total_marks ?? '100');
 			setRank(updated.rank != null ? String(updated.rank) : '');
@@ -92,6 +95,7 @@ export default function AdminExamStudentsPage() {
 
 	const buildFormData = (extra: Record<string, string | File>) => {
 		const formData = new FormData();
+		formData.append('roll_number', rollNumber);
 		if (marks !== '') formData.append('marks_obtained', marks);
 		if (totalMarks !== '') formData.append('total_marks', totalMarks);
 		if (rank !== '') formData.append('rank', rank);
@@ -261,6 +265,10 @@ export default function AdminExamStudentsPage() {
 							<div className="font-medium">{selected.class_name || '—'}</div>
 						</div>
 						<div className="grid grid-cols-2 gap-4">
+							<div>
+								<label className="block text-sm font-medium mb-1">Roll No.</label>
+								<Input className="font-mono" value={rollNumber} onChange={(event) => setRollNumber(event.target.value)} placeholder="e.g. HBPL00001" />
+							</div>
 							<div>
 								<label className="block text-sm font-medium mb-1">Marks Obtained</label>
 								<Input type="number" value={marks} onChange={(event) => setMarks(event.target.value)} placeholder="85" />
