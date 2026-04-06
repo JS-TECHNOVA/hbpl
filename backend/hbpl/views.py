@@ -106,16 +106,16 @@ class ExamRegistrationView(FormView):
     form_class = ExamRegistrationForm
     success_url = reverse_lazy("hbpl:exam-register")
 
-    def dispatch(self, request, *args, **kwargs):
-        if ExamSettings.get_settings().registration_closed:
-            messages.error(request, "Exam registration is currently closed.")
-            return redirect("hbpl:exam-register")
-        return super().dispatch(request, *args, **kwargs)
-
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["registration_closed"] = ExamSettings.get_settings().registration_closed
         return context
+
+    def post(self, request, *args, **kwargs):
+        if ExamSettings.get_settings().registration_closed:
+            messages.error(request, "Exam registration is currently closed.")
+            return self.get(request, *args, **kwargs)
+        return super().post(request, *args, **kwargs)
 
     def form_valid(self, form):
         instance = form.save(commit=False)
