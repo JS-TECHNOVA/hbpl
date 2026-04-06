@@ -278,3 +278,26 @@ class ExamTopper(models.Model):
 
     def __str__(self):
         return f"Rank {self.rank}: {self.student.full_name}"
+
+
+class ExamSettings(models.Model):
+    registration_closed = models.BooleanField(
+        default=False,
+        help_text="When enabled, new exam registrations will be rejected.",
+    )
+
+    class Meta:
+        verbose_name = "Exam Settings"
+        verbose_name_plural = "Exam Settings"
+
+    def __str__(self):
+        return "Exam Settings"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_settings(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
