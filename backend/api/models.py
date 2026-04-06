@@ -102,21 +102,6 @@ class TeamRegistration(models.Model):
         return f"{self.team_name} — {self.captain_name}"
 
 
-class ExamRegistrationSettings(models.Model):
-    registration_open = models.BooleanField(default=True)
-
-    class Meta:
-        verbose_name = "Exam Registration Settings"
-        verbose_name_plural = "Exam Registration Settings"
-
-    def __str__(self):
-        return "Open" if self.registration_open else "Closed"
-
-    @classmethod
-    def get_settings(cls):
-        obj, _ = cls.objects.get_or_create(pk=1)
-        return obj
-
 
 class ExamRegistration(models.Model):
     ROLL_PREFIX = "HBPL2026"

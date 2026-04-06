@@ -101,16 +101,6 @@ class ExamRegistrationCreateSerializer(serializers.ModelSerializer):
             "signature_image",
         ]
 
-    def create(self, validated_data):
-        next_number = (ExamRegistration.objects.order_by("-id").values_list("id", flat=True).first() or 0) + 1
-        while True:
-            roll_number = f"HBPL{next_number:05d}"
-            if not ExamRegistration.objects.filter(roll_number=roll_number).exists():
-                validated_data["roll_number"] = roll_number
-                break
-            next_number += 1
-        return super().create(validated_data)
-
 
 class ExamResultLookupSerializer(serializers.Serializer):
     roll_number = serializers.CharField(max_length=50)
