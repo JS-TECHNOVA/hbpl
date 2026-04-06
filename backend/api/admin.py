@@ -1,5 +1,10 @@
 from django.contrib import admin
-from .models import Team, Match, ManagementMember, GalleryImage, Volunteer, TeamRegistration, ExamRegistration
+from django.shortcuts import redirect
+from django.urls import path
+from .models import (
+    Team, Match, ManagementMember, GalleryImage, Volunteer,
+    TeamRegistration, ExamRegistration, ExamRegistrationSettings,
+)
 
 
 @admin.register(Team)
@@ -88,3 +93,39 @@ class ExamRegistrationAdmin(admin.ModelAdmin):
         ),
         ("Timestamps", {"fields": ("created_at", "updated_at")}),
     )
+
+
+@admin.register(ExamRegistrationSettings)
+class ExamRegistrationSettingsAdmin(admin.ModelAdmin):
+    change_list_template = "admin/exam_registration_settings_changelist.html"
+
+    def has_add_permission(self, request):
+        return not ExamRegistrationSettings.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "toggle-registration/",
+                self.admin_site.admin_view(self.toggle_registration_view),
+                name="toggle_exam_registration",
+            ),
+        ]
+        return custom_urls + urls
+
+    def toggle_registration_view(self, request):
+        settings = ExamRegistrationSettings.get_settings()
+        settings.registration_open = not settings.registration_open
+        settings.save()
+        status = "opened" if settings.registration_open else "closed"
+        self.message_user(request, f"Exam registration has been {status}.")
+        return redirect("..")
+
+    def changelist_view(self, request, extra_context=None):
+        settings = ExamRegistrationSettings.get_settings()
+        extra_context = extra_context or {}
+        extra_context["registration_open"] = settings.registration_open
+        return super().changelist_view(request, extra_context=extra_context)

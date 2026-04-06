@@ -38,7 +38,6 @@ class ExamRegistrationForm(forms.ModelForm):
         model = ExamRegistration
         fields = [
             "full_name",
-            "roll_number",
             "date_of_birth",
             "phone",
             "email",
@@ -50,9 +49,6 @@ class ExamRegistrationForm(forms.ModelForm):
             "date_of_birth": forms.DateInput(attrs={"type": "date"}),
             "address": forms.Textarea(attrs={"rows": 3}),
         }
-
-    def clean_roll_number(self):
-        return self.cleaned_data["roll_number"].strip().upper()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

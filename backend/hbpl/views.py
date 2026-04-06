@@ -15,6 +15,7 @@ from reportlab.pdfgen import canvas
 
 from api.models import (
     ExamRegistration,
+    ExamRegistrationSettings,
     GalleryImage,
     ManagementMember,
     Match,
@@ -105,9 +106,18 @@ class ExamRegistrationView(FormView):
     form_class = ExamRegistrationForm
     success_url = reverse_lazy("hbpl:exam-register")
 
+    def dispatch(self, request, *args, **kwargs):
+        if not ExamRegistrationSettings.get_settings().registration_open:
+            messages.error(request, "Exam registration is currently closed.")
+            return redirect("hbpl:exam-portal")
+        return super().dispatch(request, *args, **kwargs)
+
     def form_valid(self, form):
-        form.save()
-        messages.success(self.request, "Exam registration submitted successfully.")
+        student = form.save()
+        messages.success(
+            self.request,
+            f"Exam registration submitted successfully. Your roll number is: {student.roll_number}",
+        )
         return super().form_valid(form)
 
 

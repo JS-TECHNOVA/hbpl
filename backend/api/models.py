@@ -1,4 +1,5 @@
-from django.db import models
+from django.db import models, transaction
+from django.db.models import Max
 
 
 class Team(models.Model):
@@ -101,13 +102,31 @@ class TeamRegistration(models.Model):
         return f"{self.team_name} — {self.captain_name}"
 
 
+class ExamRegistrationSettings(models.Model):
+    registration_open = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Exam Registration Settings"
+        verbose_name_plural = "Exam Registration Settings"
+
+    def __str__(self):
+        return "Open" if self.registration_open else "Closed"
+
+    @classmethod
+    def get_settings(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
 class ExamRegistration(models.Model):
+    ROLL_PREFIX = "HBPL2026"
+
     class ResultStatus(models.TextChoices):
         PENDING = "pending", "Pending"
         PUBLISHED = "published", "Published"
 
     full_name = models.CharField(max_length=200)
-    roll_number = models.CharField(max_length=50, unique=True)
+    roll_number = models.CharField(max_length=50, unique=True, blank=True)
     date_of_birth = models.DateField()
     phone = models.CharField(max_length=15)
     email = models.EmailField(blank=True)
@@ -140,6 +159,30 @@ class ExamRegistration(models.Model):
 
     def __str__(self):
         return f"{self.roll_number} — {self.full_name}"
+
+    def save(self, *args, **kwargs):
+        if not self.roll_number:
+            with transaction.atomic():
+                existing = (
+                    ExamRegistration.objects.select_for_update()
+                    .filter(roll_number__startswith=self.ROLL_PREFIX)
+                    .aggregate(Max("roll_number"))["roll_number__max"]
+                )
+                if existing:
+                    try:
+                        next_num = int(existing[len(self.ROLL_PREFIX):]) + 1
+                    except ValueError:
+                        next_num = (
+                            ExamRegistration.objects.filter(
+                                roll_number__startswith=self.ROLL_PREFIX
+                            ).count() + 1
+                        )
+                else:
+                    next_num = 1
+                self.roll_number = f"{self.ROLL_PREFIX}{next_num:04d}"
+                super().save(*args, **kwargs)
+        else:
+            super().save(*args, **kwargs)
 
 
 class ExamImportantDate(models.Model):
