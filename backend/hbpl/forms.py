@@ -56,6 +56,7 @@ class ExamRegistrationForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["roll_number"].required = False
         for field in self.fields.values():
             field.widget.attrs.setdefault(
                 "class",

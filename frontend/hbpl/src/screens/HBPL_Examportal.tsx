@@ -26,6 +26,7 @@ const HBPL_Examportal: React.FC = () => {
   const centerDetails = data?.center_details ?? [];
   const toppers = data?.toppers ?? [];
   const faqs = data?.faqs ?? [];
+  const registrationClosed = data?.registration_closed ?? false;
 
   useEffect(() => {
     const sections = document.querySelectorAll('section[id]');
@@ -133,9 +134,15 @@ const HBPL_Examportal: React.FC = () => {
               <a href="#dates" className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-400 text-black font-semibold px-6 py-3 rounded-full text-sm shadow-lg shadow-green-900/40 transition-transform duration-200 hover:-translate-y-0.5">
                 {tr('View Important Dates', 'महत्वपूर्ण तिथियाँ देखें', language)}
               </a>
-              <Link href="/exam-portal/register" className="inline-flex items-center gap-2 border border-green-500/60 text-green-100 hover:bg-green-800/40 font-semibold px-6 py-3 rounded-full text-sm transition-colors">
-                <FileText className="h-4 w-4" /> {tr('Register Now', 'अभी पंजीकरण करें', language)}
-              </Link>
+              {registrationClosed ? (
+                <span className="inline-flex items-center gap-2 border border-red-500/60 text-red-300 font-semibold px-6 py-3 rounded-full text-sm cursor-not-allowed opacity-70">
+                  <FileText className="h-4 w-4" /> {tr('Registration Closed', 'पंजीकरण बंद है', language)}
+                </span>
+              ) : (
+                <Link href="/exam-portal/register" className="inline-flex items-center gap-2 border border-green-500/60 text-green-100 hover:bg-green-800/40 font-semibold px-6 py-3 rounded-full text-sm transition-colors">
+                  <FileText className="h-4 w-4" /> {tr('Register Now', 'अभी पंजीकरण करें', language)}
+                </Link>
+              )}
               <Link href="/exam-portal/result" className="inline-flex items-center gap-2 border border-green-500/60 text-green-100 hover:bg-green-800/40 font-semibold px-6 py-3 rounded-full text-sm transition-colors">
                 <Search className="h-4 w-4" /> {tr('Check Result', 'परिणाम देखें', language)}
               </Link>
