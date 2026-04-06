@@ -1,0 +1,27 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools-items %}
+<li>
+  {% if registration_open %}
+    <a href="toggle-registration/" class="addlink" style="background-color:#ba2121;">
+      Close Registration
+    </a>
+  {% else %}
+    <a href="toggle-registration/" class="addlink" style="background-color:#417690;">
+      Open Registration
+    </a>
+  {% endif %}
+</li>
+{% endblock %}
+
+{% block content %}
+<div style="margin:10px 0;padding:10px;border-left:4px solid {% if registration_open %}#28a745{% else %}#dc3545{% endif %};background:{% if registration_open %}#d4edda{% else %}#f8d7da{% endif %};">
+  <strong>Registration Status:</strong>
+  {% if registration_open %}
+    <span style="color:#155724;">&#10003; Open — Students can currently register.</span>
+  {% else %}
+    <span style="color:#721c24;">&#10007; Closed — New registrations are disabled.</span>
+  {% endif %}
+</div>
+{{ block.super }}
+{% endblock %}

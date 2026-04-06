@@ -15,7 +15,7 @@ from reportlab.pdfgen import canvas
 
 from api.models import (
     ExamRegistration,
-    ExamSettings,
+    ExamRegistrationSettings,
     GalleryImage,
     ManagementMember,
     Match,
@@ -106,29 +106,18 @@ class ExamRegistrationView(FormView):
     form_class = ExamRegistrationForm
     success_url = reverse_lazy("hbpl:exam-register")
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["registration_closed"] = ExamSettings.get_settings().registration_closed
-        return context
-
-    def post(self, request, *args, **kwargs):
-        if ExamSettings.get_settings().registration_closed:
+    def dispatch(self, request, *args, **kwargs):
+        if not ExamRegistrationSettings.get_settings().registration_open:
             messages.error(request, "Exam registration is currently closed.")
-            return self.get(request, *args, **kwargs)
-        return super().post(request, *args, **kwargs)
+            return redirect("hbpl:exam-portal")
+        return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
-        instance = form.save(commit=False)
-        if not instance.roll_number:
-            next_number = (ExamRegistration.objects.order_by("-id").values_list("id", flat=True).first() or 0) + 1
-            while True:
-                roll_number = f"HBPL{next_number:05d}"
-                if not ExamRegistration.objects.filter(roll_number=roll_number).exists():
-                    instance.roll_number = roll_number
-                    break
-                next_number += 1
-        instance.save()
-        messages.success(self.request, "Exam registration submitted successfully.")
+        student = form.save()
+        messages.success(
+            self.request,
+            f"Exam registration submitted successfully. Your roll number is: {student.roll_number}",
+        )
         return super().form_valid(form)
 
 
