@@ -32,7 +32,7 @@ import { useAdmin } from '../_components/admin-shell';
 import { ConfirmDelete, ImageUploadField, LoadingBlock, SectionHeader } from '../_components/admin-ui';
 
 export default function AdminVolunteersPage() {
-	const { token } = useAdmin();
+	const { token, can } = useAdmin();
 	const { toast } = useToast();
 	const queryClient = useQueryClient();
 	const [editing, setEditing] = useState<AdminVolunteer | 'new' | null>(null);
@@ -116,7 +116,7 @@ export default function AdminVolunteersPage() {
 			<SectionHeader
 				title="Volunteers"
 				action={
-					<Button size="sm" onClick={openNew}>
+					<Button size="sm" onClick={openNew} disabled={!can('api.add_volunteer')}>
 						<Plus className="w-4 h-4 mr-1" />
 						Add
 					</Button>
@@ -150,10 +150,10 @@ export default function AdminVolunteersPage() {
 									<TableCell className="text-gray-500">{volunteer.role}</TableCell>
 									<TableCell>{volunteer.order}</TableCell>
 									<TableCell className="text-right space-x-2">
-										<Button size="sm" variant="ghost" onClick={() => openEdit(volunteer)}>
+										<Button size="sm" variant="ghost" onClick={() => openEdit(volunteer)} disabled={!can('api.change_volunteer')}>
 											<Pencil className="w-4 h-4" />
 										</Button>
-										<Button size="sm" variant="ghost" className="text-red-500" onClick={() => setDeleting(volunteer)}>
+										<Button size="sm" variant="ghost" className="text-red-500" onClick={() => setDeleting(volunteer)} disabled={!can('api.delete_volunteer')}>
 											<Trash2 className="w-4 h-4" />
 										</Button>
 									</TableCell>

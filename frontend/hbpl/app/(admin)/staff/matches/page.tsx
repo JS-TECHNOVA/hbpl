@@ -46,7 +46,7 @@ const emptyForm = {
 };
 
 export default function AdminMatchesPage() {
-	const { token } = useAdmin();
+	const { token, can } = useAdmin();
 	const { toast } = useToast();
 	const queryClient = useQueryClient();
 	const [editing, setEditing] = useState<AdminMatch | 'new' | null>(null);
@@ -133,7 +133,7 @@ export default function AdminMatchesPage() {
 			<SectionHeader
 				title="Matches"
 				action={
-					<Button size="sm" onClick={openNew}>
+					<Button size="sm" onClick={openNew} disabled={!can('api.add_match')}>
 						<Plus className="w-4 h-4 mr-1" />
 						Add
 					</Button>
@@ -165,10 +165,10 @@ export default function AdminMatchesPage() {
 									</TableCell>
 									<TableCell>{match.season}</TableCell>
 									<TableCell className="text-right space-x-2">
-										<Button size="sm" variant="ghost" onClick={() => openEdit(match)}>
+										<Button size="sm" variant="ghost" onClick={() => openEdit(match)} disabled={!can('api.change_match')}>
 											<Pencil className="w-4 h-4" />
 										</Button>
-										<Button size="sm" variant="ghost" className="text-red-500" onClick={() => setDeleting(match)}>
+										<Button size="sm" variant="ghost" className="text-red-500" onClick={() => setDeleting(match)} disabled={!can('api.delete_match')}>
 											<Trash2 className="w-4 h-4" />
 										</Button>
 									</TableCell>

@@ -25,7 +25,7 @@ import { useAdmin } from '../_components/admin-shell';
 import { ConfirmDelete, ImageUploadField, LoadingBlock, SectionHeader } from '../_components/admin-ui';
 
 export default function AdminGalleryPage() {
-	const { token } = useAdmin();
+	const { token, can } = useAdmin();
 	const { toast } = useToast();
 	const queryClient = useQueryClient();
 	const [editing, setEditing] = useState<AdminGalleryImage | 'new' | null>(null);
@@ -102,7 +102,7 @@ export default function AdminGalleryPage() {
 			<SectionHeader
 				title="Gallery"
 				action={
-					<Button size="sm" onClick={openNew}>
+					<Button size="sm" onClick={openNew} disabled={!can('api.add_galleryimage')}>
 						<Plus className="w-4 h-4 mr-1" />
 						Add
 					</Button>
@@ -127,11 +127,11 @@ export default function AdminGalleryPage() {
 									{image.category}
 								</Badge>
 								<div className="flex gap-1 mt-2">
-									<Button size="sm" variant="ghost" className="h-6 px-2 text-xs flex-1" onClick={() => openEdit(image)}>
+									<Button size="sm" variant="ghost" className="h-6 px-2 text-xs flex-1" onClick={() => openEdit(image)} disabled={!can('api.change_galleryimage')}>
 										<Pencil className="w-3 h-3 mr-1" />
 										Edit
 									</Button>
-									<Button size="sm" variant="ghost" className="h-6 px-2 text-xs text-red-500" onClick={() => setDeleting(image)}>
+									<Button size="sm" variant="ghost" className="h-6 px-2 text-xs text-red-500" onClick={() => setDeleting(image)} disabled={!can('api.delete_galleryimage')}>
 										<Trash2 className="w-3 h-3" />
 									</Button>
 								</div>

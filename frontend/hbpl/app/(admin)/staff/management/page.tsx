@@ -33,7 +33,7 @@ import { useAdmin } from '../_components/admin-shell';
 import { ConfirmDelete, ImageUploadField, LoadingBlock, SectionHeader } from '../_components/admin-ui';
 
 export default function AdminManagementPage() {
-	const { token } = useAdmin();
+	const { token, can } = useAdmin();
 	const { toast } = useToast();
 	const queryClient = useQueryClient();
 	const [editing, setEditing] = useState<AdminManagementMember | 'new' | null>(null);
@@ -119,7 +119,7 @@ export default function AdminManagementPage() {
 			<SectionHeader
 				title="Management"
 				action={
-					<Button size="sm" onClick={openNew}>
+					<Button size="sm" onClick={openNew} disabled={!can('api.add_managementmember')}>
 						<Plus className="w-4 h-4 mr-1" />
 						Add
 					</Button>
@@ -153,10 +153,10 @@ export default function AdminManagementPage() {
 									<TableCell className="text-gray-500 text-sm">{member.role}</TableCell>
 									<TableCell>{member.order}</TableCell>
 									<TableCell className="text-right space-x-2">
-										<Button size="sm" variant="ghost" onClick={() => openEdit(member)}>
+										<Button size="sm" variant="ghost" onClick={() => openEdit(member)} disabled={!can('api.change_managementmember')}>
 											<Pencil className="w-4 h-4" />
 										</Button>
-										<Button size="sm" variant="ghost" className="text-red-500" onClick={() => setDeleting(member)}>
+										<Button size="sm" variant="ghost" className="text-red-500" onClick={() => setDeleting(member)} disabled={!can('api.delete_managementmember')}>
 											<Trash2 className="w-4 h-4" />
 										</Button>
 									</TableCell>

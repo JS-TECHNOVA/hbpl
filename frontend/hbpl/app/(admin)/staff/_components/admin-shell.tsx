@@ -61,6 +61,7 @@ type AdminContextValue = {
   token: string;
   user: AdminUser;
   logout: () => void;
+  can: (perm: string) => boolean;
 };
 
 const AdminContext = createContext<AdminContextValue | null>(null);
@@ -229,7 +230,9 @@ export function AdminAppShell({ children }: { children: ReactNode }) {
   }
 
   const section = getActiveSection(pathname);
-  const contextValue = { token, user: userQuery.data, logout: handleLogout };
+  const can = (perm: string) =>
+    userQuery.data.is_superuser || userQuery.data.user_permissions.includes(perm);
+  const contextValue = { token, user: userQuery.data, logout: handleLogout, can };
 
   return (
     <AdminContext.Provider value={contextValue}>

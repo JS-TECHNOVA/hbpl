@@ -27,7 +27,7 @@ import { useAdmin } from '../_components/admin-shell';
 import { LoadingBlock, SectionHeader } from '../_components/admin-ui';
 
 export default function AdminExamStudentsPage() {
-	const { token } = useAdmin();
+	const { token, can } = useAdmin();
 	const { toast } = useToast();
 	const queryClient = useQueryClient();
 	const studentImageRef = useRef<HTMLInputElement>(null);
@@ -230,7 +230,7 @@ export default function AdminExamStudentsPage() {
 										if (file) mutation.mutate(buildFormData({ student_image: file }));
 									}}
 								/>
-								<Button size="sm" variant="outline" onClick={() => studentImageRef.current?.click()} disabled={mutation.isPending}>Upload</Button>
+								<Button size="sm" variant="outline" onClick={() => studentImageRef.current?.click()} disabled={mutation.isPending || !can('api.change_examregistration')}>Upload</Button>
 							</div>
 							<div className="rounded-xl border p-3 space-y-2">
 								<p className="text-sm font-medium">Signature</p>
@@ -247,7 +247,7 @@ export default function AdminExamStudentsPage() {
 										if (file) mutation.mutate(buildFormData({ signature_image: file }));
 									}}
 								/>
-								<Button size="sm" variant="outline" onClick={() => signatureImageRef.current?.click()} disabled={mutation.isPending}>Upload</Button>
+								<Button size="sm" variant="outline" onClick={() => signatureImageRef.current?.click()} disabled={mutation.isPending || !can('api.change_examregistration')}>Upload</Button>
 							</div>
 						</div>
 						<div className="grid grid-cols-2 gap-3 text-sm bg-gray-50 dark:bg-gray-900 rounded-xl p-4">
@@ -306,7 +306,7 @@ export default function AdminExamStudentsPage() {
 										}
 									}}
 								/>
-								<Button size="sm" variant="outline" className="w-full" onClick={() => testCopyRef.current?.click()} disabled={mutation.isPending}>
+								<Button size="sm" variant="outline" className="w-full" onClick={() => testCopyRef.current?.click()} disabled={mutation.isPending || !can('api.change_examregistration')}>
 									<Upload className="w-3 h-3 mr-1" />
 									{selected.test_copy_url ? 'Replace' : 'Upload'}
 								</Button>
@@ -330,39 +330,39 @@ export default function AdminExamStudentsPage() {
 										}
 									}}
 								/>
-								<Button size="sm" variant="outline" className="w-full" onClick={() => resultFileRef.current?.click()} disabled={mutation.isPending}>
+								<Button size="sm" variant="outline" className="w-full" onClick={() => resultFileRef.current?.click()} disabled={mutation.isPending || !can('api.change_examregistration')}>
 									<Upload className="w-3 h-3 mr-1" />
 									{selected.result_file_url ? 'Replace' : 'Upload'}
 								</Button>
 							</div>
 						</div>
 						<div className="flex flex-wrap gap-3">
-							<Button onClick={() => mutation.mutate(buildFormData({}))} disabled={mutation.isPending}>
+							<Button onClick={() => mutation.mutate(buildFormData({}))} disabled={mutation.isPending || !can('api.change_examregistration')}>
 								{mutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
 								Save Changes
 							</Button>
 							{selected.result_status === 'published' ? (
-								<Button variant="outline" onClick={() => mutation.mutate(buildFormData({ result_status: 'pending' }))} disabled={mutation.isPending}>
+								<Button variant="outline" onClick={() => mutation.mutate(buildFormData({ result_status: 'pending' }))} disabled={mutation.isPending || !can('api.change_examregistration')}>
 									<Clock className="w-4 h-4 mr-2" />
 									Unpublish
 								</Button>
 							) : (
-								<Button className="bg-green-600 hover:bg-green-700 text-white" onClick={() => mutation.mutate(buildFormData({ result_status: 'published' }))} disabled={mutation.isPending}>
+								<Button className="bg-green-600 hover:bg-green-700 text-white" onClick={() => mutation.mutate(buildFormData({ result_status: 'published' }))} disabled={mutation.isPending || !can('api.change_examregistration')}>
 									<CheckCircle className="w-4 h-4 mr-2" />
 									Publish Result
 								</Button>
 							)}
-							<Button variant="outline" onClick={() => docsMutation.mutate('admit')} disabled={docsMutation.isPending}>Generate Admit Card</Button>
-							<Button variant="outline" onClick={() => docsMutation.mutate('certificate')} disabled={docsMutation.isPending}>Generate Certificate</Button>
+							<Button variant="outline" onClick={() => docsMutation.mutate('admit')} disabled={docsMutation.isPending || !can('api.change_examregistration')}>Generate Admit Card</Button>
+							<Button variant="outline" onClick={() => docsMutation.mutate('certificate')} disabled={docsMutation.isPending || !can('api.change_examregistration')}>Generate Certificate</Button>
 							{selected.publish_admit_card ? (
-								<Button variant="outline" onClick={() => mutation.mutate(buildFormData({ publish_admit_card: 'false' }))}>Unpublish Admit Card</Button>
+								<Button variant="outline" onClick={() => mutation.mutate(buildFormData({ publish_admit_card: 'false' }))} disabled={!can('api.change_examregistration')}>Unpublish Admit Card</Button>
 							) : (
-								<Button variant="outline" onClick={() => mutation.mutate(buildFormData({ publish_admit_card: 'true' }))}>Publish Admit Card</Button>
+								<Button variant="outline" onClick={() => mutation.mutate(buildFormData({ publish_admit_card: 'true' }))} disabled={!can('api.change_examregistration')}>Publish Admit Card</Button>
 							)}
 							{selected.publish_participation_certificate ? (
-								<Button variant="outline" onClick={() => mutation.mutate(buildFormData({ publish_participation_certificate: 'false' }))}>Unpublish Certificate</Button>
+								<Button variant="outline" onClick={() => mutation.mutate(buildFormData({ publish_participation_certificate: 'false' }))} disabled={!can('api.change_examregistration')}>Unpublish Certificate</Button>
 							) : (
-								<Button variant="outline" onClick={() => mutation.mutate(buildFormData({ publish_participation_certificate: 'true' }))}>Publish Certificate</Button>
+								<Button variant="outline" onClick={() => mutation.mutate(buildFormData({ publish_participation_certificate: 'true' }))} disabled={!can('api.change_examregistration')}>Publish Certificate</Button>
 							)}
 							{selected.admit_card_url ? <a href={selected.admit_card_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 underline">View Admit Card</a> : null}
 							{selected.participation_certificate_url ? <a href={selected.participation_certificate_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 underline">View Certificate</a> : null}

@@ -43,7 +43,7 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
 }
 
 export default function AdminExamPortalPage() {
-  const { token } = useAdmin();
+  const { token, can } = useAdmin();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -196,13 +196,13 @@ export default function AdminExamPortalPage() {
           <Input placeholder="Title" value={dateForm.title} onChange={(e) => setDateForm({ ...dateForm, title: e.target.value })} />
           <Input type="date" value={dateForm.date} onChange={(e) => setDateForm({ ...dateForm, date: e.target.value })} />
           <Input type="number" value={dateForm.order} onChange={(e) => setDateForm({ ...dateForm, order: e.target.value })} />
-          <Button onClick={() => createDate.mutate()} disabled={createDate.isPending}>Add</Button>
+          <Button onClick={() => createDate.mutate()} disabled={createDate.isPending || !can('api.add_examimportantdate')}>Add</Button>
         </div>
         <div className="space-y-2">
           {dates.map((item) => (
             <div key={item.id} className="flex items-center justify-between border rounded-lg p-2">
               <span>{item.title} - {item.date}</span>
-              <Button size="sm" variant="outline" onClick={() => removeDate.mutate(item.id)}>Delete</Button>
+              <Button size="sm" variant="outline" onClick={() => removeDate.mutate(item.id)} disabled={!can('api.delete_examimportantdate')}>Delete</Button>
             </div>
           ))}
         </div>
@@ -216,13 +216,13 @@ export default function AdminExamPortalPage() {
           <Input className="md:col-span-2" placeholder="Address" value={schoolForm.address} onChange={(e) => setSchoolForm({ ...schoolForm, address: e.target.value })} />
           <Input type="file" accept=".jpg,.jpeg,.png,.webp" onChange={(e) => setSchoolImage(e.target.files?.[0] ?? null)} />
           <Input type="number" value={schoolForm.order} onChange={(e) => setSchoolForm({ ...schoolForm, order: e.target.value })} />
-          <Button onClick={() => createSchool.mutate()} disabled={createSchool.isPending}>Add</Button>
+          <Button onClick={() => createSchool.mutate()} disabled={createSchool.isPending || !can('api.add_examsupportschool')}>Add</Button>
         </div>
         <div className="space-y-2">
           {schools.map((item) => (
             <div key={item.id} className="flex items-center justify-between border rounded-lg p-2">
               <span>{item.name}</span>
-              <Button size="sm" variant="outline" onClick={() => removeSchool.mutate(item.id)}>Delete</Button>
+              <Button size="sm" variant="outline" onClick={() => removeSchool.mutate(item.id)} disabled={!can('api.delete_examsupportschool')}>Delete</Button>
             </div>
           ))}
         </div>
@@ -235,13 +235,13 @@ export default function AdminExamPortalPage() {
           <Input type="number" value={syllabusForm.order} onChange={(e) => setSyllabusForm({ ...syllabusForm, order: e.target.value })} />
           <Textarea className="md:col-span-2" placeholder="Description text" value={syllabusForm.description} onChange={(e) => setSyllabusForm({ ...syllabusForm, description: e.target.value })} />
           <Input type="file" accept=".pdf" onChange={(e) => setSyllabusPdf(e.target.files?.[0] ?? null)} />
-          <Button onClick={() => createSyllabus.mutate()} disabled={createSyllabus.isPending}>Add</Button>
+          <Button onClick={() => createSyllabus.mutate()} disabled={createSyllabus.isPending || !can('api.add_examsyllabusitem')}>Add</Button>
         </div>
         <div className="space-y-2">
           {syllabus.map((item) => (
             <div key={item.id} className="flex items-center justify-between border rounded-lg p-2">
               <span>{item.class_name} - {item.title}</span>
-              <Button size="sm" variant="outline" onClick={() => removeSyllabus.mutate(item.id)}>Delete</Button>
+              <Button size="sm" variant="outline" onClick={() => removeSyllabus.mutate(item.id)} disabled={!can('api.delete_examsyllabusitem')}>Delete</Button>
             </div>
           ))}
         </div>
@@ -255,13 +255,13 @@ export default function AdminExamPortalPage() {
           <Textarea className="md:col-span-2" placeholder="Description" value={paperForm.description} onChange={(e) => setPaperForm({ ...paperForm, description: e.target.value })} />
           <Input placeholder="External URL (optional)" value={paperForm.external_url} onChange={(e) => setPaperForm({ ...paperForm, external_url: e.target.value })} />
           <Input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setPaperFile(e.target.files?.[0] ?? null)} />
-          <Button onClick={() => createPaper.mutate()} disabled={createPaper.isPending}>Add</Button>
+          <Button onClick={() => createPaper.mutate()} disabled={createPaper.isPending || !can('api.add_examsamplepaper')}>Add</Button>
         </div>
         <div className="space-y-2">
           {samplePapers.map((item) => (
             <div key={item.id} className="flex items-center justify-between border rounded-lg p-2">
               <span>{item.class_name} - {item.title}</span>
-              <Button size="sm" variant="outline" onClick={() => removePaper.mutate(item.id)}>Delete</Button>
+              <Button size="sm" variant="outline" onClick={() => removePaper.mutate(item.id)} disabled={!can('api.delete_examsamplepaper')}>Delete</Button>
             </div>
           ))}
         </div>
@@ -274,13 +274,13 @@ export default function AdminExamPortalPage() {
           <Input placeholder="Roll range" value={centerForm.roll_range} onChange={(e) => setCenterForm({ ...centerForm, roll_range: e.target.value })} />
           <Textarea className="md:col-span-2" placeholder="Extra details" value={centerForm.extra_details} onChange={(e) => setCenterForm({ ...centerForm, extra_details: e.target.value })} />
           <Input type="number" value={centerForm.order} onChange={(e) => setCenterForm({ ...centerForm, order: e.target.value })} />
-          <Button onClick={() => createCenter.mutate()} disabled={createCenter.isPending}>Add</Button>
+          <Button onClick={() => createCenter.mutate()} disabled={createCenter.isPending || !can('api.add_examcenterdetail')}>Add</Button>
         </div>
         <div className="space-y-2">
           {centers.map((item) => (
             <div key={item.id} className="flex items-center justify-between border rounded-lg p-2">
               <span>{item.center_name}</span>
-              <Button size="sm" variant="outline" onClick={() => removeCenter.mutate(item.id)}>Delete</Button>
+              <Button size="sm" variant="outline" onClick={() => removeCenter.mutate(item.id)} disabled={!can('api.delete_examcenterdetail')}>Delete</Button>
             </div>
           ))}
         </div>
@@ -295,13 +295,13 @@ export default function AdminExamPortalPage() {
           <Input type="number" placeholder="Rank" value={topperForm.rank} onChange={(e) => setTopperForm({ ...topperForm, rank: e.target.value })} />
           <Input placeholder="Highlight" value={topperForm.highlight_text} onChange={(e) => setTopperForm({ ...topperForm, highlight_text: e.target.value })} />
           <Input type="number" placeholder="Order" value={topperForm.order} onChange={(e) => setTopperForm({ ...topperForm, order: e.target.value })} />
-          <Button onClick={() => createTopper.mutate()} disabled={createTopper.isPending}>Add</Button>
+          <Button onClick={() => createTopper.mutate()} disabled={createTopper.isPending || !can('api.add_examtopper')}>Add</Button>
         </div>
         <div className="space-y-2">
           {toppers.map((item) => (
             <div key={item.id} className="flex items-center justify-between border rounded-lg p-2">
               <span>Rank {item.rank} - {item.student_name}</span>
-              <Button size="sm" variant="outline" onClick={() => removeTopper.mutate(item.id)}>Delete</Button>
+              <Button size="sm" variant="outline" onClick={() => removeTopper.mutate(item.id)} disabled={!can('api.delete_examtopper')}>Delete</Button>
             </div>
           ))}
         </div>
@@ -312,13 +312,13 @@ export default function AdminExamPortalPage() {
           <Input className="md:col-span-2" placeholder="Question" value={faqForm.question} onChange={(e) => setFaqForm({ ...faqForm, question: e.target.value })} />
           <Input type="number" placeholder="Order" value={faqForm.order} onChange={(e) => setFaqForm({ ...faqForm, order: e.target.value })} />
           <Textarea className="md:col-span-2" placeholder="Answer" value={faqForm.answer} onChange={(e) => setFaqForm({ ...faqForm, answer: e.target.value })} />
-          <Button onClick={() => createFaq.mutate()} disabled={createFaq.isPending}>Add</Button>
+          <Button onClick={() => createFaq.mutate()} disabled={createFaq.isPending || !can('api.add_examfaq')}>Add</Button>
         </div>
         <div className="space-y-2">
           {faqs.map((item) => (
             <div key={item.id} className="flex items-center justify-between border rounded-lg p-2">
               <span>{item.question}</span>
-              <Button size="sm" variant="outline" onClick={() => removeFaq.mutate(item.id)}>Delete</Button>
+              <Button size="sm" variant="outline" onClick={() => removeFaq.mutate(item.id)} disabled={!can('api.delete_examfaq')}>Delete</Button>
             </div>
           ))}
         </div>
