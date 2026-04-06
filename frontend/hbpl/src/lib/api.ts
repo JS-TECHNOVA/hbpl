@@ -160,6 +160,7 @@ export interface ExamTopper {
 }
 
 export interface ExamPortalContent {
+  registration_closed: boolean;
   important_dates: ExamImportantDate[];
   support_schools: ExamSupportSchool[];
   syllabus_items: ExamSyllabusItem[];

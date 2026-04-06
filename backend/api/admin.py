@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Team, Match, ManagementMember, GalleryImage, Volunteer, TeamRegistration, ExamRegistration
+from .models import Team, Match, ManagementMember, GalleryImage, Volunteer, TeamRegistration, ExamRegistration, ExamSettings
 
 
 @admin.register(Team)
@@ -88,3 +88,14 @@ class ExamRegistrationAdmin(admin.ModelAdmin):
         ),
         ("Timestamps", {"fields": ("created_at", "updated_at")}),
     )
+
+
+@admin.register(ExamSettings)
+class ExamSettingsAdmin(admin.ModelAdmin):
+    fields = ["registration_closed"]
+
+    def has_add_permission(self, request):
+        return not ExamSettings.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False

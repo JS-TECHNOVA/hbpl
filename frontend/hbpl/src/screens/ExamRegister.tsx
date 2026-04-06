@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,7 +18,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { submitExamRegistration } from '@/lib/api';
+import { submitExamRegistration, fetchExamPortalContent } from '@/lib/api';
 
 const schema = z.object({
   full_name: z.string().trim().min(2, 'Enter the student name').max(200),
@@ -50,6 +51,13 @@ const ExamRegister = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [studentImage, setStudentImage] = useState<File | null>(null);
   const [signatureImage, setSignatureImage] = useState<File | null>(null);
+
+  const { data: portalData } = useQuery({
+    queryKey: ['exam-portal-content'],
+    queryFn: fetchExamPortalContent,
+  });
+
+  const registrationClosed = portalData?.registration_closed ?? false;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -97,6 +105,24 @@ const ExamRegister = () => {
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Registration Complete!</h2>
           <p className="text-gray-600 dark:text-gray-300">
             Your details have been submitted. Results will be available once published.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (registrationClosed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 px-4">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-10 text-center max-w-md w-full">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Registration Closed</h2>
+          <p className="text-gray-600 dark:text-gray-300">
+            Exam registration is currently closed. Please check back later or contact the organizers for more information.
           </p>
         </div>
       </div>

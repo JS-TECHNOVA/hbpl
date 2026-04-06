@@ -21,6 +21,7 @@ from .models import (
     ExamCenterDetail,
     ExamFaq,
     ExamTopper,
+    ExamSettings,
 )
 from .serializers import (
     TeamSerializer,
@@ -121,6 +122,14 @@ class ExamRegistrationCreateView(generics.CreateAPIView):
     queryset = ExamRegistration.objects.all()
     serializer_class = ExamRegistrationCreateSerializer
 
+    def create(self, request, *args, **kwargs):
+        if ExamSettings.get_settings().registration_closed:
+            return Response(
+                {"detail": "Exam registration is currently closed."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().create(request, *args, **kwargs)
+
 
 class ExamResultLookupView(APIView):
     def post(self, request, *args, **kwargs):
@@ -180,7 +189,9 @@ class ExamTopperListView(generics.ListAPIView):
 class ExamPortalContentView(APIView):
     def get(self, request, *args, **kwargs):
         context = {"request": request}
+        settings = ExamSettings.get_settings()
         return Response({
+            "registration_closed": settings.registration_closed,
             "important_dates": ExamImportantDateSerializer(ExamImportantDate.objects.all(), many=True, context=context).data,
             "support_schools": ExamSupportSchoolSerializer(ExamSupportSchool.objects.all(), many=True, context=context).data,
             "syllabus_items": ExamSyllabusItemSerializer(ExamSyllabusItem.objects.all(), many=True, context=context).data,
