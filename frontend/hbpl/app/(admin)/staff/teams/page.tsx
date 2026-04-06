@@ -32,7 +32,7 @@ import { useAdmin } from '../_components/admin-shell';
 import { ConfirmDelete, LoadingBlock, SectionHeader } from '../_components/admin-ui';
 
 export default function AdminTeamsPage() {
-	const { token } = useAdmin();
+	const { token, can } = useAdmin();
 	const { toast } = useToast();
 	const queryClient = useQueryClient();
 	const [editing, setEditing] = useState<AdminTeam | 'new' | null>(null);
@@ -99,7 +99,7 @@ export default function AdminTeamsPage() {
 			<SectionHeader
 				title="Teams"
 				action={
-					<Button size="sm" onClick={openNew}>
+					<Button size="sm" onClick={openNew} disabled={!can('api.add_team')}>
 						<Plus className="w-4 h-4 mr-1" />
 						Add
 					</Button>
@@ -123,10 +123,10 @@ export default function AdminTeamsPage() {
 									<TableCell className="font-medium">{team.name}</TableCell>
 									<TableCell className="text-gray-500">{team.captain}</TableCell>
 									<TableCell className="text-right space-x-2">
-										<Button size="sm" variant="ghost" onClick={() => openEdit(team)}>
+										<Button size="sm" variant="ghost" onClick={() => openEdit(team)} disabled={!can('api.change_team')}>
 											<Pencil className="w-4 h-4" />
 										</Button>
-										<Button size="sm" variant="ghost" className="text-red-500" onClick={() => setDeleting(team)}>
+										<Button size="sm" variant="ghost" className="text-red-500" onClick={() => setDeleting(team)} disabled={!can('api.delete_team')}>
 											<Trash2 className="w-4 h-4" />
 										</Button>
 									</TableCell>

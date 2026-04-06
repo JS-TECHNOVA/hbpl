@@ -3,7 +3,7 @@ from django.core.files.base import ContentFile
 from rest_framework import generics, status
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.authtoken.models import Token
-from rest_framework.permissions import BasePermission, IsAuthenticated
+from rest_framework.permissions import BasePermission, DjangoModelPermissions, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import (
@@ -65,6 +65,20 @@ class IsStaffUser(BasePermission):
             and request.user.is_authenticated
             and request.user.is_staff
         )
+
+
+class StaffWithModelPermissions(DjangoModelPermissions):
+    """
+    Requires is_staff AND the appropriate Django model permission for write operations:
+      POST   → app.add_<model>
+      PATCH  → app.change_<model>
+      DELETE → app.delete_<model>
+    Read operations (GET) only require is_staff.
+    """
+    def has_permission(self, request, view):
+        if not (request.user and request.user.is_authenticated and request.user.is_staff):
+            return False
+        return super().has_permission(request, view)
 
 
 class TeamListView(generics.ListAPIView):
@@ -207,12 +221,14 @@ class AdminMeView(APIView):
             "username": request.user.username,
             "email": request.user.email,
             "is_staff": request.user.is_staff,
+            "is_superuser": request.user.is_superuser,
+            "user_permissions": sorted(request.user.get_all_permissions()),
         })
 
 
 class AdminExamListView(generics.ListAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminExamRegistrationSerializer
 
     def get_queryset(self):
@@ -221,7 +237,7 @@ class AdminExamListView(generics.ListAPIView):
 
 class AdminExamDetailView(generics.RetrieveUpdateAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminExamRegistrationSerializer
     queryset = ExamRegistration.objects.all()
     http_method_names = ["get", "patch", "head", "options"]
@@ -229,168 +245,168 @@ class AdminExamDetailView(generics.RetrieveUpdateAPIView):
 
 class AdminVolunteerListCreateView(generics.ListCreateAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminVolunteerSerializer
     queryset = Volunteer.objects.all().order_by("order", "id")
 
 
 class AdminVolunteerDetailView(generics.RetrieveUpdateDestroyAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminVolunteerSerializer
     queryset = Volunteer.objects.all()
 
 
 class AdminGalleryListCreateView(generics.ListCreateAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminGalleryImageSerializer
     queryset = GalleryImage.objects.all()
 
 
 class AdminGalleryDetailView(generics.RetrieveUpdateDestroyAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminGalleryImageSerializer
     queryset = GalleryImage.objects.all()
 
 
 class AdminManagementListCreateView(generics.ListCreateAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminManagementMemberSerializer
     queryset = ManagementMember.objects.all().order_by("order", "id")
 
 
 class AdminManagementDetailView(generics.RetrieveUpdateDestroyAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminManagementMemberSerializer
     queryset = ManagementMember.objects.all()
 
 
 class AdminTeamListCreateView(generics.ListCreateAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminTeamSerializer
     queryset = Team.objects.all()
 
 
 class AdminTeamDetailView(generics.RetrieveUpdateDestroyAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminTeamSerializer
     queryset = Team.objects.all()
 
 
 class AdminMatchListCreateView(generics.ListCreateAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminMatchSerializer
     queryset = Match.objects.all().order_by("date", "id")
 
 
 class AdminMatchDetailView(generics.RetrieveUpdateDestroyAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminMatchSerializer
     queryset = Match.objects.all()
 
 
 class AdminExamImportantDateListCreateView(generics.ListCreateAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminExamImportantDateSerializer
     queryset = ExamImportantDate.objects.all()
 
 
 class AdminExamImportantDateDetailView(generics.RetrieveUpdateDestroyAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminExamImportantDateSerializer
     queryset = ExamImportantDate.objects.all()
 
 
 class AdminExamSupportSchoolListCreateView(generics.ListCreateAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminExamSupportSchoolSerializer
     queryset = ExamSupportSchool.objects.all()
 
 
 class AdminExamSupportSchoolDetailView(generics.RetrieveUpdateDestroyAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminExamSupportSchoolSerializer
     queryset = ExamSupportSchool.objects.all()
 
 
 class AdminExamSyllabusItemListCreateView(generics.ListCreateAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminExamSyllabusItemSerializer
     queryset = ExamSyllabusItem.objects.all()
 
 
 class AdminExamSyllabusItemDetailView(generics.RetrieveUpdateDestroyAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminExamSyllabusItemSerializer
     queryset = ExamSyllabusItem.objects.all()
 
 
 class AdminExamSamplePaperListCreateView(generics.ListCreateAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminExamSamplePaperSerializer
     queryset = ExamSamplePaper.objects.all()
 
 
 class AdminExamSamplePaperDetailView(generics.RetrieveUpdateDestroyAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminExamSamplePaperSerializer
     queryset = ExamSamplePaper.objects.all()
 
 
 class AdminExamCenterDetailListCreateView(generics.ListCreateAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminExamCenterDetailSerializer
     queryset = ExamCenterDetail.objects.all()
 
 
 class AdminExamCenterDetailDetailView(generics.RetrieveUpdateDestroyAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminExamCenterDetailSerializer
     queryset = ExamCenterDetail.objects.all()
 
 
 class AdminExamFaqListCreateView(generics.ListCreateAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminExamFaqSerializer
     queryset = ExamFaq.objects.all()
 
 
 class AdminExamFaqDetailView(generics.RetrieveUpdateDestroyAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminExamFaqSerializer
     queryset = ExamFaq.objects.all()
 
 
 class AdminExamTopperListCreateView(generics.ListCreateAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminExamTopperSerializer
     queryset = ExamTopper.objects.select_related("student")
 
 
 class AdminExamTopperDetailView(generics.RetrieveUpdateDestroyAPIView):
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsStaffUser]
+    permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminExamTopperSerializer
     queryset = ExamTopper.objects.select_related("student")
 
@@ -400,6 +416,11 @@ class AdminGenerateExamDocumentsView(APIView):
     permission_classes = [IsStaffUser]
 
     def post(self, request, pk, *args, **kwargs):
+        if not request.user.has_perm("api.change_examregistration"):
+            return Response(
+                {"detail": "You do not have permission to modify exam registrations."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         registration = generics.get_object_or_404(ExamRegistration, pk=pk)
         doc_type = str(request.data.get("type", "both")).lower()
 
