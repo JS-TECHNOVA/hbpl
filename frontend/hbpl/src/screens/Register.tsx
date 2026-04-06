@@ -20,6 +20,7 @@ import {
 import { CheckCircle2 } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import { tr } from "@/lib/i18n";
+import { submitRegistration } from "@/lib/api";
 
 const formSchema = z.object({
   teamName: z.string()
@@ -53,6 +54,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 const Register = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { language } = useLanguage();
 
@@ -68,13 +70,32 @@ const Register = () => {
     },
   });
 
-  const onSubmit = (data: FormValues) => {
-    console.log("Form submitted:", data);
-    setIsSubmitted(true);
-    toast({
-      title: "Registration Successful!",
-      description: "Your team has been registered for HBPL. We'll contact you soon.",
-    });
+  const onSubmit = async (data: FormValues) => {
+    setIsSubmitting(true);
+    try {
+      await submitRegistration({
+        team_name: data.teamName,
+        captain_name: data.captainName,
+        email: data.email,
+        phone: data.phone,
+        player_count: parseInt(data.playerCount),
+        message: data.message ?? "",
+      });
+      setIsSubmitted(true);
+      toast({
+        title: "Registration Successful!",
+        description: "Your team has been registered for HBPL. We'll contact you soon.",
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Registration failed. Please try again.";
+      toast({
+        title: "Registration Failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isSubmitted) {
@@ -240,8 +261,10 @@ const Register = () => {
                 </ul>
               </div>
 
-              <Button type="submit" size="lg" className="w-full">
-                {tr('Register Team', 'टीम पंजीकृत करें', language)}
+              <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
+                {isSubmitting
+                  ? tr('Submitting...', 'सबमिट हो रहा है...', language)
+                  : tr('Register Team', 'टीम पंजीकृत करें', language)}
               </Button>
             </form>
           </Form>

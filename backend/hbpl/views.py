@@ -15,7 +15,7 @@ from reportlab.pdfgen import canvas
 
 from api.models import (
     ExamRegistration,
-    ExamRegistrationSettings,
+    ExamSettings,
     GalleryImage,
     ManagementMember,
     Match,
@@ -107,7 +107,7 @@ class ExamRegistrationView(FormView):
     success_url = reverse_lazy("hbpl:exam-register")
 
     def dispatch(self, request, *args, **kwargs):
-        if not ExamRegistrationSettings.get_settings().registration_open:
+        if ExamSettings.get_settings().registration_closed:
             messages.error(request, "Exam registration is currently closed.")
             return redirect("hbpl:exam-portal")
         return super().dispatch(request, *args, **kwargs)
