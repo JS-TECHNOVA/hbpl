@@ -42,7 +42,8 @@ const ExamResult = () => {
     if (rollFromUrl) {
       form.setValue('roll_number', rollFromUrl);
     }
-  }, [searchParams, form]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const onSubmit = async (values: FormValues) => {
     setIsLookingUp(true);

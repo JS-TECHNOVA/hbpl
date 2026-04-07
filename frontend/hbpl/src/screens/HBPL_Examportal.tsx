@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Clock, FileText, GraduationCap, HelpCircle, MapPin, Medal, Search } from 'lucide-react';
 import { fetchExamPortalContent } from '@/lib/api';
@@ -12,12 +13,13 @@ import { tr } from '@/lib/i18n';
 
 const RollNoSearch: React.FC<{ language: Language }> = ({ language }) => {
   const [rollNumber, setRollNumber] = useState('');
+  const router = useRouter();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = rollNumber.trim();
     if (trimmed) {
-      window.location.href = `/exam-portal/result?roll_number=${encodeURIComponent(trimmed)}`;
+      router.push(`/exam-portal/result?roll_number=${encodeURIComponent(trimmed)}`);
     }
   };
 
