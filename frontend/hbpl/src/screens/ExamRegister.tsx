@@ -85,9 +85,14 @@ const ExamRegister = () => {
         student_image: studentImage,
         signature_image: signatureImage,
       });
-      setRollNumber(result.roll_number ?? '');
+      setRollNumber(result.roll_number || '');
       setSubmitted(true);
-      toast({ title: 'Registration Successful', description: 'Your details have been submitted.' });
+      toast({
+        title: 'Registration Successful',
+        description: result.roll_number
+          ? `Your Roll Number is ${result.roll_number}. Please save it.`
+          : 'Your details have been submitted.',
+      });
     } catch (err) {
       toast({ title: 'Registration Failed', description: getErrorMessage(err), variant: 'destructive' });
     } finally {

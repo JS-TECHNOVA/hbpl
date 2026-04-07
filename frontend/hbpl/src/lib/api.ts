@@ -224,12 +224,12 @@ export const submitExamRegistration = async (data: ExamRegistrationData): Promis
     body: formData,
   });
 
-  const body = await res.json().catch(() => ({}));
+  const body = await res.json().catch(() => ({})) as Record<string, unknown>;
   if (!res.ok) {
     throw new Error(JSON.stringify(body) || "Exam registration failed");
   }
 
-  return body as { roll_number: string };
+  return { roll_number: typeof body.roll_number === 'string' ? body.roll_number : '' };
 };
 
 export const lookupExamResult = async (data: ExamResultLookupData): Promise<ExamResult> => {
