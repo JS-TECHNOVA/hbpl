@@ -207,7 +207,7 @@ export const submitRegistration = async (data: TeamRegistrationData): Promise<vo
   }
 };
 
-export const submitExamRegistration = async (data: ExamRegistrationData): Promise<void> => {
+export const submitExamRegistration = async (data: ExamRegistrationData): Promise<{ roll_number: string }> => {
   const formData = new FormData();
   formData.append("full_name", data.full_name);
   formData.append("date_of_birth", data.date_of_birth);
@@ -224,10 +224,12 @@ export const submitExamRegistration = async (data: ExamRegistrationData): Promis
     body: formData,
   });
 
+  const body = await res.json().catch(() => ({})) as Record<string, unknown>;
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
     throw new Error(JSON.stringify(body) || "Exam registration failed");
   }
+
+  return { roll_number: typeof body.roll_number === 'string' ? body.roll_number : '' };
 };
 
 export const lookupExamResult = async (data: ExamResultLookupData): Promise<ExamResult> => {

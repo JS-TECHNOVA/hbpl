@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -29,11 +30,20 @@ const ExamResult = () => {
   const { toast } = useToast();
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [result, setResult] = useState<ExamResult | null>(null);
+  const searchParams = useSearchParams();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { roll_number: '', date_of_birth: '' },
   });
+
+  useEffect(() => {
+    const rollFromUrl = searchParams?.get('roll_number');
+    if (rollFromUrl) {
+      form.setValue('roll_number', rollFromUrl);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const onSubmit = async (values: FormValues) => {
     setIsLookingUp(true);

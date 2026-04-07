@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
@@ -13,6 +14,8 @@ import PhoneButton from "@/components/PhoneButton";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
+  const pathname = usePathname();
+  const isExamPortal = pathname?.startsWith("/exam-portal");
 
   return (
     <LanguageProvider>
@@ -21,9 +24,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           <Toaster />
           <Sonner />
           <div className="flex flex-col min-h-screen">
-            <Header />
+            {!isExamPortal && <Header />}
             <main className="flex-1">{children}</main>
-            <Footer />
+            {!isExamPortal && <Footer />}
             <WhatsAppButton />
             <PhoneButton />
           </div>

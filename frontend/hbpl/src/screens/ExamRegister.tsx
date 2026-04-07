@@ -51,6 +51,7 @@ const ExamRegister = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [studentImage, setStudentImage] = useState<File | null>(null);
   const [signatureImage, setSignatureImage] = useState<File | null>(null);
+  const [rollNumber, setRollNumber] = useState<string>('');
 
   const { data: portalData } = useQuery({
     queryKey: ['exam-portal-content'],
@@ -75,7 +76,7 @@ const ExamRegister = () => {
   const onSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
     try {
-      await submitExamRegistration({
+      const result = await submitExamRegistration({
         ...values,
         email: values.email || '',
         school_name: values.school_name || '',
@@ -84,8 +85,14 @@ const ExamRegister = () => {
         student_image: studentImage,
         signature_image: signatureImage,
       });
+      setRollNumber(result.roll_number || '');
       setSubmitted(true);
-      toast({ title: 'Registration Successful', description: 'Your details have been submitted.' });
+      toast({
+        title: 'Registration Successful',
+        description: result.roll_number
+          ? `Your Roll Number is ${result.roll_number}. Please save it.`
+          : 'Your details have been submitted.',
+      });
     } catch (err) {
       toast({ title: 'Registration Failed', description: getErrorMessage(err), variant: 'destructive' });
     } finally {
@@ -103,6 +110,13 @@ const ExamRegister = () => {
             </svg>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Registration Complete!</h2>
+          {rollNumber && (
+            <div className="my-4 px-4 py-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-xl">
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Your Roll Number</p>
+              <p className="text-2xl font-black text-green-600 dark:text-green-400 tracking-widest">{rollNumber}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Please save this for future reference</p>
+            </div>
+          )}
           <p className="text-gray-600 dark:text-gray-300">
             Your details have been submitted. Results will be available once published.
           </p>

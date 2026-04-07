@@ -3,11 +3,45 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Clock, FileText, GraduationCap, HelpCircle, MapPin, Medal, Search } from 'lucide-react';
 import { fetchExamPortalContent } from '@/lib/api';
 import { useLanguage } from '@/hooks/use-language';
+import type { Language } from '@/hooks/use-language';
 import { tr } from '@/lib/i18n';
+
+const RollNoSearch: React.FC<{ language: Language }> = ({ language }) => {
+  const [rollNumber, setRollNumber] = useState('');
+  const router = useRouter();
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = rollNumber.trim();
+    if (trimmed) {
+      router.push(`/exam-portal/result?roll_number=${encodeURIComponent(trimmed)}`);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3 max-w-lg">
+      <input
+        type="text"
+        value={rollNumber}
+        onChange={(e) => setRollNumber(e.target.value)}
+        placeholder={tr('Enter Roll Number (e.g. HBPL-0001)', 'रोल नंबर दर्ज करें (जैसे HBPL-0001)', language)}
+        className="flex-1 rounded-lg bg-[#173828] border border-[#1f3b2b] px-4 py-2.5 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-green-500"
+      />
+      <button
+        type="submit"
+        className="inline-flex items-center justify-center gap-2 bg-green-500 hover:bg-green-400 text-black font-semibold px-6 py-2.5 rounded-lg text-sm transition-colors"
+      >
+        <Search className="w-4 h-4" />
+        {tr('Check Result', 'परिणाम देखें', language)}
+      </button>
+    </form>
+  );
+};
 
 const HBPL_Examportal: React.FC = () => {
   const [active, setActive] = useState<string>('home');
@@ -415,7 +449,18 @@ const HBPL_Examportal: React.FC = () => {
       </section>
 
       <section id="result" className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
-        <h2 className="text-xl sm:text-2xl font-bold mb-2">{tr('Top 20 Toppers', 'टॉप 20 टॉपर्स', language)}</h2>
+        <h2 className="text-xl sm:text-2xl font-bold mb-2">{tr('Result', 'परिणाम', language)}</h2>
+        <p className="text-xs sm:text-sm text-gray-300 mb-6">
+          {tr(
+            'Enter your Roll Number to check your result.',
+            'अपना परिणाम देखने के लिए रोल नंबर दर्ज करें।',
+            language
+          )}
+        </p>
+
+        <RollNoSearch language={language} />
+
+        <h3 className="text-lg sm:text-xl font-bold mt-12 mb-2">{tr('Top 20 Toppers', 'टॉप 20 टॉपर्स', language)}</h3>
         <p className="text-xs sm:text-sm text-gray-300 mb-6">
           {tr(
             'Top performers published by staff will appear here with rank and score.',

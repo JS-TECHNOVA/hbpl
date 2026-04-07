@@ -87,6 +87,8 @@ class TeamRegistrationSerializer(serializers.ModelSerializer):
 
 
 class ExamRegistrationCreateSerializer(serializers.ModelSerializer):
+    roll_number = serializers.CharField(read_only=True)
+
     class Meta:
         model = ExamRegistration
         fields = [
@@ -99,6 +101,7 @@ class ExamRegistrationCreateSerializer(serializers.ModelSerializer):
             "address",
             "student_image",
             "signature_image",
+            "roll_number",
         ]
 
 
