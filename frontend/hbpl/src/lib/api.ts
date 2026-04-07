@@ -67,6 +67,7 @@ export interface ExamRegistrationData {
   email?: string;
   school_name?: string;
   class_name?: string;
+  roll_number?: string;
   address?: string;
   student_image?: File | null;
   signature_image?: File | null;
@@ -215,6 +216,7 @@ export const submitExamRegistration = async (data: ExamRegistrationData): Promis
   formData.append("email", data.email ?? "");
   formData.append("school_name", data.school_name ?? "");
   formData.append("class_name", data.class_name ?? "");
+  formData.append("roll_number", data.roll_number ?? "");
   formData.append("address", data.address ?? "");
   if (data.student_image) formData.append("student_image", data.student_image);
   if (data.signature_image) formData.append("signature_image", data.signature_image);

@@ -27,6 +27,7 @@ const schema = z.object({
   email: z.union([z.literal(''), z.string().trim().email('Enter a valid email address')]),
   school_name: z.string().trim().max(255).optional(),
   class_name: z.string().trim().max(50).optional(),
+  roll_number: z.string().trim().max(50).optional(),
   address: z.string().trim().max(500).optional(),
 });
 
@@ -69,6 +70,7 @@ const ExamRegister = () => {
       email: '',
       school_name: '',
       class_name: '',
+      roll_number: '',
       address: '',
     },
   });
@@ -81,6 +83,7 @@ const ExamRegister = () => {
         email: values.email || '',
         school_name: values.school_name || '',
         class_name: values.class_name || '',
+        roll_number: values.roll_number || '',
         address: values.address || '',
         student_image: studentImage,
         signature_image: signatureImage,
@@ -198,6 +201,13 @@ const ExamRegister = () => {
                         <option value="Class 10">Class 10</option>
                       </select>
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="roll_number" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Roll No. (optional)</FormLabel>
+                    <FormControl><Input placeholder="e.g. HBPL0001" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
