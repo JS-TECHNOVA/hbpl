@@ -92,11 +92,10 @@ def generate_participation_certificate(registration) -> bytes:
         )
 
     # Build the overlay page with the student's data
-    rank = registration.rank
     overlay_bytes = _build_overlay(
         full_name=registration.full_name,
         class_name=registration.class_name or "",
-        rank=rank,
+        rank=registration.rank,
     )
 
     # Merge overlay onto the template

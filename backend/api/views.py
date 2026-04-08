@@ -457,9 +457,13 @@ class AdminGenerateExamDocumentsView(APIView):
                     ContentFile(pdf_bytes),
                     save=False,
                 )
-            except Exception as exc:
+            except Exception:
+                import logging
+                logging.getLogger(__name__).exception(
+                    "Certificate generation failed for registration pk=%s", pk
+                )
                 return Response(
-                    {"detail": f"Certificate generation failed: {exc}"},
+                    {"detail": "Certificate generation failed. Please check server logs."},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
 
