@@ -449,16 +449,23 @@ class AdminGenerateExamDocumentsView(APIView):
             )
 
         if doc_type in {"certificate", "both"}:
-            cert_content = (
-                f"HBPL Participation Certificate\\n"
-                f"This certifies that {registration.full_name} participated in HBPL General Aptitude Competition.\\n"
-                f"Roll Number: {registration.roll_number}\\n"
-            )
-            registration.participation_certificate_file.save(
-                f"certificate_{registration.roll_number}.txt",
-                ContentFile(cert_content.encode("utf-8")),
-                save=False,
-            )
+            from .certificate import generate_participation_certificate
+            try:
+                pdf_bytes = generate_participation_certificate(registration)
+                registration.participation_certificate_file.save(
+                    f"certificate_{registration.roll_number}.pdf",
+                    ContentFile(pdf_bytes),
+                    save=False,
+                )
+            except Exception:
+                import logging
+                logging.getLogger(__name__).exception(
+                    "Certificate generation failed for registration pk=%s", pk
+                )
+                return Response(
+                    {"detail": "Certificate generation failed. Please check server logs."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
 
         registration.save(update_fields=["admit_card_file", "participation_certificate_file", "updated_at"])
         serializer = AdminExamRegistrationSerializer(registration, context={"request": request})
