@@ -66,12 +66,16 @@ class ExamRegistrationAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "full_name",
+                    "father_name",
+                    "mother_name",
                     "roll_number",
                     "date_of_birth",
                     "phone",
                     "email",
                     "school_name",
                     "class_name",
+                    "examination_center",
+                    "center_address",
                     "address",
                     "notes",
                 )

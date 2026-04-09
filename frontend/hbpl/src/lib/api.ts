@@ -62,6 +62,8 @@ export interface TeamRegistrationData {
 
 export interface ExamRegistrationData {
   full_name: string;
+  father_name?: string;
+  mother_name?: string;
   date_of_birth: string;
   phone: string;
   email?: string;
@@ -85,6 +87,7 @@ export interface ExamResult {
   school_name: string;
   class_name: string;
   result_status: "pending" | "published";
+  publish_admit_card: boolean;
   marks_obtained: string | null;
   total_marks: string | null;
   rank: number | null;
@@ -211,6 +214,8 @@ export const submitRegistration = async (data: TeamRegistrationData): Promise<vo
 export const submitExamRegistration = async (data: ExamRegistrationData): Promise<{ roll_number: string }> => {
   const formData = new FormData();
   formData.append("full_name", data.full_name);
+  formData.append("father_name", data.father_name ?? "");
+  formData.append("mother_name", data.mother_name ?? "");
   formData.append("date_of_birth", data.date_of_birth);
   formData.append("phone", data.phone);
   formData.append("email", data.email ?? "");
@@ -249,6 +254,36 @@ export const lookupExamResult = async (data: ExamResultLookupData): Promise<Exam
   return body as ExamResult;
 };
 
+export const downloadExamAdmitCard = async (data: ExamResultLookupData): Promise<Blob> => {
+  const res = await fetch(`${API_URL}/api/exam/results/admit-card/download/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(typeof body?.detail === "string" ? body.detail : "Admit card download failed");
+  }
+
+  return res.blob();
+};
+
+export const downloadExamCertificate = async (data: ExamResultLookupData): Promise<Blob> => {
+  const res = await fetch(`${API_URL}/api/exam/results/certificate/download/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(typeof body?.detail === "string" ? body.detail : "Certificate download failed");
+  }
+
+  return res.blob();
+};
+
 export const fetchExamPortalContent = (): Promise<ExamPortalContent> =>
   get<ExamPortalContent>("/api/exam/portal/content/");
 
@@ -265,12 +300,16 @@ export interface AdminUser {
 export interface AdminExamRegistration {
   id: number;
   full_name: string;
+  father_name: string;
+  mother_name: string;
   roll_number: string;
   date_of_birth: string;
   phone: string;
   email: string;
   school_name: string;
   class_name: string;
+  examination_center: string;
+  center_address: string;
   address: string;
   notes: string;
   student_image_url: string | null;
@@ -421,6 +460,76 @@ export const adminGenerateStudentDocs = async (
     throw new Error(JSON.stringify(body) || "Document generation failed");
   }
   return body as AdminExamRegistration;
+};
+
+export const adminExportStudentsCSV = async (token: string): Promise<Blob> => {
+  const res = await fetch(`${API_URL}/api/admin/exam/registrations/export/csv/`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error("CSV export failed");
+  return res.blob();
+};
+
+export interface AdminStudentImportScanResult {
+  headers: string[];
+  row_count: number;
+  sample_rows: Array<Record<string, unknown>>;
+  suggested_mapping: Record<string, string>;
+  importable_fields: string[];
+}
+
+export interface AdminStudentImportResult {
+  imported: number;
+  updated: number;
+  skipped: number;
+  error_count: number;
+  errors: Array<{ row: number; error: string }>;
+}
+
+export const adminScanStudentImport = async (
+  token: string,
+  file: File,
+): Promise<AdminStudentImportScanResult> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("dry_run", "true");
+
+  const res = await fetch(`${API_URL}/api/admin/exam/registrations/import/`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: formData,
+  });
+
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(typeof body?.detail === "string" ? body.detail : "Import scan failed");
+  }
+
+  return body as AdminStudentImportScanResult;
+};
+
+export const adminImportStudents = async (
+  token: string,
+  file: File,
+  mapping: Record<string, string>,
+): Promise<AdminStudentImportResult> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("dry_run", "false");
+  formData.append("mapping", JSON.stringify(mapping));
+
+  const res = await fetch(`${API_URL}/api/admin/exam/registrations/import/`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: formData,
+  });
+
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(typeof body?.detail === "string" ? body.detail : "Import failed");
+  }
+
+  return body as AdminStudentImportResult;
 };
 
 // ── Admin CRUD helpers (website content) ─────────────────────────────────────

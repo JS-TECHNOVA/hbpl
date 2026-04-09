@@ -11,6 +11,8 @@ urlpatterns = [
     path("register/", views.TeamRegistrationCreateView.as_view(), name="register"),
     path("exam/registrations/", views.ExamRegistrationCreateView.as_view(), name="exam-registration-create"),
     path("exam/results/lookup/", views.ExamResultLookupView.as_view(), name="exam-result-lookup"),
+    path("exam/results/admit-card/download/", views.ExamAdmitCardDownloadView.as_view(), name="exam-admit-card-download"),
+    path("exam/results/certificate/download/", views.ExamCertificateDownloadView.as_view(), name="exam-certificate-download"),
     path("exam/portal/content/", views.ExamPortalContentView.as_view(), name="exam-portal-content"),
     path("exam/important-dates/", views.ExamImportantDateListView.as_view(), name="exam-important-dates"),
     path("exam/support-schools/", views.ExamSupportSchoolListView.as_view(), name="exam-support-schools"),
@@ -26,6 +28,8 @@ urlpatterns = [
     path("admin/exam/registrations/", views.AdminExamListView.as_view(), name="admin-exam-list"),
     path("admin/exam/registrations/<int:pk>/", views.AdminExamDetailView.as_view(), name="admin-exam-detail"),
     path("admin/exam/registrations/<int:pk>/generate-docs/", views.AdminGenerateExamDocumentsView.as_view(), name="admin-exam-generate-docs"),
+    path("admin/exam/registrations/export/csv/", views.AdminExamExportCSVView.as_view(), name="admin-exam-export-csv"),
+    path("admin/exam/registrations/import/", views.AdminExamImportStudentsView.as_view(), name="admin-exam-import-students"),
 ]
 
 urlpatterns += [

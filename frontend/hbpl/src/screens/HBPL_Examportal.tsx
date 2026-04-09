@@ -88,49 +88,7 @@ const HBPL_Examportal: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0e1c14] text-white font-sans scroll-smooth overflow-x-hidden">
-      <header className="sticky top-0 z-50 bg-[#0b160f]/90 backdrop-blur border-b border-[#1f3b2b]">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 h-16">
-          <div className="font-bold text-base sm:text-lg text-green-400">
-            {tr('HBPL Exam Portal', 'HBPL परीक्षा पोर्टल', language)}
-          </div>
-
-          <nav className="hidden md:flex gap-6 lg:gap-8 text-sm">
-            <a href="#home" className={navClass('home')}>{tr('Home', 'होम', language)}</a>
-            <a href="#overview" className={navClass('overview')}>{tr('Overview', 'अवलोकन', language)}</a>
-            <a href="#dates" className={navClass('dates')}>{tr('Important Dates', 'महत्वपूर्ण तिथियाँ', language)}</a>
-            <a href="#about-exam" className={navClass('about-exam')}>{tr('About Exam', 'परीक्षा के बारे में', language)}</a>
-            <a href="#exam-authority" className={navClass('exam-authority')}>{tr('Exam Support Schools', 'परीक्षा समर्थन स्कूल', language)}</a>
-            <a href="#syllabus" className={navClass('syllabus')}>{tr('Syllabus', 'पाठ्यक्रम', language)}</a>
-            <a href="#sample-papers" className={navClass('sample-papers')}>{tr('Sample Papers', 'नमूना प्रश्नपत्र', language)}</a>
-            <a href="#pattern" className={navClass('pattern')}>{tr('Exam Pattern', 'परीक्षा पैटर्न', language)}</a>
-            <a href="#exam-center" className={navClass('exam-center')}>{tr('Exam Center', 'परीक्षा केंद्र', language)}</a>
-            <a href="#result" className={navClass('result')}>{tr('Result', 'परिणाम', language)}</a>
-            <a href="#faq" className={navClass('faq')}>FAQ</a>
-          </nav>
-
-          <button className="md:hidden text-2xl" onClick={() => setMenuOpen(!menuOpen)}>
-            ☰
-          </button>
-        </div>
-
-        {menuOpen && (
-          <div className="md:hidden bg-[#0b160f] border-t border-[#1f3b2b] px-4 pb-4">
-            <nav className="flex flex-col gap-4 text-sm pt-4">
-              <a onClick={() => setMenuOpen(false)} href="#home" className={navClass('home')}>{tr('Home', 'होम', language)}</a>
-              <a onClick={() => setMenuOpen(false)} href="#overview" className={navClass('overview')}>{tr('Overview', 'अवलोकन', language)}</a>
-              <a onClick={() => setMenuOpen(false)} href="#dates" className={navClass('dates')}>{tr('Important Dates', 'महत्वपूर्ण तिथियाँ', language)}</a>
-              <a onClick={() => setMenuOpen(false)} href="#about-exam" className={navClass('about-exam')}>{tr('About Exam', 'परीक्षा के बारे में', language)}</a>
-              <a onClick={() => setMenuOpen(false)} href="#exam-authority" className={navClass('exam-authority')}>{tr('Exam Support Schools', 'परीक्षा समर्थन स्कूल', language)}</a>
-              <a onClick={() => setMenuOpen(false)} href="#syllabus" className={navClass('syllabus')}>{tr('Syllabus', 'पाठ्यक्रम', language)}</a>
-              <a onClick={() => setMenuOpen(false)} href="#sample-papers" className={navClass('sample-papers')}>{tr('Sample Papers', 'नमूना प्रश्नपत्र', language)}</a>
-              <a onClick={() => setMenuOpen(false)} href="#pattern" className={navClass('pattern')}>{tr('Exam Pattern', 'परीक्षा पैटर्न', language)}</a>
-              <a onClick={() => setMenuOpen(false)} href="#exam-center" className={navClass('exam-center')}>{tr('Exam Center', 'परीक्षा केंद्र', language)}</a>
-              <a onClick={() => setMenuOpen(false)} href="#result" className={navClass('result')}>{tr('Result', 'परिणाम', language)}</a>
-              <a onClick={() => setMenuOpen(false)} href="#faq" className={navClass('faq')}>FAQ</a>
-            </nav>
-          </div>
-        )}
-      </header>
+     
 
       <section
         id="home"
@@ -179,6 +137,9 @@ const HBPL_Examportal: React.FC = () => {
               )}
               <Link href="/exam-portal/result" className="inline-flex items-center gap-2 border border-green-500/60 text-green-100 hover:bg-green-800/40 font-semibold px-6 py-3 rounded-full text-sm transition-colors">
                 <Search className="h-4 w-4" /> {tr('Check Result', 'परिणाम देखें', language)}
+              </Link>
+              <Link href="/exam-portal/admit-card" className="inline-flex items-center gap-2 border border-green-500/60 text-green-100 hover:bg-green-800/40 font-semibold px-6 py-3 rounded-full text-sm transition-colors">
+                <FileText className="h-4 w-4" /> {tr('Download Admit Card', 'एडमिट कार्ड डाउनलोड करें', language)}
               </Link>
             </div>
 

@@ -111,8 +111,12 @@ class ExamRegistration(models.Model):
         PUBLISHED = "published", "Published"
 
     full_name = models.CharField(max_length=200)
+    father_name = models.CharField(max_length=200, blank=True)
+    mother_name = models.CharField(max_length=200, blank=True)
     roll_number = models.CharField(max_length=50, unique=True, blank=True)
     date_of_birth = models.DateField()
+    examination_center = models.CharField(max_length=200, blank=True)
+    center_address = models.TextField(blank=True)
     phone = models.CharField(max_length=15)
     email = models.EmailField(blank=True)
     school_name = models.CharField(max_length=255, blank=True)

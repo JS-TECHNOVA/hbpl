@@ -1,5 +1,4 @@
 from django.conf import settings
-from django.core.files.base import ContentFile
 from django.core.mail import send_mail
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -135,37 +134,7 @@ def send_team_registration_confirmation(sender, instance, created, **kwargs):
 @receiver(post_save, sender=ExamRegistration)
 def auto_generate_participation_certificate(sender, instance, created, **kwargs):
     """
-    Automatically generate (or regenerate) the participation certificate PDF
-    whenever publish_participation_certificate transitions to True.
+    Deprecated: certificate PDFs are now generated on-demand from the public
+    download endpoint and are not persisted automatically.
     """
-    if created:
-        return
-
-    was_published = getattr(instance, "_pre_save_publish_cert", False)
-    is_published = instance.publish_participation_certificate
-
-    if not is_published:
-        return  # certificate not being published — nothing to do
-
-    if was_published and instance.participation_certificate_file:
-        return  # already published and file exists — no need to regenerate
-
-    from .certificate import generate_participation_certificate
-    try:
-        pdf_bytes = generate_participation_certificate(instance)
-    except Exception:
-        import logging
-        logging.getLogger(__name__).exception(
-            "Failed to auto-generate certificate for %s", instance.roll_number
-        )
-        return
-
-    # Save the file without triggering another post_save cascade
-    instance.participation_certificate_file.save(
-        f"certificate_{instance.roll_number}.pdf",
-        ContentFile(pdf_bytes),
-        save=False,
-    )
-    ExamRegistration.objects.filter(pk=instance.pk).update(
-        participation_certificate_file=instance.participation_certificate_file.name
-    )
+    return

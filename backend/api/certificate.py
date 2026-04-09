@@ -60,12 +60,12 @@ def _build_overlay(full_name: str, class_name: str, rank) -> bytes:
     c.setFont("Helvetica", 13)
     c.setFillColor(CLASS_RANK_COLOR)
     if class_name:
-        c.drawString(265, 290, class_name)
+        c.drawString(265, 295, class_name)
 
     # ── Position / Rank ───────────────────────────────────────────────────────
     # "Position / Rank:" colon ends at x≈510, y≈290.
     if rank is not None:
-        c.drawString(555, 290, str(rank))
+        c.drawString(555, 295, str(rank))
 
     c.save()
     buf.seek(0)

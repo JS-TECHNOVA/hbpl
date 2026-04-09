@@ -17,7 +17,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { lookupExamResult, type ExamResult } from '@/lib/api';
+import { downloadExamCertificate, lookupExamResult, type ExamResult } from '@/lib/api';
 
 const schema = z.object({
   roll_number: z.string().trim().min(2, 'Enter the roll number').max(50),
@@ -29,6 +29,7 @@ type FormValues = z.infer<typeof schema>;
 const ExamResult = () => {
   const { toast } = useToast();
   const [isLookingUp, setIsLookingUp] = useState(false);
+  const [isDownloadingCertificate, setIsDownloadingCertificate] = useState(false);
   const [result, setResult] = useState<ExamResult | null>(null);
   const searchParams = useSearchParams();
 
@@ -56,6 +57,31 @@ const ExamResult = () => {
       toast({ title: 'Not Found', description: msg, variant: 'destructive' });
     } finally {
       setIsLookingUp(false);
+    }
+  };
+
+  const handleCertificateDownload = async () => {
+    if (!result) return;
+
+    setIsDownloadingCertificate(true);
+    try {
+      const blob = await downloadExamCertificate({
+        roll_number: result.roll_number,
+        date_of_birth: result.date_of_birth,
+      });
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `certificate_${result.roll_number}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Certificate download failed.';
+      toast({ title: 'Download Failed', description: msg, variant: 'destructive' });
+    } finally {
+      setIsDownloadingCertificate(false);
     }
   };
 
@@ -155,6 +181,22 @@ const ExamResult = () => {
                         <ExternalLink className="w-4 h-4" /> Download Result
                       </a>
                     )}
+                    <Button
+                      type="button"
+                      onClick={handleCertificateDownload}
+                      disabled={isDownloadingCertificate}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      {isDownloadingCertificate ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" /> Generating Certificate...
+                        </>
+                      ) : (
+                        <>
+                          <ExternalLink className="w-4 h-4" /> Download Certificate
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </>
               )}

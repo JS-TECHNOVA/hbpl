@@ -22,6 +22,8 @@ import { submitExamRegistration, fetchExamPortalContent } from '@/lib/api';
 
 const schema = z.object({
   full_name: z.string().trim().min(2, 'Enter the student name').max(200),
+  father_name: z.string().trim().max(200).optional(),
+  mother_name: z.string().trim().max(200).optional(),
   date_of_birth: z.string().min(1, 'Select the date of birth'),
   phone: z.string().trim().min(10, 'Enter a valid phone number').max(15),
   email: z.union([z.literal(''), z.string().trim().email('Enter a valid email address')]),
@@ -65,6 +67,8 @@ const ExamRegister = () => {
     resolver: zodResolver(schema),
     defaultValues: {
       full_name: '',
+      father_name: '',
+      mother_name: '',
       date_of_birth: '',
       phone: '',
       email: '',
@@ -80,6 +84,8 @@ const ExamRegister = () => {
     try {
       const result = await submitExamRegistration({
         ...values,
+        father_name: values.father_name || '',
+        mother_name: values.mother_name || '',
         email: values.email || '',
         school_name: values.school_name || '',
         class_name: values.class_name || '',
@@ -167,6 +173,20 @@ const ExamRegister = () => {
                   <FormItem>
                     <FormLabel>Date of Birth <span className="text-red-500">*</span></FormLabel>
                     <FormControl><Input type="date" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="father_name" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Father Name (optional)</FormLabel>
+                    <FormControl><Input placeholder="Father's name" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="mother_name" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Mother Name (optional)</FormLabel>
+                    <FormControl><Input placeholder="Mother's name" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />

@@ -132,7 +132,7 @@ const Home = () => {
                 size="lg"
                 className="text-sm md:text-lg px-8 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
               >
-                {tr("Register Cricket Team", "क्रिकेट टीम पंजीकरण", language)}
+                {tr("Register Your Cricket Team", "क्रिकेट टीम पंजीकरण", language)}
               </Button>
             </a>
             <Link href="/exam-portal">
@@ -141,7 +141,7 @@ const Home = () => {
                 variant="secondary"
                 className="text-sm md:text-lg px-8 hover:scale-105 transition-all duration-300"
               >
-                {tr("Explore Exam Portal", "एग्ज़ाम पोर्टल देखें", language)}
+                {tr("Go To Exam Portal", "एग्ज़ाम पोर्टल देखें", language)}
               </Button>
             </Link>
           </div>

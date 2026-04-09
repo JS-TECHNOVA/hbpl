@@ -87,12 +87,13 @@ class TeamRegistrationSerializer(serializers.ModelSerializer):
 
 
 class ExamRegistrationCreateSerializer(serializers.ModelSerializer):
-    roll_number = serializers.CharField(read_only=True)
 
     class Meta:
         model = ExamRegistration
         fields = [
             "full_name",
+            "father_name",
+            "mother_name",
             "date_of_birth",
             "phone",
             "email",
@@ -114,6 +115,7 @@ class ExamResultLookupSerializer(serializers.Serializer):
 
 
 class ExamResultResponseSerializer(serializers.ModelSerializer):
+    publish_admit_card = serializers.BooleanField(read_only=True)
     marks_obtained = serializers.SerializerMethodField()
     total_marks = serializers.SerializerMethodField()
     rank = serializers.SerializerMethodField()
@@ -132,6 +134,7 @@ class ExamResultResponseSerializer(serializers.ModelSerializer):
             "school_name",
             "class_name",
             "result_status",
+            "publish_admit_card",
             "marks_obtained",
             "total_marks",
             "rank",
@@ -178,10 +181,14 @@ class ExamResultResponseSerializer(serializers.ModelSerializer):
     def get_admit_card_url(self, obj):
         if not obj.publish_admit_card:
             return None
-        return self._build_file_url(obj.admit_card_file)
+        # Public UI now downloads admit card on-demand via dedicated endpoint.
+        # Keep this key non-null for backward compatibility with existing clients.
+        return "available"
 
     def get_participation_certificate_url(self, obj):
-        if not obj.publish_participation_certificate:
+        if not self._is_published(obj):
+            return None
+        if not obj.participation_certificate_file:
             return None
         return self._build_file_url(obj.participation_certificate_file)
 
@@ -199,8 +206,8 @@ class AdminExamRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExamRegistration
         fields = [
-            "id", "full_name", "roll_number", "date_of_birth",
-            "phone", "email", "school_name", "class_name", "address", "notes",
+            "id", "full_name", "father_name", "mother_name", "roll_number", "date_of_birth",
+            "phone", "email", "school_name", "class_name", "examination_center", "center_address", "address", "notes",
             "student_image", "signature_image", "student_image_url", "signature_image_url",
             "result_status", "marks_obtained", "total_marks", "rank", "remarks",
             "test_copy", "result_file", "admit_card_file", "participation_certificate_file",
