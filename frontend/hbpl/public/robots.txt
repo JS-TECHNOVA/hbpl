@@ -1,5 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /staff/
-
-Sitemap: https://myhbpl.org/sitemap.xml
