@@ -1,11 +1,13 @@
+import re
 """
 Admit card generation utilities.
 
-Overlays student-specific data (name, roll number, class, center, address)
+Overlays student-specific data (name, DOB, roll number, class, center, address)
 onto the HBPL admit card PDF template using reportlab + pypdf.
 """
 import io
 import os
+from datetime import date
 
 from django.conf import settings
 from reportlab.lib.colors import HexColor
@@ -30,12 +32,49 @@ TEMPLATE_PATH = os.path.join(
 PAGE_WIDTH = 595.28
 PAGE_HEIGHT = 841.89
 
+# Field anchor coordinates tuned for current HBPL ADMIT CARD1.pdf
+NAME_X, NAME_Y = 34, 564
+DOB_X, DOB_Y = 34, 520
+ROLL_X, ROLL_Y = 34, 475
+CLASS_X, CLASS_Y = 295, 475
+CENTER_X, CENTER_Y = 34, 423
+ADDRESS_X, ADDRESS_START_Y = 34, 410
+
 # Colour for text overlay
 TEXT_COLOR = HexColor("#000000")  # black
 
 
+def _title_case(text: str) -> str:
+    return (text or "").strip().title()
+
+
+def _ordinal_class(class_name: str) -> str:
+    value = (class_name or "").strip()
+    if not value:
+        return ""
+    try:
+        num = int(value)
+        # Handle 11th, 12th, 13th exceptions.
+        if 10 <= (num % 100) <= 20:
+            suffix = "th"
+        else:
+            suffix = {1: "st", 2: "nd", 3: "rd"}.get(num % 10, "th")
+        return f"{num}{suffix}"
+    except ValueError:
+        match = re.fullmatch(r"class\s*(\d+)", value, flags=re.IGNORECASE)
+        if match:
+            num = int(match.group(1))
+            if 10 <= (num % 100) <= 20:
+                suffix = "th"
+            else:
+                suffix = {1: "st", 2: "nd", 3: "rd"}.get(num % 10, "th")
+            return f"{num}{suffix}"
+    return _title_case(value)
+
+
 def _build_overlay(
     full_name: str,
+    date_of_birth: date,
     roll_number: str,
     class_name: str,
     examination_center: str,
@@ -48,48 +87,29 @@ def _build_overlay(
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=(PAGE_WIDTH, PAGE_HEIGHT))
 
-    # These coordinates are aligned to the blank lines in HBPL ADMIT CARD1.pdf.
-    c.setFont("Helvetica-Bold", 12)
+    # Coordinates aligned to the updated HBPL ADMIT CARD1.pdf layout.
+    c.setFont("Helvetica-Bold", 11)
     c.setFillColor(TEXT_COLOR)
-    c.drawString(145, 709, (full_name or "")[:42])
+    c.drawString(NAME_X, NAME_Y, _title_case(full_name)[:58])
 
-    # ── Roll Number ──────────────────────────────────────────────────────────
-    c.setFont("Helvetica", 12)
-    c.drawString(115, 671, (roll_number or "")[:30])
+    # Date of Birth row
+    c.setFont("Helvetica-Bold", 11)
+    dob_text = date_of_birth.strftime("%d-%m-%Y") if date_of_birth else ""
+    c.drawString(DOB_X, DOB_Y, dob_text)
 
-    # ── Class ────────────────────────────────────────────────────────────────
-    c.drawString(70, 625, (class_name or "")[:30])
+    # Roll No and Class row
+    c.drawString(ROLL_X, ROLL_Y, (roll_number or "")[:30])
+    c.drawString(CLASS_X, CLASS_Y, _ordinal_class(class_name)[:26])
 
-    # ── Examination Center ───────────────────────────────────────────────────
-    c.drawString(145, 497, (examination_center or "")[:45])
-
-    # ── Center Address ───────────────────────────────────────────────────────
-    # Address line(s)
+    # Exam center and address row (supports up to 3 lines)
+    c.setFont("Helvetica-Bold", 10.5)
+    c.drawString(CENTER_X, CENTER_Y, _title_case(examination_center)[:70])
     if center_address:
-        lines = center_address.split("\n")[:2]
-        y = 465
+        lines = [line.strip() for line in center_address.split("\n") if line.strip()][:2]
+        y = ADDRESS_START_Y
         for line in lines:
-            c.drawString(125, y, line[:65])
-            y -= 16
-
-    # ── Photo placeholder ────────────────────────────────────────────────────
-    # Photo placeholder (for physical pasting by student)
-    # Approx. 3.5cm x 4.5cm, aligned to top-right empty region.
-    photo_x = 458
-    photo_y = 560
-    photo_width = 96
-    photo_height = 126
-
-    c.setLineWidth(1.5)
-    c.setStrokeColor(HexColor("#666666"))
-    c.rect(photo_x, photo_y, photo_width, photo_height, fill=False)
-
-    # Add label inside the placeholder
-    c.setFont("Helvetica-Oblique", 10)
-    c.setFillColor(HexColor("#999999"))
-    c.drawString(photo_x + 8, photo_y + photo_height / 2 + 8, "Paste")
-    c.drawString(photo_x + 8, photo_y + photo_height / 2 - 8, "Photo")
-    c.drawString(photo_x + 8, photo_y + photo_height / 2 - 24, "Here")
+            c.drawString(ADDRESS_X, y, _title_case(line)[:86])
+            y -= 13
 
     c.save()
     buf.seek(0)
@@ -118,6 +138,7 @@ def generate_admit_card(registration) -> bytes:
     # Build the overlay page with the student's data
     overlay_bytes = _build_overlay(
         full_name=registration.full_name,
+        date_of_birth=registration.date_of_birth,
         roll_number=registration.roll_number,
         class_name=registration.class_name or "",
         examination_center=registration.examination_center or "",
