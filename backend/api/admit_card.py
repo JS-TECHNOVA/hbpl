@@ -48,28 +48,26 @@ def _title_case(text: str) -> str:
     return (text or "").strip().title()
 
 
-def _ordinal_class(class_name: str) -> str:
-    value = (class_name or "").strip()
-    if not value:
-        return ""
+
+def _split_ordinal(val: str):
+    # Returns (number, suffix) or (original, "") if not ordinal
     try:
-        num = int(value)
-        # Handle 11th, 12th, 13th exceptions.
+        num = int(val)
         if 10 <= (num % 100) <= 20:
             suffix = "th"
         else:
             suffix = {1: "st", 2: "nd", 3: "rd"}.get(num % 10, "th")
-        return f"{num}{suffix}"
-    except ValueError:
-        match = re.fullmatch(r"class\s*(\d+)", value, flags=re.IGNORECASE)
+        return str(num), suffix
+    except Exception:
+        match = re.fullmatch(r"class\s*(\d+)", val, flags=re.IGNORECASE)
         if match:
             num = int(match.group(1))
             if 10 <= (num % 100) <= 20:
                 suffix = "th"
             else:
                 suffix = {1: "st", 2: "nd", 3: "rd"}.get(num % 10, "th")
-            return f"{num}{suffix}"
-    return _title_case(value)
+            return f"{num}", suffix
+    return val, ""
 
 
 def _build_overlay(
@@ -99,7 +97,20 @@ def _build_overlay(
 
     # Roll No and Class row
     c.drawString(ROLL_X, ROLL_Y, (roll_number or "")[:30])
-    c.drawString(CLASS_X, CLASS_Y, _ordinal_class(class_name)[:26])
+    # Draw class with superscript suffix if ordinal
+    class_val = (class_name or "").strip()
+    class_main, class_sup = _split_ordinal(class_val)
+    if class_sup:
+        c.setFont("Helvetica-Bold", 11)
+        c.drawString(CLASS_X, CLASS_Y, "")
+        x = CLASS_X + c.stringWidth("", "Helvetica-Bold", 11)
+        c.drawString(x, CLASS_Y, class_main)
+        x += c.stringWidth(class_main, "Helvetica-Bold", 11)
+        c.setFont("Helvetica-Bold", 7)
+        c.drawString(x, CLASS_Y + 5, class_sup)
+        c.setFont("Helvetica-Bold", 11)
+    else:
+        c.drawString(CLASS_X, CLASS_Y, _title_case(class_name)[:26])
 
     # Exam center and address row (supports up to 3 lines)
     c.setFont("Helvetica-Bold", 10.5)

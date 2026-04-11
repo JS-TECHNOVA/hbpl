@@ -43,36 +43,32 @@ def _title_case(text: str) -> str:
     return (text or "").strip().title()
 
 
-def _ordinal_rank(rank) -> str:
+
+def _split_ordinal(val) -> tuple:
     try:
-        value = int(rank)
+        value = int(val)
+        if value <= 0:
+            return str(value), ""
+        if 10 <= (value % 100) <= 20:
+            suffix = "th"
+        else:
+            suffix = {1: "st", 2: "nd", 3: "rd"}.get(value % 10, "th")
+        return str(value), suffix
     except (TypeError, ValueError):
-        return str(rank)
-
-    if value <= 0:
-        return str(value)
-
-    # Handle 11th, 12th, 13th exceptions.
-    if 10 <= (value % 100) <= 20:
-        suffix = "th"
-    else:
-        suffix = {1: "st", 2: "nd", 3: "rd"}.get(value % 10, "th")
-    return f"{value}{suffix}"
+        return str(val), ""
 
 
-def _format_class_name(class_name: str) -> str:
+
+def _format_class_name(class_name: str):
     value = (class_name or "").strip()
     if not value:
-        return ""
-
+        return "", ""
     if value.isdigit():
-        return f"{_ordinal_rank(value)}"
-
+        return value, _split_ordinal(value)[1]
     match = re.fullmatch(r"class\s*(\d+)", value, flags=re.IGNORECASE)
     if match:
-        return f"{_ordinal_rank(match.group(1))}"
-
-    return _title_case(value)
+        return f"{match.group(1)}", _split_ordinal(match.group(1))[1]
+    return _title_case(value), ""
 
 
 def _build_overlay(full_name: str, class_name: str, rank, include_rank: bool) -> bytes:
@@ -98,12 +94,28 @@ def _build_overlay(full_name: str, class_name: str, rank, include_rank: bool) ->
     c.setFont("Helvetica", 13)
     c.setFillColor(CLASS_RANK_COLOR)
     if class_name:
-        c.drawString(265, 295, _format_class_name(class_name))
+        class_main, class_sup = _format_class_name(class_name)
+        if class_sup:
+            c.setFont("Helvetica", 13)
+            c.drawString(265, 295, class_main)
+            x = 265 + c.stringWidth(class_main, "Helvetica", 13)
+            c.setFont("Helvetica", 9)
+            c.drawString(x, 299, class_sup)
+            c.setFont("Helvetica", 13)
+        else:
+            c.drawString(265, 295, class_main)
 
     # ── Position / Rank ───────────────────────────────────────────────────────
     # "Position / Rank:" colon ends at x≈510, y≈290.
     if include_rank and rank is not None:
-        c.drawString(555, 295, _ordinal_rank(rank))
+        rank_main, rank_sup = _split_ordinal(rank)
+        c.setFont("Helvetica", 13)
+        c.drawString(555, 295, rank_main)
+        x = 555 + c.stringWidth(rank_main, "Helvetica", 13)
+        if rank_sup:
+            c.setFont("Helvetica", 9)
+            c.drawString(x, 299, rank_sup)
+            c.setFont("Helvetica", 13)
 
     c.save()
     buf.seek(0)
