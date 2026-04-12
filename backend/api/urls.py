@@ -21,8 +21,10 @@ urlpatterns = [
     path("exam/centers/", views.ExamCenterDetailListView.as_view(), name="exam-centers"),
     path("exam/faqs/", views.ExamFaqListView.as_view(), name="exam-faqs"),
     path("exam/toppers/", views.ExamTopperListView.as_view(), name="exam-toppers"),
+    path("exam/complaints/", views.ComplaintCreateAPIView.as_view(), name="exam-complaint-create"),
 
     # ── Admin endpoints (require Token auth + is_staff) ───────────────────────
+    path("admin/complaints/", views.AdminComplaintListAPIView.as_view(), name="admin-complaint-list"),
     path("admin/login/", views.AdminLoginView.as_view(), name="admin-login"),
     path("admin/me/", views.AdminMeView.as_view(), name="admin-me"),
     path("admin/exam/registrations/", views.AdminExamListView.as_view(), name="admin-exam-list"),

@@ -3,9 +3,16 @@ from django.shortcuts import redirect
 from django.urls import path
 from .models import (
     Team, Match, ManagementMember, GalleryImage, Volunteer,
-    TeamRegistration, ExamRegistration, ExamSettings,
+    TeamRegistration, ExamRegistration, ExamSettings,Complaint
 )
 
+
+@admin.register(Complaint)
+class ComplaintAdmin(admin.ModelAdmin):
+    list_display = ["id", "name", "roll_number", "registration", "created_at", "message"]
+    list_filter = ["created_at"]
+    search_fields = ["name", "roll_number", "registration__roll_number", "message"]
+    readonly_fields = ["created_at"]
 
 @admin.register(Team)
 class TeamAdmin(admin.ModelAdmin):
@@ -45,6 +52,13 @@ class TeamRegistrationAdmin(admin.ModelAdmin):
     readonly_fields = ["created_at"]
 
 
+@admin.action(description = "Publish All admit cards" )
+def publish_admit_card(self, req, queryset):
+    queryset.update(publish_admit_card=True)
+    # req.message_user()
+    self.message_user(req, f"Exam admit card has been published.")
+
+
 @admin.register(ExamRegistration)
 class ExamRegistrationAdmin(admin.ModelAdmin):
     list_display = [
@@ -57,6 +71,7 @@ class ExamRegistrationAdmin(admin.ModelAdmin):
         "rank",
         "created_at",
     ]
+    actions = (publish_admit_card, )
     list_filter = ["result_status", "created_at"]
     search_fields = ["roll_number", "full_name", "phone", "email", "school_name"]
     readonly_fields = ["created_at", "updated_at"]
@@ -85,6 +100,7 @@ class ExamRegistrationAdmin(admin.ModelAdmin):
             "Result Publishing",
             {
                 "fields": (
+                    "publish_admit_card",
                     "result_status",
                     "marks_obtained",
                     "total_marks",

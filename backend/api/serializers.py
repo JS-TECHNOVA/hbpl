@@ -1,3 +1,6 @@
+from .models import Complaint
+
+
 from rest_framework import serializers
 from .models import (
     Team,
@@ -16,7 +19,12 @@ from .models import (
     ExamTopper,
 )
 
-
+class ComplaintSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Complaint
+        fields = ["id", "registration", "name", "roll_number", "screenshot", "message", "created_at"]
+        read_only_fields = ["id", "created_at"]
+        
 class TeamSerializer(serializers.ModelSerializer):
     class Meta:
         model = Team

@@ -2,6 +2,21 @@ from django.db import models, transaction
 from django.db.models import Max
 
 
+class Complaint(models.Model):
+    registration = models.ForeignKey('ExamRegistration', on_delete=models.CASCADE, related_name='complaints')
+    name = models.CharField(max_length=200)
+    roll_number = models.CharField(max_length=50)
+    screenshot = models.ImageField(upload_to="complaints/screenshots/", blank=True, null=True)
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "id"]
+
+    def __str__(self):
+        return f"Complaint by {self.name} ({self.roll_number})"
+
+
 class Team(models.Model):
     name = models.CharField(max_length=200)
     captain = models.CharField(max_length=200)

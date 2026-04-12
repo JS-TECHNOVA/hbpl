@@ -1,3 +1,4 @@
+from rest_framework.permissions import IsAdminUser
 import csv
 import json
 from datetime import date, datetime, timedelta
@@ -26,6 +27,7 @@ from .models import (
     ExamFaq,
     ExamTopper,
     ExamSettings,
+    Complaint,
 )
 from .serializers import (
     TeamSerializer,
@@ -59,8 +61,28 @@ from .serializers import (
     AdminExamCenterDetailSerializer,
     AdminExamFaqSerializer,
     AdminExamTopperSerializer,
+    ComplaintSerializer,
 )
+from rest_framework.parsers import MultiPartParser, FormParser
 
+
+
+# Admin: List all complaints
+class AdminComplaintListAPIView(generics.ListAPIView):
+    queryset = Complaint.objects.select_related("registration").all().order_by("-created_at")
+    serializer_class = ComplaintSerializer
+    permission_classes = [IsAdminUser]
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["request"] = self.request
+        return context
+    
+# Complaint submission API
+class ComplaintCreateAPIView(generics.CreateAPIView):
+    serializer_class = ComplaintSerializer
+    parser_classes = [MultiPartParser, FormParser]
+    queryset = ComplaintSerializer.Meta.model.objects.all()
 
 class IsStaffUser(BasePermission):
     """Allows access only to Django staff users authenticated via token."""
