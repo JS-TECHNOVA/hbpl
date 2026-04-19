@@ -489,7 +489,7 @@ export default function CricketRegistrationForm() {
 				</div>
 				<div className="rounded-xl bg-white border border-yellow-300 px-4 py-3">
 					<p className="text-sm font-bold text-slate-800">
-						Registration fee: Rs. 500 per team
+						Registration fee: Rs. 251 per team
 					</p>
 					<p className="text-xs text-slate-500 mt-1">
 						You can pay using UPI, card, netbanking, or wallet in
