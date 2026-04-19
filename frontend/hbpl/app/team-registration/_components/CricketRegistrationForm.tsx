@@ -442,7 +442,7 @@ export default function CricketRegistrationForm() {
 							className="hidden"
 							onChange={(event) =>
 								setTeamImage(
-									event.target.files?.[0].name || null
+									event.target.files?.[0].name || null,
 								)
 							}
 						/>
@@ -500,7 +500,9 @@ export default function CricketRegistrationForm() {
 
 			<div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-4">
 				<a
-					href="#"
+					target="_blank"
+					
+					href="/HBPL Official Rule book.pdf"
 					className="text-sm font-bold text-green-700 hover:underline"
 				>
 					Download and read carefully HBPL Rule Book
