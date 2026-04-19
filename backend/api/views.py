@@ -1,18 +1,29 @@
-from rest_framework.permissions import IsAdminUser
+import base64
 import csv
+from io import BytesIO
+import os
+import secrets
 import json
+from urllib import error as urllib_error
+from urllib import request as urllib_request
+
+from rest_framework.permissions import IsAdminUser
 from datetime import date, datetime, timedelta
 from django.contrib.auth import authenticate
+from django.core import signing
 from django.core.files.base import ContentFile
 from django.http import HttpResponse
-from rest_framework import generics, status
+from django.urls import reverse
+from rest_framework import generics, status, filters
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import BasePermission, DjangoModelPermissions, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from reportlab.lib.colors import HexColor
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
 from .models import (
-    Team,
     Match,
     ManagementMember,
     GalleryImage,
@@ -35,6 +46,7 @@ from .serializers import (
     ManagementMemberSerializer,
     GalleryImageSerializer,
     VolunteerSerializer,
+    TeamRegistrationPaymentOrderSerializer,
     TeamRegistrationSerializer,
     ExamRegistrationCreateSerializer,
     ExamResultLookupSerializer,
@@ -53,6 +65,7 @@ from .serializers import (
     AdminGalleryImageSerializer,
     AdminManagementMemberSerializer,
     AdminTeamSerializer,
+    AdminTeamRegistrationSerializer,
     AdminMatchSerializer,
     AdminExamImportantDateSerializer,
     AdminExamSupportSchoolSerializer,
@@ -63,7 +76,156 @@ from .serializers import (
     AdminExamTopperSerializer,
     ComplaintSerializer,
 )
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+
+
+TEAM_REGISTRATION_FEE_PAISE = int(os.environ.get("TEAM_REGISTRATION_FEE_PAISE", "50000"))
+
+
+def _get_razorpay_credentials():
+    key_id = os.environ.get("RAZORPAY_KEY_ID", "").strip()
+    key_secret = os.environ.get("RAZORPAY_KEY_SECRET", "").strip()
+    if not key_id or not key_secret:
+        raise RuntimeError("Razorpay credentials are not configured.")
+    return key_id, key_secret
+
+
+def _create_razorpay_order(payload):
+    key_id, key_secret = _get_razorpay_credentials()
+    auth_token = base64.b64encode(f"{key_id}:{key_secret}".encode("utf-8")).decode("ascii")
+    req = urllib_request.Request(
+        "https://api.razorpay.com/v1/orders",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Basic {auth_token}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
+    try:
+        with urllib_request.urlopen(req, timeout=15) as response:
+            return json.loads(response.read().decode("utf-8")), key_id
+    except urllib_error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="ignore")
+        try:
+            detail = json.loads(body)
+        except json.JSONDecodeError:
+            detail = body or "Razorpay order creation failed."
+        raise ValueError(detail) from exc
+
+
+def _build_team_registration_receipt_token(registration):
+    return signing.dumps(
+        {
+            "registration_id": registration.pk,
+            "payment_id": registration.payment_id,
+        },
+        salt="team-registration-receipt",
+    )
+
+
+def _build_team_registration_receipt_url(request, registration):
+    token = _build_team_registration_receipt_token(registration)
+    return request.build_absolute_uri(
+        f"{reverse('register-receipt-download', args=[registration.pk])}?token={token}"
+    )
+
+
+def _build_team_registration_response(request, registration):
+    return {
+        "id": registration.pk,
+        "team_name": registration.team_name,
+        "captain_name": registration.captain_name,
+        "phone": registration.phone,
+        "whatsapp_number": registration.whatsapp_number,
+        "player_count": registration.player_count,
+        "address": registration.address,
+        "payment_id": registration.payment_id,
+        "payment_order_id": registration.payment_order_id,
+        "payment_amount_paise": registration.payment_amount_paise,
+        "payment_currency": registration.payment_currency,
+        "payment_confirmed": True,
+        "created_at": registration.created_at.isoformat(),
+        "receipt_download_url": _build_team_registration_receipt_url(
+            request,
+            registration,
+        ),
+    }
+
+
+def _generate_team_registration_receipt_pdf(registration) -> bytes:
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+
+    accent = HexColor("#15803d")
+    dark = HexColor("#0f172a")
+    muted = HexColor("#475569")
+    border = HexColor("#cbd5e1")
+    light = HexColor("#f8fafc")
+
+    pdf.setTitle(f"HBPL Payment Receipt - {registration.payment_id or registration.pk}")
+
+    pdf.setStrokeColor(border)
+    pdf.setFillColor(light)
+    pdf.roundRect(36, height - 310, width - 72, 250, 14, stroke=1, fill=1)
+
+    pdf.setFillColor(accent)
+    pdf.setFont("Helvetica-Bold", 22)
+    pdf.drawString(48, height - 88, "HBPL Payment Receipt")
+
+    pdf.setFillColor(dark)
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawString(48, height - 116, f"Team ID: HBPL-{registration.pk}")
+    pdf.drawRightString(
+        width - 48,
+        height - 116,
+        f"Receipt Date: {registration.created_at.strftime('%d %b %Y, %I:%M %p')}",
+    )
+
+    lines = [
+        ("Team Name", registration.team_name),
+        ("Captain Name", registration.captain_name),
+        ("Mobile Number", registration.phone),
+        ("WhatsApp Number", registration.whatsapp_number or "-"),
+        ("Village Name", registration.address or "-"),
+        ("Players", str(registration.player_count)),
+        ("Payment Status", "Confirmed"),
+        ("Payment ID", registration.payment_id or "-"),
+        ("Order ID", registration.payment_order_id or "-"),
+        (
+            "Amount Paid",
+            f"{registration.payment_currency} {registration.payment_amount_paise / 100:.2f}",
+        ),
+    ]
+
+    y = height - 148
+    for label, value in lines:
+        pdf.setFillColor(muted)
+        pdf.setFont("Helvetica-Bold", 10)
+        pdf.drawString(52, y, label)
+        pdf.setFillColor(dark)
+        pdf.setFont("Helvetica", 11)
+        pdf.drawString(190, y, value)
+        y -= 20
+
+    pdf.setFillColor(muted)
+    pdf.setFont("Helvetica", 9)
+    pdf.drawString(
+        48,
+        height - 340,
+        "This receipt confirms successful payment for HBPL team registration via Razorpay.",
+    )
+    pdf.drawString(
+        48,
+        height - 355,
+        "Keep this document for future reference.",
+    )
+
+    pdf.showPage()
+    pdf.save()
+    return buffer.getvalue()
 
 
 
@@ -109,7 +271,7 @@ class StaffWithModelPermissions(DjangoModelPermissions):
 
 
 class TeamListView(generics.ListAPIView):
-    queryset = Team.objects.all()
+    queryset = TeamRegistration.objects.filter(is_approved=True).order_by("-created_at")
     serializer_class = TeamSerializer
 
 
@@ -139,9 +301,118 @@ class VolunteerListView(generics.ListAPIView):
     serializer_class = VolunteerSerializer
 
 
+class TeamRegistrationPaymentOrderView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = TeamRegistrationPaymentOrderSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        validated = serializer.validated_data
+
+        try:
+            order, key_id = _create_razorpay_order(
+                {
+                    "amount": TEAM_REGISTRATION_FEE_PAISE,
+                    "currency": "INR",
+                    "receipt": f"team-{secrets.token_hex(6)}",
+                    "notes": {
+                        "team_name": validated["team_name"],
+                        "captain_name": validated["captain_name"],
+                        "phone": validated["phone"],
+                    },
+                }
+            )
+        except RuntimeError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except ValueError as exc:
+            return Response({"detail": exc.args[0]}, status=status.HTTP_502_BAD_GATEWAY)
+
+        payment_context_token = signing.dumps(
+            {
+                "order_id": order["id"],
+                "amount": order["amount"],
+                "currency": order["currency"],
+                "team_name": validated["team_name"],
+                "captain_name": validated["captain_name"],
+                "phone": validated["phone"],
+                "whatsapp_number": validated["whatsapp_number"],
+                "player_count": validated["player_count"],
+                "address": validated["address"],
+            },
+            salt="team-registration-payment",
+        )
+
+        return Response(
+            {
+                "key": key_id,
+                "order_id": order["id"],
+                "amount": order["amount"],
+                "currency": order["currency"],
+                "name": "HBPL",
+                "description": "HBPL Team Registration",
+                "payment_context_token": payment_context_token,
+            }
+        )
+
+
 class TeamRegistrationCreateView(generics.CreateAPIView):
     queryset = TeamRegistration.objects.all()
     serializer_class = TeamRegistrationSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        registration = serializer.save()
+        return Response(
+            _build_team_registration_response(request, registration),
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class TeamRegistrationReceiptDownloadView(APIView):
+    def get(self, request, pk, *args, **kwargs):
+        token = request.query_params.get("token", "").strip()
+        if not token:
+            return Response(
+                {"detail": "Receipt token is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            receipt_context = signing.loads(
+                token,
+                salt="team-registration-receipt",
+            )
+        except signing.BadSignature:
+            return Response(
+                {"detail": "Receipt link is invalid."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if receipt_context.get("registration_id") != pk:
+            return Response(
+                {"detail": "Receipt link does not match this registration."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        registration = TeamRegistration.objects.filter(pk=pk).first()
+        if registration is None:
+            return Response(
+                {"detail": "Registration not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if receipt_context.get("payment_id") != registration.payment_id:
+            return Response(
+                {"detail": "Receipt link is no longer valid."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        pdf_bytes = _generate_team_registration_receipt_pdf(registration)
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = (
+            f'attachment; filename="hbpl_receipt_{registration.pk}.pdf"'
+        )
+        return response
 
 
 class ExamRegistrationCreateView(generics.CreateAPIView):
@@ -357,6 +628,8 @@ class AdminExamListView(generics.ListAPIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminExamRegistrationSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name', 'description', 'class_name', 'school_name', 'examination_center', 'roll_number', 'phone', 'email']
 
     def get_queryset(self):
         return ExamRegistration.objects.all().order_by("-created_at")
@@ -416,14 +689,26 @@ class AdminTeamListCreateView(generics.ListCreateAPIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminTeamSerializer
-    queryset = Team.objects.all()
+    queryset = TeamRegistration.objects.all()
 
 
 class AdminTeamDetailView(generics.RetrieveUpdateDestroyAPIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminTeamSerializer
-    queryset = Team.objects.all()
+    queryset = TeamRegistration.objects.all()
+
+
+class AdminTeamRegistrationListView(generics.ListAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    serializer_class = AdminTeamRegistrationSerializer
+    queryset = TeamRegistration.objects.all().order_by("-created_at", "-id")
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["request"] = self.request
+        return context
 
 
 class AdminMatchListCreateView(generics.ListCreateAPIView):

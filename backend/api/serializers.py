@@ -1,9 +1,12 @@
-from .models import Complaint
+import hashlib
+import hmac
+import os
 
-
+from django.core import signing
+from django.urls import reverse
 from rest_framework import serializers
+from .models import Complaint
 from .models import (
-    Team,
     Match,
     ManagementMember,
     GalleryImage,
@@ -27,8 +30,8 @@ class ComplaintSerializer(serializers.ModelSerializer):
         
 class TeamSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Team
-        fields = ["id", "name", "captain", "description"]
+        model = TeamRegistration
+        fields = ["id", "team_name", "captain_name", "address", "team_image"]
 
 
 class MatchSerializer(serializers.ModelSerializer):
@@ -83,15 +86,129 @@ class VolunteerSerializer(serializers.ModelSerializer):
         return request.build_absolute_uri(obj.image.url) if request else obj.image.url
 
 
-class TeamRegistrationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = TeamRegistration
-        fields = ["team_name", "captain_name", "email", "phone", "player_count", "message"]
+class TeamRegistrationPaymentOrderSerializer(serializers.Serializer):
+    team_name = serializers.CharField(max_length=50)
+    captain_name = serializers.CharField(max_length=100)
+    phone = serializers.CharField(max_length=15)
+    whatsapp_number = serializers.CharField(max_length=15)
+    player_count = serializers.IntegerField()
+    address = serializers.CharField(max_length=150)
+
+    def validate_phone(self, value):
+        digits = value.strip()
+        if len(digits) < 10:
+            raise serializers.ValidationError("Enter a valid mobile number.")
+        return digits
+
+    def validate_whatsapp_number(self, value):
+        digits = value.strip()
+        if len(digits) < 10:
+            raise serializers.ValidationError("Enter a valid WhatsApp number.")
+        return digits
 
     def validate_player_count(self, value):
-        if value < 11 or value > 15:
-            raise serializers.ValidationError("Squad must have 11–15 players.")
+        if value < 11 or value > 25:
+            raise serializers.ValidationError("Squad must have 11-25 players.")
         return value
+
+
+class TeamRegistrationSerializer(serializers.ModelSerializer):
+    payment_context_token = serializers.CharField(write_only=True)
+    razorpay_order_id = serializers.CharField(write_only=True)
+    razorpay_payment_id = serializers.CharField(write_only=True)
+    razorpay_signature = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = TeamRegistration
+        fields = [
+            "id",
+            "team_name",
+            "captain_name",
+            "email",
+            "phone",
+            "whatsapp_number",
+            "player_count",
+            "address",
+            "message",
+            "team_list",
+            "payment_context_token",
+            "razorpay_order_id",
+            "razorpay_payment_id",
+            "razorpay_signature",
+            "created_at",
+            "team_image",
+        ]
+        read_only_fields = ["id", "created_at"]
+        extra_kwargs = {
+            "email": {"required": False, "allow_blank": True},
+            "whatsapp_number": {"required": False, "allow_blank": True},
+            "address": {"required": False, "allow_blank": True},
+            "message": {"required": False, "allow_blank": True},
+            "team_list": {"required": True, "allow_null": False, "write_only": True},
+        }
+
+    def validate_player_count(self, value):
+        if value < 11 or value > 25:
+            raise serializers.ValidationError("Squad must have 11-25 players.")
+        return value
+
+    def validate(self, attrs):
+        token = attrs["payment_context_token"]
+
+        try:
+            payment_context = signing.loads(
+                token,
+                salt="team-registration-payment",
+                max_age=30 * 60,
+            )
+        except signing.BadSignature as exc:
+            raise serializers.ValidationError("Payment session is invalid or expired.") from exc
+
+        if attrs["razorpay_order_id"] != payment_context["order_id"]:
+            raise serializers.ValidationError("Payment order mismatch.")
+
+        field_map = {
+            "team_name": "team_name",
+            "captain_name": "captain_name",
+            "phone": "phone",
+            "whatsapp_number": "whatsapp_number",
+            "player_count": "player_count",
+            "address": "address",
+        }
+        for model_field, signed_field in field_map.items():
+            if attrs[model_field] != payment_context[signed_field]:
+                raise serializers.ValidationError(f"{model_field} does not match the payment session.")
+
+        if TeamRegistration.objects.filter(payment_id=attrs["razorpay_payment_id"]).exists():
+            raise serializers.ValidationError("This payment has already been used.")
+
+        key_secret = os.environ.get("RAZORPAY_KEY_SECRET", "").strip()
+        if not key_secret:
+            raise serializers.ValidationError("Razorpay is not configured on the server.")
+
+        generated_signature = hmac.new(
+            key_secret.encode("utf-8"),
+            f"{payment_context['order_id']}|{attrs['razorpay_payment_id']}".encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+
+        if generated_signature != attrs["razorpay_signature"]:
+            raise serializers.ValidationError("Payment verification failed.")
+
+        attrs["verified_payment_order_id"] = payment_context["order_id"]
+        attrs["verified_payment_amount_paise"] = payment_context["amount"]
+        attrs["verified_payment_currency"] = payment_context["currency"]
+        return attrs
+
+    def create(self, validated_data):
+        validated_data.pop("payment_context_token", None)
+        validated_data.pop("razorpay_order_id", None)
+        validated_data["payment_order_id"] = validated_data.pop("verified_payment_order_id")
+        validated_data["payment_id"] = validated_data.pop("razorpay_payment_id")
+        validated_data["payment_signature"] = validated_data.pop("razorpay_signature")
+        validated_data["payment_amount_paise"] = validated_data.pop("verified_payment_amount_paise")
+        validated_data["payment_currency"] = validated_data.pop("verified_payment_currency")
+        return super().create(validated_data)
 
 
 class ExamRegistrationCreateSerializer(serializers.ModelSerializer):
@@ -487,8 +604,52 @@ class AdminManagementMemberSerializer(serializers.ModelSerializer):
 
 class AdminTeamSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Team
-        fields = ["id", "name", "captain", "description"]
+        model = TeamRegistration
+        fields = '__all__'
+
+
+class AdminTeamRegistrationSerializer(serializers.ModelSerializer):
+    team_list_url = serializers.SerializerMethodField(read_only=True)
+    receipt_download_url = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = TeamRegistration
+        fields = [
+            "id",
+            "team_name",
+            "captain_name",
+            "phone",
+            "whatsapp_number",
+            "player_count",
+            "address",
+            "payment_id",
+            "payment_order_id",
+            "payment_amount_paise",
+            "payment_currency",
+            "team_list_url",
+            "receipt_download_url",
+            "created_at",
+        ]
+
+    def get_team_list_url(self, obj):
+        if not obj.team_list:
+            return None
+        request = self.context.get("request")
+        return request.build_absolute_uri(obj.team_list.url) if request else obj.team_list.url
+
+    def get_receipt_download_url(self, obj):
+        if not obj.payment_id:
+            return None
+        token = signing.dumps(
+            {
+                "registration_id": obj.pk,
+                "payment_id": obj.payment_id,
+            },
+            salt="team-registration-receipt",
+        )
+        path = f"{reverse('register-receipt-download', args=[obj.pk])}?token={token}"
+        request = self.context.get("request")
+        return request.build_absolute_uri(path) if request else path
 
 
 class AdminMatchSerializer(serializers.ModelSerializer):

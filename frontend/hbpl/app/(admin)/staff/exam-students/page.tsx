@@ -197,7 +197,8 @@ export default function AdminExamStudentsPage() {
 		student.mother_name.toLowerCase().includes(search.toLowerCase()) ||
 		student.roll_number.toLowerCase().includes(search.toLowerCase()) ||
 		student.school_name.toLowerCase().includes(search.toLowerCase()) ||
-		student.phone.toLowerCase().includes(search.toLowerCase()),
+		student.phone.toLowerCase().includes(search.toLowerCase()) ||
+		student.class_name.toLowerCase().includes(search.toLowerCase())
 	);
 
 	const mappingTargets = [

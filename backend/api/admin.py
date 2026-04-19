@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.shortcuts import redirect
 from django.urls import path
 from .models import (
-    Team, Match, ManagementMember, GalleryImage, Volunteer,
+ Match, ManagementMember, GalleryImage, Volunteer,
     TeamRegistration, ExamRegistration, ExamSettings,Complaint
 )
 
@@ -14,10 +14,6 @@ class ComplaintAdmin(admin.ModelAdmin):
     search_fields = ["name", "roll_number", "registration__roll_number", "message"]
     readonly_fields = ["created_at"]
 
-@admin.register(Team)
-class TeamAdmin(admin.ModelAdmin):
-    list_display = ["name", "captain"]
-    search_fields = ["name", "captain"]
 
 
 @admin.register(Match)
@@ -47,8 +43,9 @@ class VolunteerAdmin(admin.ModelAdmin):
 
 @admin.register(TeamRegistration)
 class TeamRegistrationAdmin(admin.ModelAdmin):
-    list_display = ["team_name", "captain_name", "email", "phone", "player_count", "created_at"]
+    list_display = ["team_name", "captain_name", "phone", "payment_id", "player_count", "created_at"]
     list_filter = ["created_at"]
+    search_fields = ["team_name", "captain_name", "phone", "whatsapp_number", "address", "payment_id", "payment_order_id"]
     readonly_fields = ["created_at"]
 
 

@@ -13,6 +13,8 @@ const Teams = () => {
     queryFn: fetchTeams,
   });
 
+  console.log(teams)
+
   const handleTeamClick = (teamName: string) => {
     toast({
       title: "Team Profile",
@@ -61,10 +63,11 @@ const Teams = () => {
               style={{ animationDelay: `${index * 0.05}s` }}
             >
               <TeamCard
-                name={team.name}
-                captain={team.captain}
-                description={team.description}
-                onClick={() => handleTeamClick(team.name)}
+                name={team.team_name}
+                captain={team.captain_name}
+                description={team.address}
+                logo={team.team_image || undefined}
+                onClick={() => handleTeamClick(team.team_name)}
               />
             </div>
           ))}

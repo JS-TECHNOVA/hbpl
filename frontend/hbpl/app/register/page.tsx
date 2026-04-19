@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Register from "../../src/screens/Register";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Register Team | HBPL Team Registration",
@@ -23,5 +23,5 @@ export const metadata: Metadata = {
 };
 
 export default function RegisterPage() {
-  return <Register />;
+  redirect("/team-registration");
 }

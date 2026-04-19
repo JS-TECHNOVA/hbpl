@@ -1,5 +1,7 @@
 from django.urls import path
 from . import views
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     # ── Public endpoints ──────────────────────────────────────────────────────
@@ -8,7 +10,9 @@ urlpatterns = [
     path("management/", views.ManagementListView.as_view(), name="management-list"),
     path("gallery/", views.GalleryListView.as_view(), name="gallery-list"),
     path("volunteers/", views.VolunteerListView.as_view(), name="volunteer-list"),
+    path("register/payment-order/", views.TeamRegistrationPaymentOrderView.as_view(), name="register-payment-order"),
     path("register/", views.TeamRegistrationCreateView.as_view(), name="register"),
+    path("register/<int:pk>/receipt/", views.TeamRegistrationReceiptDownloadView.as_view(), name="register-receipt-download"),
     path("exam/registrations/", views.ExamRegistrationCreateView.as_view(), name="exam-registration-create"),
     path("exam/results/lookup/", views.ExamResultLookupView.as_view(), name="exam-result-lookup"),
     path("exam/results/admit-card/download/", views.ExamAdmitCardDownloadView.as_view(), name="exam-admit-card-download"),
@@ -43,6 +47,7 @@ urlpatterns += [
     path("admin/management/<int:pk>/", views.AdminManagementDetailView.as_view(), name="admin-management-detail"),
     path("admin/teams/", views.AdminTeamListCreateView.as_view(), name="admin-team-list"),
     path("admin/teams/<int:pk>/", views.AdminTeamDetailView.as_view(), name="admin-team-detail"),
+    path("admin/team-registrations/", views.AdminTeamRegistrationListView.as_view(), name="admin-team-registration-list"),
     path("admin/matches/", views.AdminMatchListCreateView.as_view(), name="admin-match-list"),
     path("admin/matches/<int:pk>/", views.AdminMatchDetailView.as_view(), name="admin-match-detail"),
     path("admin/exam/important-dates/", views.AdminExamImportantDateListCreateView.as_view(), name="admin-exam-important-date-list"),
@@ -60,3 +65,7 @@ urlpatterns += [
     path("admin/exam/toppers/", views.AdminExamTopperListCreateView.as_view(), name="admin-exam-topper-list"),
     path("admin/exam/toppers/<int:pk>/", views.AdminExamTopperDetailView.as_view(), name="admin-exam-topper-detail"),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

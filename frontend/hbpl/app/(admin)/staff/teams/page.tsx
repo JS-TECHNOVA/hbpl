@@ -25,6 +25,7 @@ import {
 	adminCreateTeam,
 	adminDeleteTeam,
 	adminFetchTeams,
+	adminFetchTeamRegistrations,
 	adminUpdateTeam,
 	type AdminTeam,
 } from '@/lib/api';
@@ -39,20 +40,12 @@ export default function AdminTeamsPage() {
 	const [deleting, setDeleting] = useState<AdminTeam | null>(null);
 	const [form, setForm] = useState({ name: '', captain: '', description: '' });
 
-	const { data: teams = [], isLoading } = useQuery({
-		queryKey: ['admin-teams', token],
-		queryFn: () => adminFetchTeams(token),
+	const { data: registrations = [], isLoading: registrationsLoading } = useQuery({
+		queryKey: ['admin-team-registrations', token],
+		queryFn: () => adminFetchTeamRegistrations(token),
+		enabled: can('api.view_teamregistration') || userHasImplicitAccess(can),
 	});
 
-	const openNew = () => {
-		setForm({ name: '', captain: '', description: '' });
-		setEditing('new');
-	};
-
-	const openEdit = (team: AdminTeam) => {
-		setForm({ name: team.name, captain: team.captain, description: team.description });
-		setEditing(team);
-	};
 
 	const saveMutation = useMutation({
 		mutationFn: () => {
@@ -77,100 +70,80 @@ export default function AdminTeamsPage() {
 		},
 	});
 
-	const deleteMutation = useMutation({
-		mutationFn: (id: number) => adminDeleteTeam(token, id),
-		onSuccess: () => {
-			void queryClient.invalidateQueries({ queryKey: ['admin-teams'] });
-			void queryClient.invalidateQueries({ queryKey: ['teams'] });
-			setDeleting(null);
-			toast({ title: 'Deleted' });
-		},
-		onError: (error) => {
-			toast({
-				title: 'Error',
-				description: error instanceof Error ? error.message : 'Delete failed',
-				variant: 'destructive',
-			});
-		},
-	});
 
 	return (
-		<div className="space-y-4">
-			<SectionHeader
-				title="Teams"
-				action={
-					<Button size="sm" onClick={openNew} disabled={!can('api.add_team')}>
-						<Plus className="w-4 h-4 mr-1" />
-						Add
-					</Button>
-				}
-			/>
-			{isLoading ? (
-				<LoadingBlock />
-			) : (
-				<div className="bg-white dark:bg-gray-900 rounded-xl border dark:border-gray-800 overflow-hidden">
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead>Team Name</TableHead>
-								<TableHead>Captain</TableHead>
-								<TableHead />
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{teams.map((team) => (
-								<TableRow key={team.id}>
-									<TableCell className="font-medium">{team.name}</TableCell>
-									<TableCell className="text-gray-500">{team.captain}</TableCell>
-									<TableCell className="text-right space-x-2">
-										<Button size="sm" variant="ghost" onClick={() => openEdit(team)} disabled={!can('api.change_team')}>
-											<Pencil className="w-4 h-4" />
-										</Button>
-										<Button size="sm" variant="ghost" className="text-red-500" onClick={() => setDeleting(team)} disabled={!can('api.delete_team')}>
-											<Trash2 className="w-4 h-4" />
-										</Button>
-									</TableCell>
-								</TableRow>
-							))}
-						</TableBody>
-					</Table>
-				</div>
-			)}
-			{editing ? (
-				<Dialog open onOpenChange={() => setEditing(null)}>
-					<DialogContent className="max-w-md">
-						<DialogHeader>
-							<DialogTitle>{editing === 'new' ? 'Add Team' : 'Edit Team'}</DialogTitle>
-						</DialogHeader>
-						<div className="space-y-3">
-							<div>
-								<label className="block text-sm font-medium mb-1">Team Name</label>
-								<Input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
-							</div>
-							<div>
-								<label className="block text-sm font-medium mb-1">Captain</label>
-								<Input value={form.captain} onChange={(event) => setForm({ ...form, captain: event.target.value })} />
-							</div>
-							<div>
-								<label className="block text-sm font-medium mb-1">Description</label>
-								<Textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={3} />
-							</div>
-							<div className="flex gap-3 pt-2">
-								<Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="flex-1">
-									{saveMutation.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
-									Save
-								</Button>
-								<Button variant="outline" onClick={() => setEditing(null)} className="flex-1">
-									Cancel
-								</Button>
-							</div>
+		<div className="space-y-4">			
+			{can('api.view_teamregistration') || userHasImplicitAccess(can) ? (
+				<div className="space-y-3">
+					<SectionHeader title="Team Registrations" />
+					{registrationsLoading ? (
+						<LoadingBlock />
+					) : (
+						<div className="bg-white dark:bg-gray-900 rounded-xl border dark:border-gray-800 overflow-hidden">
+							<Table>
+								<TableHeader>
+									<TableRow>
+										<TableHead>Submitted</TableHead>
+										<TableHead>Team</TableHead>
+										<TableHead>Captain</TableHead>
+										<TableHead>Village</TableHead>
+										<TableHead>Phone</TableHead>
+										<TableHead>Payment</TableHead>
+										<TableHead>Files</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{registrations.length ? registrations.map((registration) => (
+										<TableRow key={registration.id}>
+											<TableCell className="text-gray-500 whitespace-nowrap">
+												{new Date(registration.created_at).toLocaleString('en-IN')}
+											</TableCell>
+											<TableCell className="font-medium">
+												<div>{registration.team_name}</div>
+												<div className="text-xs text-gray-500">{registration.player_count} players</div>
+											</TableCell>
+											<TableCell>{registration.captain_name}</TableCell>
+											<TableCell>{registration.address}</TableCell>
+											<TableCell>
+												<div>{registration.phone}</div>
+												<div className="text-xs text-gray-500">{registration.whatsapp_number}</div>
+											</TableCell>
+											<TableCell>
+												<div className="font-medium">{registration.payment_id || '-'}</div>
+												<div className="text-xs text-gray-500">
+													{registration.payment_currency} {(registration.payment_amount_paise / 100).toFixed(2)}
+												</div>
+											</TableCell>
+											<TableCell className="space-x-3 whitespace-nowrap">
+												{registration.team_list_url ? (
+													<a href={registration.team_list_url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
+														Team List
+													</a>
+												) : null}
+												{registration.receipt_download_url ? (
+													<a href={registration.receipt_download_url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
+														Receipt
+													</a>
+												) : null}
+											</TableCell>
+										</TableRow>
+									)) : (
+										<TableRow>
+											<TableCell colSpan={7} className="text-center text-gray-500 py-8">
+												No team registrations yet.
+											</TableCell>
+										</TableRow>
+									)}
+								</TableBody>
+							</Table>
 						</div>
-					</DialogContent>
-				</Dialog>
-			) : null}
-			{deleting ? (
-				<ConfirmDelete label={deleting.name} onConfirm={() => deleteMutation.mutate(deleting.id)} onCancel={() => setDeleting(null)} />
+					)}
+				</div>
 			) : null}
 		</div>
 	);
+}
+
+function userHasImplicitAccess(can: (perm: string) => boolean) {
+	return can('api.add_team') || can('api.change_team') || can('api.delete_team');
 }

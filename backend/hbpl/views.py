@@ -19,7 +19,6 @@ from api.models import (
     GalleryImage,
     ManagementMember,
     Match,
-    Team,
     Volunteer,
 )
 from .forms import ExamRegistrationForm, ExamResultLookupForm, TeamRegistrationForm
@@ -49,7 +48,7 @@ class ManagementView(ListView):
 class TeamsView(ListView):
     template_name = "hbpl/teams.html"
     context_object_name = "teams"
-    model = Team
+
 
 
 class ScheduleView(TemplateView):

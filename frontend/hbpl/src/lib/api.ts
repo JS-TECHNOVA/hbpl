@@ -3,10 +3,11 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://myhbpl.org"
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface Team {
-  id: number;
-  name: string;
-  captain: string;
-  description: string;
+	id: number;
+	team_name: string;
+	captain_name: string;
+	address: string;
+	team_image: string | null;
 }
 
 export interface Match {
@@ -567,6 +568,23 @@ export interface AdminTeam {
   description: string;
 }
 
+export interface AdminTeamRegistration {
+  id: number;
+  team_name: string;
+  captain_name: string;
+  phone: string;
+  whatsapp_number: string;
+  player_count: number;
+  address: string;
+  payment_id: string;
+  payment_order_id: string;
+  payment_amount_paise: number;
+  payment_currency: string;
+  team_list_url: string | null;
+  receipt_download_url: string | null;
+  created_at: string;
+}
+
 export interface AdminMatch {
   id: number;
   stage: string;
@@ -641,6 +659,7 @@ export const adminFetchTeams = (t: string) => adminGet<AdminTeam[]>(t, "/api/adm
 export const adminCreateTeam = (t: string, d: object) => adminPost<AdminTeam>(t, "/api/admin/teams/", d);
 export const adminUpdateTeam = (t: string, id: number, d: object) => adminPatch<AdminTeam>(t, `/api/admin/teams/${id}/`, d);
 export const adminDeleteTeam = (t: string, id: number) => adminDelete(t, `/api/admin/teams/${id}/`);
+export const adminFetchTeamRegistrations = (t: string) => adminGet<AdminTeamRegistration[]>(t, "/api/admin/team-registrations/");
 
 // Matches
 export const adminFetchMatches = (t: string) => adminGet<AdminMatch[]>(t, "/api/admin/matches/");

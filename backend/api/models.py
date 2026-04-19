@@ -17,14 +17,14 @@ class Complaint(models.Model):
         return f"Complaint by {self.name} ({self.roll_number})"
 
 
-class Team(models.Model):
-    name = models.CharField(max_length=200)
-    captain = models.CharField(max_length=200)
-    description = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
+# class Team(models.Model):
+#     name = models.CharField(max_length=200)
+#     captain = models.CharField(max_length=200)
+#     description = models.TextField()
+#     created_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return self.name
+#     def __str__(self):
+#         return self.name
 
 
 class Match(models.Model):
@@ -107,11 +107,25 @@ class Volunteer(models.Model):
 class TeamRegistration(models.Model):
     team_name = models.CharField(max_length=50)
     captain_name = models.CharField(max_length=100)
-    email = models.EmailField(max_length=255)
+    email = models.EmailField(max_length=255, blank=True, default="")
     phone = models.CharField(max_length=15)
+    whatsapp_number = models.CharField(max_length=15, blank=True, default="")
     player_count = models.PositiveSmallIntegerField()
+    address = models.CharField(max_length=150, blank=True, default="")
     message = models.TextField(blank=True)
+    team_list = models.FileField(upload_to="team-registrations/team-lists/", blank=True, null=True)
+    payment_order_id = models.CharField(max_length=100, blank=True, default="")
+    payment_id = models.CharField(max_length=100, blank=True, default="")
+    payment_signature = models.CharField(max_length=255, blank=True, default="")
+    payment_amount_paise = models.PositiveIntegerField(default=0)
+    payment_currency = models.CharField(max_length=10, blank=True, default="INR")
     created_at = models.DateTimeField(auto_now_add=True)
+    team_image = models.ImageField(upload_to="team-registrations/team-images/", blank=True, null=True)
+
+
+    # // admin validation fields
+    is_approved = models.BooleanField(default=False)
+    
 
     def __str__(self):
         return f"{self.team_name} — {self.captain_name}"
