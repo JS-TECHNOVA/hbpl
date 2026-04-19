@@ -35,7 +35,7 @@ export default async function CricketRegistrationPage() {
 				{/* Header */}
 				<div className="text-center mb-8">
 					<span className="inline-block bg-yellow-400 text-slate-900 text-xs font-black uppercase tracking-widest px-4 py-1.5 rounded-full mb-4">
-						🏏 HBPL 2025
+						🏏 HBPL 2026
 					</span>
 					<h1 className="text-4xl sm:text-5xl font-black text-white uppercase tracking-tight mb-3">
 						Cricket Team Registration
