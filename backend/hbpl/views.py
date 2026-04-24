@@ -29,7 +29,7 @@ class HomeView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["team_count"] = Team.objects.count()
+        # context["team_count"] = Team.objects.count()
         context["student_count"] = ExamRegistration.objects.count()
         context["next_match_date"] = date(2026, 6, 10)
         return context

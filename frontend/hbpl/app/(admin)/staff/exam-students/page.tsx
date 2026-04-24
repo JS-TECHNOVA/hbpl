@@ -45,6 +45,9 @@ export default function AdminExamStudentsPage() {
 	const resultFileRef = useRef<HTMLInputElement>(null);
 	const importFileRef = useRef<HTMLInputElement>(null);
 	const [search, setSearch] = useState('');
+	const [filterClass, setFilterClass] = useState('');
+	const [filterSchool, setFilterSchool] = useState('');
+	const [filterStatus, setFilterStatus] = useState('');
 	const [isImportOpen, setIsImportOpen] = useState(false);
 	const [importFile, setImportFile] = useState<File | null>(null);
 	const [importScan, setImportScan] = useState<AdminStudentImportScanResult | null>(null);
@@ -191,15 +194,27 @@ export default function AdminExamStudentsPage() {
 		return formData;
 	};
 
-	const filteredStudents = students.filter((student) =>
-		student.full_name.toLowerCase().includes(search.toLowerCase()) ||
-		student.father_name.toLowerCase().includes(search.toLowerCase()) ||
-		student.mother_name.toLowerCase().includes(search.toLowerCase()) ||
-		student.roll_number.toLowerCase().includes(search.toLowerCase()) ||
-		student.school_name.toLowerCase().includes(search.toLowerCase()) ||
-		student.phone.toLowerCase().includes(search.toLowerCase()) ||
-		student.class_name.toLowerCase().includes(search.toLowerCase())
-	);
+	const uniqueClasses = [...new Set(students.map((s) => s.class_name).filter(Boolean))].sort();
+	const uniqueSchools = [...new Set(students.map((s) => s.school_name).filter(Boolean))].sort();
+
+	const filteredStudents = students.filter((student) => {
+		const q = search.toLowerCase();
+		const matchesSearch =
+			!q ||
+			student.full_name.toLowerCase().includes(q) ||
+			student.father_name.toLowerCase().includes(q) ||
+			student.mother_name.toLowerCase().includes(q) ||
+			student.roll_number.toLowerCase().includes(q) ||
+			student.school_name.toLowerCase().includes(q) ||
+			student.phone.toLowerCase().includes(q) ||
+			student.class_name.toLowerCase().includes(q);
+		const matchesClass = !filterClass || student.class_name === filterClass;
+		const matchesSchool = !filterSchool || student.school_name === filterSchool;
+		const matchesStatus = !filterStatus || student.result_status === filterStatus;
+		return matchesSearch && matchesClass && matchesSchool && matchesStatus;
+	});
+
+	const hasActiveFilters = filterClass !== '' || filterSchool !== '' || filterStatus !== '';
 
 	const mappingTargets = [
 		'full_name',
@@ -235,7 +250,8 @@ export default function AdminExamStudentsPage() {
 				))}
 			</div>
 			<div className="bg-white dark:bg-gray-900 rounded-xl border dark:border-gray-800">
-				<div className="p-4 border-b dark:border-gray-800 flex items-center justify-between gap-3">
+				<div className="p-4 border-b dark:border-gray-800 space-y-3">
+				<div className="flex items-center justify-between gap-3">
 					<Input
 						value={search}
 						onChange={(event) => setSearch(event.target.value)}
@@ -281,7 +297,50 @@ export default function AdminExamStudentsPage() {
 						</Button>
 					</div>
 				</div>
-				{isLoading ? (
+				<div className="flex flex-wrap items-center gap-2">
+					<select
+						value={filterClass}
+						onChange={(e) => setFilterClass(e.target.value)}
+						className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+					>
+						<option value="">All Classes</option>
+						{uniqueClasses.map((c) => (
+							<option key={c} value={c}>{c}</option>
+						))}
+					</select>
+					<select
+						value={filterSchool}
+						onChange={(e) => setFilterSchool(e.target.value)}
+						className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+					>
+						<option value="">All Schools</option>
+						{uniqueSchools.map((s) => (
+							<option key={s} value={s}>{s}</option>
+						))}
+					</select>
+					<select
+						value={filterStatus}
+						onChange={(e) => setFilterStatus(e.target.value)}
+						className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+					>
+						<option value="">All Statuses</option>
+						<option value="pending">Pending</option>
+						<option value="published">Published</option>
+					</select>
+					{hasActiveFilters && (
+						<button
+							onClick={() => { setFilterClass(''); setFilterSchool(''); setFilterStatus(''); }}
+							className="text-xs text-blue-500 hover:underline"
+						>
+							Clear filters
+						</button>
+					)}
+					{hasActiveFilters && (
+						<span className="text-xs text-gray-400">{filteredStudents.length} of {students.length} shown</span>
+					)}
+				</div>
+			</div>
+			{isLoading ? (
 					<LoadingBlock />
 				) : (
 					<div className="overflow-x-auto">

@@ -629,10 +629,23 @@ class AdminExamListView(generics.ListAPIView):
     permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminExamRegistrationSerializer
     filter_backends = [filters.SearchFilter]
-    search_fields = ['name', 'description', 'class_name', 'school_name', 'examination_center', 'roll_number', 'phone', 'email']
+    search_fields = ['full_name', 'father_name', 'mother_name', 'class_name', 'school_name', 'examination_center', 'roll_number', 'phone', 'email']
 
     def get_queryset(self):
-        return ExamRegistration.objects.all().order_by("-created_at")
+        qs = ExamRegistration.objects.all().order_by("-created_at")
+        class_name = self.request.query_params.get("class_name")
+        school_name = self.request.query_params.get("school_name")
+        result_status = self.request.query_params.get("result_status")
+        examination_center = self.request.query_params.get("examination_center")
+        if class_name:
+            qs = qs.filter(class_name__iexact=class_name)
+        if school_name:
+            qs = qs.filter(school_name__iexact=school_name)
+        if result_status:
+            qs = qs.filter(result_status=result_status)
+        if examination_center:
+            qs = qs.filter(examination_center__iexact=examination_center)
+        return qs
 
 
 class AdminExamDetailView(generics.RetrieveUpdateAPIView):
