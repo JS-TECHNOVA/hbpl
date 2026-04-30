@@ -75,7 +75,10 @@ from .serializers import (
     AdminExamFaqSerializer,
     AdminExamTopperSerializer,
     ComplaintSerializer,
+    ComplaintCreateSerializer,
+    AdminComplaintSerializer,
 )
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
 
@@ -232,19 +235,57 @@ def _generate_team_registration_receipt_pdf(registration) -> bytes:
 # Admin: List all complaints
 class AdminComplaintListAPIView(generics.ListAPIView):
     queryset = Complaint.objects.select_related("registration").all().order_by("-created_at")
-    serializer_class = ComplaintSerializer
+    serializer_class = AdminComplaintSerializer
     permission_classes = [IsAdminUser]
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context["request"] = self.request
         return context
-    
-# Complaint submission API
+
+
+# Admin: Retrieve + update a single complaint (status / admin_note)
+class AdminComplaintDetailAPIView(generics.RetrieveUpdateAPIView):
+    queryset = Complaint.objects.select_related("registration").all()
+    serializer_class = AdminComplaintSerializer
+    permission_classes = [IsAdminUser]
+    http_method_names = ["get", "patch", "head", "options"]
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["request"] = self.request
+        return context
+
+
+# Public: Check grievance status by roll number
+class ExamComplaintStatusView(APIView):
+    """Returns a student's own complaints (status + admin note) looked up by roll number."""
+    def get(self, request):
+        roll_number = request.query_params.get("roll_number", "").strip().upper()
+        if not roll_number:
+            return Response({"detail": "roll_number is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        complaints = Complaint.objects.filter(
+            roll_number__iexact=roll_number
+        ).order_by("-created_at").values(
+            "id", "message", "status", "admin_note", "created_at"
+        )
+        return Response(list(complaints))
+
+
+# Public: Complaint submission
 class ComplaintCreateAPIView(generics.CreateAPIView):
-    serializer_class = ComplaintSerializer
+    serializer_class = ComplaintCreateSerializer
     parser_classes = [MultiPartParser, FormParser]
-    queryset = ComplaintSerializer.Meta.model.objects.all()
+    queryset = Complaint.objects.all()
+
+    def perform_create(self, serializer):
+        roll_number = serializer.validated_data.get("roll_number", "")
+        try:
+            registration = ExamRegistration.objects.get(roll_number=roll_number)
+        except ExamRegistration.DoesNotExist:
+            raise DRFValidationError({"roll_number": "No exam registration found for this roll number."})
+        serializer.save(registration=registration)
 
 class IsStaffUser(BasePermission):
     """Allows access only to Django staff users authenticated via token."""
@@ -1179,4 +1220,204 @@ class AdminExamImportStudentsView(APIView):
             }
         )
 
-        return response
+
+class AdminExamImportMarksView(APIView):
+    """Scan and import marks/rank from CSV/XLSX, matching students by roll number.
+    Never creates new records and never publishes results."""
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+
+    IMPORTABLE_FIELDS = {"roll_number", "marks_obtained", "total_marks", "rank", "remarks"}
+
+    SYNONYMS = {
+        "roll_number": {"roll", "rollno", "rollnumber", "roll_no", "rollno"},
+        "marks_obtained": {"marks", "score", "obtained", "marksobtained", "marksscored"},
+        "total_marks": {"total", "outof", "maximum", "maxmarks", "totalmarks", "max"},
+        "rank": {"rank", "position", "ranking", "standing"},
+        "remarks": {"remarks", "grade", "comment", "result", "remark"},
+    }
+
+    @staticmethod
+    def _normalize(label):
+        return "".join(ch for ch in str(label).strip().lower() if ch.isalnum())
+
+    def _parse_file(self, uploaded_file):
+        name = (uploaded_file.name or "").lower()
+        if name.endswith(".csv"):
+            content = uploaded_file.read().decode("utf-8-sig", errors="ignore")
+            rows = list(csv.DictReader(content.splitlines()))
+            headers = list(rows[0].keys()) if rows else []
+            return headers, rows
+        if name.endswith(".xlsx") or name.endswith(".xlsm"):
+            try:
+                load_workbook = __import__("openpyxl").load_workbook
+            except ImportError as exc:
+                raise RuntimeError("openpyxl is required to import Excel files.") from exc
+            wb = load_workbook(uploaded_file, read_only=True, data_only=True)
+            ws = wb.active
+            values = list(ws.values)
+            if not values:
+                return [], []
+            headers = [str(v).strip() if v is not None else "" for v in values[0]]
+            rows = []
+            for row_vals in values[1:]:
+                row = {}
+                for idx, header in enumerate(headers):
+                    row[header] = row_vals[idx] if idx < len(row_vals) else None
+                rows.append(row)
+            return headers, rows
+        raise RuntimeError("Unsupported file format. Please upload CSV or XLSX.")
+
+    def _suggest_mapping(self, headers):
+        normalized_headers = {h: self._normalize(h) for h in headers}
+        mapping = {}
+        for db_field, keywords in self.SYNONYMS.items():
+            for header, norm in normalized_headers.items():
+                if norm == self._normalize(db_field) or norm in keywords:
+                    mapping[header] = db_field
+                    break
+        return mapping
+
+    def _coerce(self, field, value):
+        from decimal import Decimal, InvalidOperation
+        if value is None:
+            return None
+        text = str(value).strip()
+        if not text or text.lower() in ("none", "null", "-", "n/a"):
+            return None
+        if field == "roll_number":
+            return text.upper()
+        if field in ("marks_obtained", "total_marks"):
+            try:
+                return Decimal(text)
+            except (InvalidOperation, ValueError):
+                return None
+        if field == "rank":
+            try:
+                return int(float(text))
+            except (ValueError, TypeError):
+                return None
+        return text
+
+    def post(self, request, *args, **kwargs):
+        if not request.user.has_perm("api.change_examregistration"):
+            return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+
+        upload = request.FILES.get("file")
+        if upload is None:
+            return Response({"detail": "Upload a CSV or XLSX file."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            headers, rows = self._parse_file(upload)
+        except RuntimeError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not headers:
+            return Response({"detail": "File has no header row."}, status=status.HTTP_400_BAD_REQUEST)
+
+        dry_run = str(request.data.get("dry_run", "false")).lower() in {"1", "true", "yes"}
+
+        if dry_run:
+            return Response({
+                "headers": headers,
+                "row_count": len(rows),
+                "sample_rows": rows[:5],
+                "suggested_mapping": self._suggest_mapping(headers),
+                "importable_fields": sorted(self.IMPORTABLE_FIELDS),
+            })
+
+        mapping_raw = request.data.get("mapping")
+        if mapping_raw is None:
+            return Response({"detail": "Mapping is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            mapping = json.loads(mapping_raw) if isinstance(mapping_raw, str) else mapping_raw
+        except json.JSONDecodeError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        updated = 0
+        skipped = 0
+        not_found_count = 0
+        errors = []
+
+        for idx, row in enumerate(rows, start=2):
+            payload = {}
+            for excel_col, db_field in mapping.items():
+                if not db_field or db_field not in self.IMPORTABLE_FIELDS:
+                    continue
+                coerced = self._coerce(db_field, row.get(excel_col))
+                if coerced is not None:
+                    payload[db_field] = coerced
+
+            roll_number = payload.pop("roll_number", None)
+            if not roll_number:
+                errors.append({"row": idx, "roll_number": "", "error": "roll_number is required"})
+                continue
+
+            if not payload:
+                skipped += 1
+                continue
+
+            try:
+                student = ExamRegistration.objects.get(roll_number__iexact=roll_number)
+            except ExamRegistration.DoesNotExist:
+                not_found_count += 1
+                errors.append({"row": idx, "roll_number": roll_number, "error": "Student not found"})
+                continue
+
+            changed_fields = []
+            for key, val in payload.items():
+                if getattr(student, key) != val:
+                    setattr(student, key, val)
+                    changed_fields.append(key)
+
+            if changed_fields:
+                student.save(update_fields=changed_fields + ["updated_at"])
+                updated += 1
+            else:
+                skipped += 1
+
+        return Response({
+            "updated": updated,
+            "skipped": skipped,
+            "not_found": not_found_count,
+            "errors": errors[:50],
+            "error_count": len(errors),
+        })
+
+
+class AdminExamUploadTestCopiesView(APIView):
+    """Bulk-upload PDF test copies. Filename (without extension) must equal the student's roll number."""
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, *args, **kwargs):
+        if not request.user.has_perm("api.change_examregistration"):
+            return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+
+        files = request.FILES.getlist("files")
+        if not files:
+            return Response({"detail": "No files uploaded."}, status=status.HTTP_400_BAD_REQUEST)
+
+        uploaded = 0
+        not_found = []
+        errors = []
+
+        for f in files:
+            base_name = os.path.splitext(f.name)[0].strip().upper()
+            try:
+                student = ExamRegistration.objects.get(roll_number__iexact=base_name)
+                student.test_copy = f
+                student.save(update_fields=["test_copy", "updated_at"])
+                uploaded += 1
+            except ExamRegistration.DoesNotExist:
+                not_found.append(base_name)
+            except Exception as exc:
+                errors.append({"file": f.name, "error": str(exc)})
+
+        return Response({
+            "uploaded": uploaded,
+            "not_found": not_found,
+            "errors": errors,
+        })

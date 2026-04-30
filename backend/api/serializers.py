@@ -22,11 +22,47 @@ from .models import (
     ExamTopper,
 )
 
+class ComplaintCreateSerializer(serializers.ModelSerializer):
+    """Used for public complaint submission — registration resolved server-side from roll_number."""
+    class Meta:
+        model = Complaint
+        fields = ["id", "name", "roll_number", "screenshot", "message", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+
 class ComplaintSerializer(serializers.ModelSerializer):
     class Meta:
         model = Complaint
         fields = ["id", "registration", "name", "roll_number", "screenshot", "message", "created_at"]
         read_only_fields = ["id", "created_at"]
+
+
+class AdminComplaintSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(source='registration.full_name', read_only=True)
+    school_name = serializers.CharField(source='registration.school_name', read_only=True)
+    class_name = serializers.CharField(source='registration.class_name', read_only=True)
+    screenshot_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Complaint
+        fields = [
+            "id", "registration", "name", "roll_number",
+            "student_name", "school_name", "class_name",
+            "screenshot", "screenshot_url", "message",
+            "status", "admin_note", "created_at",
+        ]
+        read_only_fields = [
+            "id", "registration", "name", "roll_number",
+            "student_name", "school_name", "class_name",
+            "screenshot", "message", "created_at",
+        ]
+
+    def get_screenshot_url(self, obj):
+        if obj.screenshot:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.screenshot.url)
+        return None
         
 class TeamSerializer(serializers.ModelSerializer):
     class Meta:

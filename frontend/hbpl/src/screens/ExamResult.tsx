@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, ExternalLink } from 'lucide-react';
+import { Loader2, ExternalLink, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -17,7 +17,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { downloadExamCertificate, lookupExamResult, type ExamResult } from '@/lib/api';
+import { downloadExamCertificate, fetchGrievanceStatus, lookupExamResult, type ExamResult, type GrievanceStatus } from '@/lib/api';
 
 const schema = z.object({
   roll_number: z.string().trim().min(2, 'Enter the roll number').max(50),
@@ -28,9 +28,11 @@ type FormValues = z.infer<typeof schema>;
 
 const ExamResult = () => {
   const { toast } = useToast();
+  const router = useRouter();
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [isDownloadingCertificate, setIsDownloadingCertificate] = useState(false);
   const [result, setResult] = useState<ExamResult | null>(null);
+  const [grievances, setGrievances] = useState<GrievanceStatus[]>([]);
   const searchParams = useSearchParams();
 
   const form = useForm<FormValues>({
@@ -52,6 +54,8 @@ const ExamResult = () => {
     try {
       const data = await lookupExamResult(values);
       setResult(data);
+      const g = await fetchGrievanceStatus(values.roll_number).catch(() => []);
+      setGrievances(g);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'No record found.';
       toast({ title: 'Not Found', description: msg, variant: 'destructive' });
@@ -206,6 +210,59 @@ const ExamResult = () => {
                   Your result has not been published yet. Please check back later.
                 </p>
               )}
+
+              {/* ── Previous grievances ── */}
+              {grievances.length > 0 && (
+                <div className="border-t pt-6 space-y-3">
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-white">Your Grievances</h3>
+                  {grievances.map((g) => (
+                    <div key={g.id} className="rounded-lg border dark:border-gray-700 p-4 space-y-2 text-sm">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-gray-500 text-xs">
+                          {new Date(g.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </span>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          g.status === 'resolved'
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                            : g.status === 'under_review'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                        }`}>
+                          {g.status === 'resolved' ? 'Resolved' : g.status === 'under_review' ? 'Under Review' : 'Pending'}
+                        </span>
+                      </div>
+                      <p className="text-gray-600 dark:text-gray-400 text-xs line-clamp-2">{g.message}</p>
+                      {g.admin_note && (
+                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-md p-3 border-l-4 border-blue-400">
+                          <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">Response from examination team:</p>
+                          <p className="text-xs text-blue-600 dark:text-blue-400 whitespace-pre-wrap">{g.admin_note}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="border-t pt-6">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                  Not satisfied with your result or facing an issue?
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="inline-flex items-center gap-2 border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-900/20"
+                  onClick={() => {
+                    const params = new URLSearchParams({
+                      roll_number: result.roll_number,
+                      name: result.full_name,
+                    });
+                    router.push(`/exam-portal/grievance-form?${params.toString()}`);
+                  }}
+                >
+                  <AlertCircle className="w-4 h-4" />
+                  Raise Grievance
+                </Button>
+              </div>
             </div>
           )}
         </div>

@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/elske/AppData/Local/Temp/claude/c--Users-elske-Desktop-hbpl/7b3c6d5e-a869-4b11-a20f-f2cd3e43adc4/tasks/**)"
+    ]
+  }
+}

@@ -20,6 +20,7 @@ import {
   LogIn,
   LogOut,
   Menu,
+  MessageSquare,
   Settings,
   Trophy,
   Users,
@@ -35,6 +36,7 @@ export type AdminSection =
   | 'dashboard'
   | 'students'
   | 'examPortal'
+  | 'grievances'
   | 'volunteers'
   | 'gallery'
   | 'management'
@@ -50,6 +52,7 @@ export const ADMIN_NAV: {
   { id: 'dashboard', label: 'Dashboard', href: '/staff', icon: BarChart3 },
   { id: 'students', label: 'Exam Students', href: '/staff/exam-students', icon: BookOpen },
   { id: 'examPortal', label: 'Exam Portal', href: '/staff/exam-portal', icon: Settings },
+  { id: 'grievances', label: 'Grievances', href: '/staff/grievances', icon: MessageSquare },
   { id: 'volunteers', label: 'Volunteers', href: '/staff/volunteers', icon: Users },
   { id: 'gallery', label: 'Gallery', href: '/staff/gallery', icon: Image },
   { id: 'management', label: 'Management', href: '/staff/management', icon: Settings },
@@ -89,6 +92,7 @@ function clearToken() {
 function getActiveSection(pathname: string): AdminSection {
   if (pathname.startsWith('/staff/exam-students')) return 'students';
   if (pathname.startsWith('/staff/exam-portal')) return 'examPortal';
+  if (pathname.startsWith('/staff/grievances')) return 'grievances';
   if (pathname.startsWith('/staff/volunteers')) return 'volunteers';
   if (pathname.startsWith('/staff/gallery')) return 'gallery';
   if (pathname.startsWith('/staff/management')) return 'management';

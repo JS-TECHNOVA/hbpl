@@ -3,11 +3,19 @@ from django.db.models import Max
 
 
 class Complaint(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("under_review", "Under Review"),
+        ("resolved", "Resolved"),
+    ]
+
     registration = models.ForeignKey('ExamRegistration', on_delete=models.CASCADE, related_name='complaints')
     name = models.CharField(max_length=200)
     roll_number = models.CharField(max_length=50)
     screenshot = models.ImageField(upload_to="complaints/screenshots/", blank=True, null=True)
     message = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    admin_note = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

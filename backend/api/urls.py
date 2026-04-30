@@ -26,9 +26,11 @@ urlpatterns = [
     path("exam/faqs/", views.ExamFaqListView.as_view(), name="exam-faqs"),
     path("exam/toppers/", views.ExamTopperListView.as_view(), name="exam-toppers"),
     path("exam/complaints/", views.ComplaintCreateAPIView.as_view(), name="exam-complaint-create"),
+    path("exam/complaints/status/", views.ExamComplaintStatusView.as_view(), name="exam-complaint-status"),
 
     # ── Admin endpoints (require Token auth + is_staff) ───────────────────────
     path("admin/complaints/", views.AdminComplaintListAPIView.as_view(), name="admin-complaint-list"),
+    path("admin/complaints/<int:pk>/", views.AdminComplaintDetailAPIView.as_view(), name="admin-complaint-detail"),
     path("admin/login/", views.AdminLoginView.as_view(), name="admin-login"),
     path("admin/me/", views.AdminMeView.as_view(), name="admin-me"),
     path("admin/exam/registrations/", views.AdminExamListView.as_view(), name="admin-exam-list"),
@@ -36,6 +38,8 @@ urlpatterns = [
     path("admin/exam/registrations/<int:pk>/generate-docs/", views.AdminGenerateExamDocumentsView.as_view(), name="admin-exam-generate-docs"),
     path("admin/exam/registrations/export/csv/", views.AdminExamExportCSVView.as_view(), name="admin-exam-export-csv"),
     path("admin/exam/registrations/import/", views.AdminExamImportStudentsView.as_view(), name="admin-exam-import-students"),
+    path("admin/exam/registrations/import-marks/", views.AdminExamImportMarksView.as_view(), name="admin-exam-import-marks"),
+    path("admin/exam/registrations/upload-test-copies/", views.AdminExamUploadTestCopiesView.as_view(), name="admin-exam-upload-test-copies"),
 ]
 
 urlpatterns += [

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle, Clock, Download, FileSpreadsheet, Loader2, Upload } from 'lucide-react';
+import { BarChart2, CheckCircle, Clock, Download, FileSpreadsheet, FolderOpen, Loader2, Upload, X } from 'lucide-react';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -25,12 +25,18 @@ import { useToast } from '@/hooks/use-toast';
 import {
 	adminExportStudentsCSV,
 	adminFetchStudents,
+	adminImportMarks,
 	adminImportStudents,
+	adminScanMarksImport,
 	adminScanStudentImport,
 	adminUpdateStudent,
+	adminUploadTestCopies,
 	type AdminExamRegistration,
+	type AdminMarksImportResult,
+	type AdminMarksImportScanResult,
 	type AdminStudentImportResult,
 	type AdminStudentImportScanResult,
+	type AdminTestCopyUploadResult,
 } from '@/lib/api';
 import { useAdmin } from '../_components/admin-shell';
 import { LoadingBlock, SectionHeader } from '../_components/admin-ui';
@@ -44,6 +50,8 @@ export default function AdminExamStudentsPage() {
 	const testCopyRef = useRef<HTMLInputElement>(null);
 	const resultFileRef = useRef<HTMLInputElement>(null);
 	const importFileRef = useRef<HTMLInputElement>(null);
+	const marksImportFileRef = useRef<HTMLInputElement>(null);
+	const testCopiesFolderRef = useRef<HTMLInputElement>(null);
 	const [search, setSearch] = useState('');
 	const [filterClass, setFilterClass] = useState('');
 	const [filterSchool, setFilterSchool] = useState('');
@@ -53,6 +61,16 @@ export default function AdminExamStudentsPage() {
 	const [importScan, setImportScan] = useState<AdminStudentImportScanResult | null>(null);
 	const [importMapping, setImportMapping] = useState<Record<string, string>>({});
 	const [importResult, setImportResult] = useState<AdminStudentImportResult | null>(null);
+
+	const [isMarksImportOpen, setIsMarksImportOpen] = useState(false);
+	const [marksImportFile, setMarksImportFile] = useState<File | null>(null);
+	const [marksImportScan, setMarksImportScan] = useState<AdminMarksImportScanResult | null>(null);
+	const [marksImportMapping, setMarksImportMapping] = useState<Record<string, string>>({});
+	const [marksImportResult, setMarksImportResult] = useState<AdminMarksImportResult | null>(null);
+
+	const [isTestCopiesOpen, setIsTestCopiesOpen] = useState(false);
+	const [testCopiesFiles, setTestCopiesFiles] = useState<File[]>([]);
+	const [testCopiesResult, setTestCopiesResult] = useState<AdminTestCopyUploadResult | null>(null);
 	const [selected, setSelected] = useState<AdminExamRegistration | null>(null);
 	const [rollNumber, setRollNumber] = useState('');
 	const [fatherName, setFatherName] = useState('');
@@ -170,6 +188,46 @@ export default function AdminExamStudentsPage() {
 		},
 	});
 
+	const scanMarksMutation = useMutation({
+		mutationFn: (file: File) => adminScanMarksImport(token, file),
+		onSuccess: (scan) => {
+			setMarksImportScan(scan);
+			setMarksImportResult(null);
+			setMarksImportMapping(scan.suggested_mapping ?? {});
+			toast({ title: 'File scanned', description: `${scan.row_count} row(s) detected.` });
+		},
+		onError: (error) => {
+			toast({ title: 'Scan Failed', description: error instanceof Error ? error.message : 'Scan failed', variant: 'destructive' });
+		},
+	});
+
+	const importMarksMutation = useMutation({
+		mutationFn: () => {
+			if (!marksImportFile) throw new Error('Select a file first.');
+			return adminImportMarks(token, marksImportFile, marksImportMapping);
+		},
+		onSuccess: (result) => {
+			setMarksImportResult(result);
+			void queryClient.invalidateQueries({ queryKey: ['admin-students'] });
+			toast({ title: 'Marks imported', description: `${result.updated} student(s) updated.` });
+		},
+		onError: (error) => {
+			toast({ title: 'Import Failed', description: error instanceof Error ? error.message : 'Import failed', variant: 'destructive' });
+		},
+	});
+
+	const uploadTestCopiesMutation = useMutation({
+		mutationFn: () => adminUploadTestCopies(token, testCopiesFiles),
+		onSuccess: (result) => {
+			setTestCopiesResult(result);
+			void queryClient.invalidateQueries({ queryKey: ['admin-students'] });
+			toast({ title: 'Upload complete', description: `${result.uploaded} file(s) uploaded.` });
+		},
+		onError: (error) => {
+			toast({ title: 'Upload Failed', description: error instanceof Error ? error.message : 'Upload failed', variant: 'destructive' });
+		},
+	});
+
 	const buildFormData = (extra: Record<string, string | File>) => {
 		const formData = new FormData();
 		formData.append('roll_number', rollNumber);
@@ -232,6 +290,8 @@ export default function AdminExamStudentsPage() {
 		'notes',
 	];
 
+	const marksImportTargets = ['roll_number', 'marks_obtained', 'total_marks', 'rank', 'remarks'];
+
 	const publishedCount = students.filter((student) => student.result_status === 'published').length;
 
 	return (
@@ -282,6 +342,63 @@ export default function AdminExamStudentsPage() {
 							disabled={!can('api.change_examregistration') || scanImportMutation.isPending || importMutation.isPending}
 						>
 							<FileSpreadsheet className="w-4 h-4 mr-2" /> Import Students
+						</Button>
+						{/* ── Import Marks ── */}
+						<input
+							ref={marksImportFileRef}
+							type="file"
+							accept=".csv,.xlsx,.xlsm"
+							className="hidden"
+							onChange={(event) => {
+								const file = event.target.files?.[0] ?? null;
+								setMarksImportFile(file);
+								setMarksImportScan(null);
+								setMarksImportResult(null);
+								if (file) {
+									setIsMarksImportOpen(true);
+									void scanMarksMutation.mutate(file);
+								}
+							}}
+						/>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => marksImportFileRef.current?.click()}
+							disabled={!can('api.change_examregistration') || scanMarksMutation.isPending || importMarksMutation.isPending}
+						>
+							<BarChart2 className="w-4 h-4 mr-2" /> Import Marks
+						</Button>
+						{/* ── Upload Test Copies ── */}
+						<input
+							ref={testCopiesFolderRef}
+							type="file"
+							multiple
+							accept=".pdf"
+							className="hidden"
+							onChange={(event) => {
+								const all = Array.from(event.target.files ?? []).filter((f) =>
+									f.name.toLowerCase().endsWith('.pdf'),
+								);
+								setTestCopiesFiles(all);
+								setTestCopiesResult(null);
+							}}
+						/>
+						<Button
+							variant="outline"
+							size="sm"
+							disabled={!can('api.change_examregistration')}
+							onClick={() => {
+								const input = testCopiesFolderRef.current;
+								if (!input) return;
+								input.setAttribute('webkitdirectory', '');
+								input.value = '';
+								setTestCopiesFiles([]);
+								setTestCopiesResult(null);
+								setIsTestCopiesOpen(true);
+								input.click();
+							}}
+						>
+							<FolderOpen className="w-4 h-4 mr-2" /> Upload Test Copies
 						</Button>
 						<Button
 							variant="outline"
@@ -480,6 +597,187 @@ export default function AdminExamStudentsPage() {
 					</div>
 				</DialogContent>
 			</Dialog>
+
+			{/* ── Import Marks Dialog ── */}
+			<Dialog open={isMarksImportOpen} onOpenChange={setIsMarksImportOpen}>
+				<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+					<DialogHeader>
+						<DialogTitle>Import Marks from Excel/CSV</DialogTitle>
+					</DialogHeader>
+					<p className="text-sm text-gray-500 dark:text-gray-400">
+						Match your spreadsheet columns to the mark fields below. Results will <strong>not</strong> be published automatically.
+					</p>
+					<div className="space-y-4">
+						<p className="text-sm text-gray-600 dark:text-gray-300">
+							{marksImportFile ? `Selected: ${marksImportFile.name}` : 'Choose a file to start mapping.'}
+						</p>
+						{scanMarksMutation.isPending ? (
+							<div className="text-sm flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Scanning file...</div>
+						) : null}
+						{marksImportScan ? (
+							<>
+								<div className="rounded-lg border p-3 text-sm">
+									Detected <strong>{marksImportScan.row_count}</strong> row(s) and <strong>{marksImportScan.headers.length}</strong> column(s).
+								</div>
+								<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+									{marksImportTargets.map((field) => (
+										<div key={field} className="space-y-1">
+											<label className="text-sm font-medium">
+												{field}{field === 'roll_number' ? <span className="text-red-500 ml-1">*</span> : null}
+											</label>
+											<select
+												value={Object.entries(marksImportMapping).find(([, t]) => t === field)?.[0] ?? ''}
+												onChange={(event) => {
+													const selectedHeader = event.target.value;
+													setMarksImportMapping((prev) => {
+														const next = { ...prev };
+														Object.keys(next).forEach((key) => { if (next[key] === field) delete next[key]; });
+														if (selectedHeader) next[selectedHeader] = field;
+														return next;
+													});
+												}}
+												className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+											>
+												<option value="">-- Not mapped --</option>
+												{marksImportScan.headers.map((header, idx) => (
+													<option key={`${field}-${idx}`} value={header}>{header}</option>
+												))}
+											</select>
+										</div>
+									))}
+								</div>
+								<div className="flex items-center gap-2">
+									<Button
+										variant="outline"
+										onClick={() => marksImportFile && scanMarksMutation.mutate(marksImportFile)}
+										disabled={!marksImportFile || scanMarksMutation.isPending || importMarksMutation.isPending}
+									>
+										Rescan
+									</Button>
+									<Button
+										onClick={() => importMarksMutation.mutate()}
+										disabled={!marksImportFile || importMarksMutation.isPending || scanMarksMutation.isPending}
+									>
+										{importMarksMutation.isPending
+											? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Importing...</>
+											: 'Import Marks'}
+									</Button>
+								</div>
+							</>
+						) : null}
+						{marksImportResult ? (
+							<div className="rounded-lg border p-3 text-sm space-y-1">
+								<div>Updated: <strong className="text-green-600">{marksImportResult.updated}</strong></div>
+								<div>Skipped (no change): <strong>{marksImportResult.skipped}</strong></div>
+								<div>Not found: <strong className="text-yellow-600">{marksImportResult.not_found}</strong></div>
+								<div>Errors: <strong className="text-red-600">{marksImportResult.error_count}</strong></div>
+								{marksImportResult.errors.length > 0 ? (
+									<div className="mt-2 max-h-40 overflow-auto border rounded p-2 text-xs space-y-0.5">
+										{marksImportResult.errors.map((err, idx) => (
+											<div key={idx}>
+												Row {err.row} {err.roll_number ? `(${err.roll_number})` : ''}: {err.error}
+											</div>
+										))}
+									</div>
+								) : null}
+							</div>
+						) : null}
+					</div>
+				</DialogContent>
+			</Dialog>
+
+			{/* ── Upload Test Copies Dialog ── */}
+			<Dialog open={isTestCopiesOpen} onOpenChange={(open) => { if (!open) setIsTestCopiesOpen(false); }}>
+				<DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+					<DialogHeader>
+						<DialogTitle>Upload Test Copies (PDF folder)</DialogTitle>
+					</DialogHeader>
+					<div className="space-y-4">
+						<p className="text-sm text-gray-500 dark:text-gray-400">
+							Select a folder containing PDF files named by student roll number (e.g. <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">HBPL2026001.pdf</code>).
+							Each file will be matched to the student with that roll number.
+						</p>
+						<div className="flex gap-2">
+							<Button
+								variant="outline"
+								onClick={() => {
+									const input = testCopiesFolderRef.current;
+									if (!input) return;
+									input.setAttribute('webkitdirectory', '');
+									input.value = '';
+									input.click();
+								}}
+							>
+								<FolderOpen className="w-4 h-4 mr-2" />
+								{testCopiesFiles.length > 0 ? 'Change Folder' : 'Select Folder'}
+							</Button>
+							{testCopiesFiles.length > 0 && (
+								<Button variant="ghost" size="sm" onClick={() => { setTestCopiesFiles([]); setTestCopiesResult(null); }}>
+									<X className="w-4 h-4 mr-1" /> Clear
+								</Button>
+							)}
+						</div>
+
+						{testCopiesFiles.length > 0 && !testCopiesResult ? (
+							<>
+								<div className="rounded-lg border p-3 text-sm">
+									<strong>{testCopiesFiles.length}</strong> PDF file(s) selected.
+								</div>
+								<div className="max-h-48 overflow-y-auto border rounded-lg divide-y text-xs">
+									{testCopiesFiles.map((f) => (
+										<div key={f.name} className="px-3 py-1.5 flex justify-between">
+											<span className="font-mono">{f.name}</span>
+											<span className="text-gray-400">{(f.size / 1024).toFixed(0)} KB</span>
+										</div>
+									))}
+								</div>
+								<Button
+									className="w-full"
+									disabled={uploadTestCopiesMutation.isPending}
+									onClick={() => uploadTestCopiesMutation.mutate()}
+								>
+									{uploadTestCopiesMutation.isPending
+										? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Uploading {testCopiesFiles.length} file(s)…</>
+										: `Upload ${testCopiesFiles.length} PDF(s)`}
+								</Button>
+							</>
+						) : null}
+
+						{testCopiesResult ? (
+							<div className="rounded-lg border p-4 space-y-2 text-sm">
+								<div className="flex items-center gap-2 text-green-600 font-medium">
+									<CheckCircle className="w-4 h-4" />
+									{testCopiesResult.uploaded} file(s) uploaded successfully
+								</div>
+								{testCopiesResult.not_found.length > 0 && (
+									<div>
+										<p className="text-yellow-700 dark:text-yellow-400 font-medium">
+											{testCopiesResult.not_found.length} roll number(s) not found:
+										</p>
+										<div className="mt-1 max-h-32 overflow-y-auto border rounded p-2 text-xs font-mono space-y-0.5">
+											{testCopiesResult.not_found.map((r) => <div key={r}>{r}</div>)}
+										</div>
+									</div>
+								)}
+								{testCopiesResult.errors.length > 0 && (
+									<div>
+										<p className="text-red-600 font-medium">{testCopiesResult.errors.length} error(s):</p>
+										<div className="mt-1 max-h-32 overflow-y-auto border rounded p-2 text-xs space-y-0.5">
+											{testCopiesResult.errors.map((e, i) => (
+												<div key={i}>{e.file}: {e.error}</div>
+											))}
+										</div>
+									</div>
+								)}
+								<Button variant="outline" size="sm" onClick={() => { setTestCopiesFiles([]); setTestCopiesResult(null); }}>
+									Upload More
+								</Button>
+							</div>
+						) : null}
+					</div>
+				</DialogContent>
+			</Dialog>
+
 			{selected ? (
 				<Dialog open onOpenChange={() => setSelected(null)}>
 					<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">

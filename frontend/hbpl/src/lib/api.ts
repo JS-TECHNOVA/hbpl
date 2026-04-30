@@ -702,3 +702,145 @@ export const adminFetchExamToppers = (t: string) => adminGet<AdminExamTopper[]>(
 export const adminCreateExamTopper = (t: string, d: object) => adminPost<AdminExamTopper>(t, "/api/admin/exam/toppers/", d);
 export const adminUpdateExamTopper = (t: string, id: number, d: object) => adminPatch<AdminExamTopper>(t, `/api/admin/exam/toppers/${id}/`, d);
 export const adminDeleteExamTopper = (t: string, id: number) => adminDelete(t, `/api/admin/exam/toppers/${id}/`);
+
+// ── Grievance / Complaints ────────────────────────────────────────────────────
+
+export interface AdminComplaint {
+  id: number;
+  registration: number;
+  name: string;
+  roll_number: string;
+  student_name: string;
+  school_name: string;
+  class_name: string;
+  screenshot: string | null;
+  screenshot_url: string | null;
+  message: string;
+  status: "pending" | "under_review" | "resolved";
+  admin_note: string;
+  created_at: string;
+}
+
+export interface SubmitComplaintData {
+  name: string;
+  roll_number: string;
+  message: string;
+  screenshot?: File | null;
+}
+
+export interface GrievanceStatus {
+  id: number;
+  message: string;
+  status: "pending" | "under_review" | "resolved";
+  admin_note: string;
+  created_at: string;
+}
+
+export const fetchGrievanceStatus = async (roll_number: string): Promise<GrievanceStatus[]> => {
+  const res = await fetch(`${API_URL}/api/exam/complaints/status/?roll_number=${encodeURIComponent(roll_number)}`);
+  if (!res.ok) throw new Error("Failed to fetch grievance status");
+  return res.json() as Promise<GrievanceStatus[]>;
+};
+
+export const submitComplaint = async (data: SubmitComplaintData): Promise<{ id: number }> => {
+  const formData = new FormData();
+  formData.append("name", data.name);
+  formData.append("roll_number", data.roll_number);
+  formData.append("message", data.message);
+  if (data.screenshot) formData.append("screenshot", data.screenshot);
+
+  const res = await fetch(`${API_URL}/api/exam/complaints/`, {
+    method: "POST",
+    body: formData,
+  });
+  const body = await res.json().catch(() => ({})) as Record<string, unknown>;
+  if (!res.ok) throw new Error(JSON.stringify(body) || "Complaint submission failed");
+  return body as { id: number };
+};
+
+export const adminFetchComplaints = (t: string) =>
+  adminGet<AdminComplaint[]>(t, "/api/admin/complaints/");
+
+export const adminUpdateComplaint = (
+  t: string,
+  id: number,
+  d: { status?: string; admin_note?: string },
+) => adminPatch<AdminComplaint>(t, `/api/admin/complaints/${id}/`, d);
+
+// ── Marks Import ──────────────────────────────────────────────────────────────
+
+export interface AdminMarksImportScanResult {
+  headers: string[];
+  row_count: number;
+  sample_rows: Array<Record<string, unknown>>;
+  suggested_mapping: Record<string, string>;
+  importable_fields: string[];
+}
+
+export interface AdminMarksImportResult {
+  updated: number;
+  skipped: number;
+  not_found: number;
+  error_count: number;
+  errors: Array<{ row: number; roll_number: string; error: string }>;
+}
+
+export const adminScanMarksImport = async (
+  token: string,
+  file: File,
+): Promise<AdminMarksImportScanResult> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("dry_run", "true");
+  const res = await fetch(`${API_URL}/api/admin/exam/registrations/import-marks/`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: formData,
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(typeof body?.detail === "string" ? body.detail : "Scan failed");
+  return body as AdminMarksImportScanResult;
+};
+
+export const adminImportMarks = async (
+  token: string,
+  file: File,
+  mapping: Record<string, string>,
+): Promise<AdminMarksImportResult> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("dry_run", "false");
+  formData.append("mapping", JSON.stringify(mapping));
+  const res = await fetch(`${API_URL}/api/admin/exam/registrations/import-marks/`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: formData,
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(typeof body?.detail === "string" ? body.detail : "Import failed");
+  return body as AdminMarksImportResult;
+};
+
+// ── Test Copy Bulk Upload ─────────────────────────────────────────────────────
+
+export interface AdminTestCopyUploadResult {
+  uploaded: number;
+  not_found: string[];
+  errors: Array<{ file: string; error: string }>;
+}
+
+export const adminUploadTestCopies = async (
+  token: string,
+  files: File[],
+): Promise<AdminTestCopyUploadResult> => {
+  const formData = new FormData();
+  for (const file of files) formData.append("files", file);
+  const res = await fetch(`${API_URL}/api/admin/exam/registrations/upload-test-copies/`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: formData,
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(typeof body?.detail === "string" ? body.detail : "Upload failed");
+  return body as AdminTestCopyUploadResult;
+};
