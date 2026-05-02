@@ -144,16 +144,8 @@ def _build_team_registration_response(request, registration):
         "whatsapp_number": registration.whatsapp_number,
         "player_count": registration.player_count,
         "address": registration.address,
-        "payment_id": registration.payment_id,
-        "payment_order_id": registration.payment_order_id,
-        "payment_amount_paise": registration.payment_amount_paise,
-        "payment_currency": registration.payment_currency,
-        "payment_confirmed": True,
         "created_at": registration.created_at.isoformat(),
-        "receipt_download_url": _build_team_registration_receipt_url(
-            request,
-            registration,
-        ),
+        "receipt_download_url": _build_team_registration_receipt_url(request, registration),
     }
 
 
@@ -194,13 +186,8 @@ def _generate_team_registration_receipt_pdf(registration) -> bytes:
         ("WhatsApp Number", registration.whatsapp_number or "-"),
         ("Village Name", registration.address or "-"),
         ("Players", str(registration.player_count)),
-        ("Payment Status", "Confirmed"),
-        ("Payment ID", registration.payment_id or "-"),
-        ("Order ID", registration.payment_order_id or "-"),
-        (
-            "Amount Paid",
-            f"{registration.payment_currency} {registration.payment_amount_paise / 100:.2f}",
-        ),
+        ("Payment Method", "QR / UPI"),
+        ("Payment Status", "Screenshot Submitted — Pending Verification"),
     ]
 
     y = height - 148
@@ -440,12 +427,6 @@ class TeamRegistrationReceiptDownloadView(APIView):
             return Response(
                 {"detail": "Registration not found."},
                 status=status.HTTP_404_NOT_FOUND,
-            )
-
-        if receipt_context.get("payment_id") != registration.payment_id:
-            return Response(
-                {"detail": "Receipt link is no longer valid."},
-                status=status.HTTP_403_FORBIDDEN,
             )
 
         pdf_bytes = _generate_team_registration_receipt_pdf(registration)

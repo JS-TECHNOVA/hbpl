@@ -49,11 +49,22 @@ class TeamRegistrationAdmin(admin.ModelAdmin):
     readonly_fields = ["created_at"]
 
 
-@admin.action(description = "Publish All admit cards" )
-def publish_admit_card(self, req, queryset):
-    queryset.update(publish_admit_card=True)
-    # req.message_user()
-    self.message_user(req, f"Exam admit card has been published.")
+@admin.action(description="Publish admit cards for selected students")
+def publish_admit_card(modeladmin, request, queryset):
+    count = queryset.update(publish_admit_card=True)
+    modeladmin.message_user(request, f"Admit cards published for {count} student(s).")
+
+
+@admin.action(description="Publish results for selected students")
+def publish_results(modeladmin, request, queryset):
+    count = queryset.filter(result_status="pending").update(result_status="published")
+    modeladmin.message_user(request, f"Results published for {count} student(s).")
+
+
+@admin.action(description="Publish participation certificates for selected students")
+def publish_certificates(modeladmin, request, queryset):
+    count = queryset.update(publish_participation_certificate=True)
+    modeladmin.message_user(request, f"Participation certificates published for {count} student(s).")
 
 
 @admin.register(ExamRegistration)
@@ -68,7 +79,7 @@ class ExamRegistrationAdmin(admin.ModelAdmin):
         "rank",
         "created_at",
     ]
-    actions = (publish_admit_card, )
+    actions = (publish_admit_card, publish_results, publish_certificates)
     list_filter = ["result_status", "created_at"]
     search_fields = ["roll_number", "full_name", "phone", "email", "school_name"]
     readonly_fields = ["created_at", "updated_at"]

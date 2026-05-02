@@ -149,11 +149,6 @@ class TeamRegistrationPaymentOrderSerializer(serializers.Serializer):
 
 
 class TeamRegistrationSerializer(serializers.ModelSerializer):
-    payment_context_token = serializers.CharField(write_only=True)
-    razorpay_order_id = serializers.CharField(write_only=True)
-    razorpay_payment_id = serializers.CharField(write_only=True)
-    razorpay_signature = serializers.CharField(write_only=True)
-
     class Meta:
         model = TeamRegistration
         fields = [
@@ -167,12 +162,9 @@ class TeamRegistrationSerializer(serializers.ModelSerializer):
             "address",
             "message",
             "team_list",
-            "payment_context_token",
-            "razorpay_order_id",
-            "razorpay_payment_id",
-            "razorpay_signature",
-            "created_at",
             "team_image",
+            "payment_screenshot",
+            "created_at",
         ]
         read_only_fields = ["id", "created_at"]
         extra_kwargs = {
@@ -180,71 +172,14 @@ class TeamRegistrationSerializer(serializers.ModelSerializer):
             "whatsapp_number": {"required": False, "allow_blank": True},
             "address": {"required": False, "allow_blank": True},
             "message": {"required": False, "allow_blank": True},
-            "team_list": {"required": True, "allow_null": False, "write_only": True},
+            "team_list": {"required": True, "allow_null": False},
+            "payment_screenshot": {"required": True, "allow_null": False},
         }
 
     def validate_player_count(self, value):
         if value < 11 or value > 25:
             raise serializers.ValidationError("Squad must have 11-25 players.")
         return value
-
-    def validate(self, attrs):
-        token = attrs["payment_context_token"]
-
-        try:
-            payment_context = signing.loads(
-                token,
-                salt="team-registration-payment",
-                max_age=30 * 60,
-            )
-        except signing.BadSignature as exc:
-            raise serializers.ValidationError("Payment session is invalid or expired.") from exc
-
-        if attrs["razorpay_order_id"] != payment_context["order_id"]:
-            raise serializers.ValidationError("Payment order mismatch.")
-
-        field_map = {
-            "team_name": "team_name",
-            "captain_name": "captain_name",
-            "phone": "phone",
-            "whatsapp_number": "whatsapp_number",
-            "player_count": "player_count",
-            "address": "address",
-        }
-        for model_field, signed_field in field_map.items():
-            if attrs[model_field] != payment_context[signed_field]:
-                raise serializers.ValidationError(f"{model_field} does not match the payment session.")
-
-        if TeamRegistration.objects.filter(payment_id=attrs["razorpay_payment_id"]).exists():
-            raise serializers.ValidationError("This payment has already been used.")
-
-        key_secret = os.environ.get("RAZORPAY_KEY_SECRET", "").strip()
-        if not key_secret:
-            raise serializers.ValidationError("Razorpay is not configured on the server.")
-
-        generated_signature = hmac.new(
-            key_secret.encode("utf-8"),
-            f"{payment_context['order_id']}|{attrs['razorpay_payment_id']}".encode("utf-8"),
-            hashlib.sha256,
-        ).hexdigest()
-
-        if generated_signature != attrs["razorpay_signature"]:
-            raise serializers.ValidationError("Payment verification failed.")
-
-        attrs["verified_payment_order_id"] = payment_context["order_id"]
-        attrs["verified_payment_amount_paise"] = payment_context["amount"]
-        attrs["verified_payment_currency"] = payment_context["currency"]
-        return attrs
-
-    def create(self, validated_data):
-        validated_data.pop("payment_context_token", None)
-        validated_data.pop("razorpay_order_id", None)
-        validated_data["payment_order_id"] = validated_data.pop("verified_payment_order_id")
-        validated_data["payment_id"] = validated_data.pop("razorpay_payment_id")
-        validated_data["payment_signature"] = validated_data.pop("razorpay_signature")
-        validated_data["payment_amount_paise"] = validated_data.pop("verified_payment_amount_paise")
-        validated_data["payment_currency"] = validated_data.pop("verified_payment_currency")
-        return super().create(validated_data)
 
 
 class ExamRegistrationCreateSerializer(serializers.ModelSerializer):

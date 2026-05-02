@@ -129,7 +129,7 @@ class TeamRegistration(models.Model):
     payment_currency = models.CharField(max_length=10, blank=True, default="INR")
     created_at = models.DateTimeField(auto_now_add=True)
     team_image = models.ImageField(upload_to="team-registrations/team-images/", blank=True, null=True)
-
+    payment_screenshot = models.ImageField(upload_to="team-registrations/payment-screenshots/", blank=True, null=True)
 
     # // admin validation fields
     is_approved = models.BooleanField(default=False)
