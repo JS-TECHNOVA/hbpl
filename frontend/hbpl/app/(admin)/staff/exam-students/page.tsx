@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BarChart2, CheckCircle, Clock, Download, FileSpreadsheet, FolderOpen, Loader2, Upload, X } from 'lucide-react';
+import { BarChart2, CheckCircle, Clock, Download, FileSpreadsheet, FolderOpen, Loader2, Trash2, Upload, X } from 'lucide-react';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -895,9 +895,16 @@ export default function AdminExamStudentsPage() {
 							<div className="border-2 border-dashed rounded-xl p-3 space-y-2">
 								<p className="text-sm font-medium">Test Copy</p>
 								{selected.test_copy_url ? (
-									<a href={selected.test_copy_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
-										View ↗
-									</a>
+									<div className="flex items-center gap-3">
+										<a href={selected.test_copy_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">View ↗</a>
+										<button
+											onClick={() => mutation.mutate(buildFormData({ clear_test_copy: 'true' }))}
+											disabled={mutation.isPending || !can('api.change_examregistration')}
+											className="text-xs text-red-500 hover:text-red-700 flex items-center gap-0.5 disabled:opacity-40"
+										>
+											<Trash2 className="w-3 h-3" /> Delete
+										</button>
+									</div>
 								) : null}
 								<input
 									ref={testCopyRef}
@@ -919,9 +926,16 @@ export default function AdminExamStudentsPage() {
 							<div className="border-2 border-dashed rounded-xl p-3 space-y-2">
 								<p className="text-sm font-medium">Result File</p>
 								{selected.result_file_url ? (
-									<a href={selected.result_file_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
-										View ↗
-									</a>
+									<div className="flex items-center gap-3">
+										<a href={selected.result_file_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">View ↗</a>
+										<button
+											onClick={() => mutation.mutate(buildFormData({ clear_result_file: 'true' }))}
+											disabled={mutation.isPending || !can('api.change_examregistration')}
+											className="text-xs text-red-500 hover:text-red-700 flex items-center gap-0.5 disabled:opacity-40"
+										>
+											<Trash2 className="w-3 h-3" /> Delete
+										</button>
+									</div>
 								) : null}
 								<input
 									ref={resultFileRef}

@@ -35,6 +35,35 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+async function compressImage(file: File, maxWidth: number, quality = 0.82): Promise<File> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      let { width, height } = img;
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          const outName = file.name.replace(/\.[^.]+$/, '.jpg');
+          resolve(new File([blob!], outName, { type: 'image/jpeg' }));
+        },
+        'image/jpeg',
+        quality,
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(objectUrl); resolve(file); };
+    img.src = objectUrl;
+  });
+}
+
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     try {
@@ -82,6 +111,10 @@ const ExamRegister = () => {
   const onSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
     try {
+      const [compressedStudent, compressedSignature] = await Promise.all([
+        studentImage ? compressImage(studentImage, 800) : Promise.resolve(null),
+        signatureImage ? compressImage(signatureImage, 600) : Promise.resolve(null),
+      ]);
       const result = await submitExamRegistration({
         ...values,
         father_name: values.father_name || '',
@@ -91,8 +124,8 @@ const ExamRegister = () => {
         class_name: values.class_name || '',
         roll_number: values.roll_number || '',
         address: values.address || '',
-        student_image: studentImage,
-        signature_image: signatureImage,
+        student_image: compressedStudent,
+        signature_image: compressedSignature,
       });
       setRollNumber(result.roll_number || '');
       setSubmitted(true);

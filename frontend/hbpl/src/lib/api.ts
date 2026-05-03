@@ -682,11 +682,13 @@ export const adminFetchExamSyllabus = (t: string) => adminGet<AdminExamSyllabusI
 export const adminCreateExamSyllabus = (t: string, d: FormData | object) => adminPost<AdminExamSyllabusItem>(t, "/api/admin/exam/syllabus/", d);
 export const adminUpdateExamSyllabus = (t: string, id: number, d: FormData | object) => adminPatch<AdminExamSyllabusItem>(t, `/api/admin/exam/syllabus/${id}/`, d);
 export const adminDeleteExamSyllabus = (t: string, id: number) => adminDelete(t, `/api/admin/exam/syllabus/${id}/`);
+export const adminClearExamSyllabusFile = (t: string, id: number) => adminPatch(t, `/api/admin/exam/syllabus/${id}/`, { clear_pdf_file: "true" });
 
 export const adminFetchExamSamplePapers = (t: string) => adminGet<AdminExamSamplePaper[]>(t, "/api/admin/exam/sample-papers/");
 export const adminCreateExamSamplePaper = (t: string, d: FormData | object) => adminPost<AdminExamSamplePaper>(t, "/api/admin/exam/sample-papers/", d);
 export const adminUpdateExamSamplePaper = (t: string, id: number, d: FormData | object) => adminPatch<AdminExamSamplePaper>(t, `/api/admin/exam/sample-papers/${id}/`, d);
 export const adminDeleteExamSamplePaper = (t: string, id: number) => adminDelete(t, `/api/admin/exam/sample-papers/${id}/`);
+export const adminClearExamSamplePaperFile = (t: string, id: number) => adminPatch(t, `/api/admin/exam/sample-papers/${id}/`, { clear_file: "true" });
 
 export const adminFetchExamCenters = (t: string) => adminGet<AdminExamCenterDetail[]>(t, "/api/admin/exam/centers/");
 export const adminCreateExamCenter = (t: string, d: object) => adminPost<AdminExamCenterDetail>(t, "/api/admin/exam/centers/", d);

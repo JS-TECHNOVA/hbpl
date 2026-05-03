@@ -14,6 +14,8 @@ import {
   adminCreateExamSupportSchool,
   adminCreateExamSyllabus,
   adminCreateExamTopper,
+  adminClearExamSyllabusFile,
+  adminClearExamSamplePaperFile,
   adminDeleteExamCenter,
   adminDeleteExamFaq,
   adminDeleteExamImportantDate,
@@ -178,7 +180,9 @@ export default function AdminExamPortalPage() {
   const removeDate = useMutation({ mutationFn: (id: number) => adminDeleteExamImportantDate(token, id), onSuccess: invalidateAll });
   const removeSchool = useMutation({ mutationFn: (id: number) => adminDeleteExamSupportSchool(token, id), onSuccess: invalidateAll });
   const removeSyllabus = useMutation({ mutationFn: (id: number) => adminDeleteExamSyllabus(token, id), onSuccess: invalidateAll });
+  const clearSyllabusFile = useMutation({ mutationFn: (id: number) => adminClearExamSyllabusFile(token, id), onSuccess: invalidateAll, onError: () => toast({ title: 'Failed to remove file', variant: 'destructive' }) });
   const removePaper = useMutation({ mutationFn: (id: number) => adminDeleteExamSamplePaper(token, id), onSuccess: invalidateAll });
+  const clearPaperFile = useMutation({ mutationFn: (id: number) => adminClearExamSamplePaperFile(token, id), onSuccess: invalidateAll, onError: () => toast({ title: 'Failed to remove file', variant: 'destructive' }) });
   const removeCenter = useMutation({ mutationFn: (id: number) => adminDeleteExamCenter(token, id), onSuccess: invalidateAll });
   const removeFaq = useMutation({ mutationFn: (id: number) => adminDeleteExamFaq(token, id), onSuccess: invalidateAll });
   const removeTopper = useMutation({ mutationFn: (id: number) => adminDeleteExamTopper(token, id), onSuccess: invalidateAll });
@@ -239,8 +243,18 @@ export default function AdminExamPortalPage() {
         </div>
         <div className="space-y-2">
           {syllabus.map((item) => (
-            <div key={item.id} className="flex items-center justify-between border rounded-lg p-2">
-              <span>{item.class_name} - {item.title}</span>
+            <div key={item.id} className="flex items-center justify-between border rounded-lg p-2 gap-2">
+              <div className="min-w-0">
+                <span className="font-medium">{item.class_name} - {item.title}</span>
+                {item.pdf_url ? (
+                  <div className="flex items-center gap-2 mt-1">
+                    <a href={item.pdf_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">View PDF ↗</a>
+                    <button onClick={() => clearSyllabusFile.mutate(item.id)} disabled={clearSyllabusFile.isPending || !can('api.change_examsyllabusitem')} className="text-xs text-red-400 hover:text-red-600 disabled:opacity-40">Remove file</button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 mt-1">No file uploaded</p>
+                )}
+              </div>
               <Button size="sm" variant="outline" onClick={() => removeSyllabus.mutate(item.id)} disabled={!can('api.delete_examsyllabusitem')}>Delete</Button>
             </div>
           ))}
@@ -259,8 +273,22 @@ export default function AdminExamPortalPage() {
         </div>
         <div className="space-y-2">
           {samplePapers.map((item) => (
-            <div key={item.id} className="flex items-center justify-between border rounded-lg p-2">
-              <span>{item.class_name} - {item.title}</span>
+            <div key={item.id} className="flex items-center justify-between border rounded-lg p-2 gap-2">
+              <div className="min-w-0">
+                <span className="font-medium">{item.class_name} - {item.title}</span>
+                <div className="flex flex-wrap items-center gap-2 mt-1">
+                  {item.file_url ? (
+                    <>
+                      <a href={item.file_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">View file ↗</a>
+                      <button onClick={() => clearPaperFile.mutate(item.id)} disabled={clearPaperFile.isPending || !can('api.change_examsamplepaper')} className="text-xs text-red-400 hover:text-red-600 disabled:opacity-40">Remove file</button>
+                    </>
+                  ) : item.external_url ? (
+                    <a href={item.external_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">External link ↗</a>
+                  ) : (
+                    <span className="text-xs text-gray-400">No file or link</span>
+                  )}
+                </div>
+              </div>
               <Button size="sm" variant="outline" onClick={() => removePaper.mutate(item.id)} disabled={!can('api.delete_examsamplepaper')}>Delete</Button>
             </div>
           ))}

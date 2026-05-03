@@ -677,6 +677,25 @@ class AdminExamDetailView(generics.RetrieveUpdateAPIView):
     queryset = ExamRegistration.objects.all()
     http_method_names = ["get", "patch", "head", "options"]
 
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        changed = []
+        if request.data.get("clear_test_copy") in ("true", "1", True):
+            if instance.test_copy:
+                instance.test_copy.delete(save=False)
+                instance.test_copy = None
+                changed.append("test_copy")
+        if request.data.get("clear_result_file") in ("true", "1", True):
+            if instance.result_file:
+                instance.result_file.delete(save=False)
+                instance.result_file = None
+                changed.append("result_file")
+        if changed:
+            changed.append("updated_at")
+            instance.save(update_fields=changed)
+            return Response(self.get_serializer(instance).data)
+        return super().partial_update(request, *args, **kwargs)
+
 
 class AdminVolunteerListCreateView(generics.ListCreateAPIView):
     authentication_classes = [TokenAuthentication]
@@ -801,6 +820,16 @@ class AdminExamSyllabusItemDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = AdminExamSyllabusItemSerializer
     queryset = ExamSyllabusItem.objects.all()
 
+    def partial_update(self, request, *args, **kwargs):
+        if request.data.get("clear_pdf_file") in ("true", "1", True):
+            instance = self.get_object()
+            if instance.pdf_file:
+                instance.pdf_file.delete(save=False)
+                instance.pdf_file = None
+                instance.save(update_fields=["pdf_file"])
+            return Response(self.get_serializer(instance).data)
+        return super().partial_update(request, *args, **kwargs)
+
 
 class AdminExamSamplePaperListCreateView(generics.ListCreateAPIView):
     authentication_classes = [TokenAuthentication]
@@ -814,6 +843,16 @@ class AdminExamSamplePaperDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminExamSamplePaperSerializer
     queryset = ExamSamplePaper.objects.all()
+
+    def partial_update(self, request, *args, **kwargs):
+        if request.data.get("clear_file") in ("true", "1", True):
+            instance = self.get_object()
+            if instance.file:
+                instance.file.delete(save=False)
+                instance.file = None
+                instance.save(update_fields=["file"])
+            return Response(self.get_serializer(instance).data)
+        return super().partial_update(request, *args, **kwargs)
 
 
 class AdminExamCenterDetailListCreateView(generics.ListCreateAPIView):
