@@ -21,6 +21,7 @@ import {
   LogOut,
   Menu,
   MessageSquare,
+  Newspaper,
   Settings,
   Trophy,
   Users,
@@ -41,7 +42,8 @@ export type AdminSection =
   | 'gallery'
   | 'management'
   | 'teams'
-  | 'matches';
+  | 'matches'
+  | 'newsTicker';
 
 export const ADMIN_NAV: {
   id: AdminSection;
@@ -58,6 +60,7 @@ export const ADMIN_NAV: {
   { id: 'management', label: 'Management', href: '/staff/management', icon: Settings },
   { id: 'teams', label: 'Teams', href: '/staff/teams', icon: Trophy },
   { id: 'matches', label: 'Matches', href: '/staff/matches', icon: ChevronRight },
+  { id: 'newsTicker', label: 'News Ticker', href: '/staff/news-ticker', icon: Newspaper },
 ];
 
 type AdminContextValue = {
@@ -98,6 +101,7 @@ function getActiveSection(pathname: string): AdminSection {
   if (pathname.startsWith('/staff/management')) return 'management';
   if (pathname.startsWith('/staff/teams')) return 'teams';
   if (pathname.startsWith('/staff/matches')) return 'matches';
+  if (pathname.startsWith('/staff/news-ticker')) return 'newsTicker';
   return 'dashboard';
 }
 

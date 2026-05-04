@@ -24,19 +24,30 @@ export default function CricketRegistrationForm() {
 		}
 
 		const formData = new FormData(e.currentTarget);
+
+		const paymentFile = formData.get("payment_screenshot") as File | null;
+		if (paymentFile && paymentFile.size > 8 * 1024 * 1024) {
+			setResult({ success: false, error: "Payment screenshot must be under 8 MB. Please compress or crop the image." });
+			return;
+		}
+
 		setIsPending(true);
 		setResult(null);
 
-		const res = await registerCricketTeam(formData);
-		setResult(res);
-		setIsPending(false);
-
-		if (res.success) {
-			formRef.current?.reset();
-			setTeamListName("");
-			setTeamImageName("");
-			setPaymentScreenshotName("");
-			setAgreed(false);
+		try {
+			const res = await registerCricketTeam(formData);
+			setResult(res);
+			if (res.success) {
+				formRef.current?.reset();
+				setTeamListName("");
+				setTeamImageName("");
+				setPaymentScreenshotName("");
+				setAgreed(false);
+			}
+		} catch {
+			setResult({ success: false, error: "Network error. Please check your connection and try again." });
+		} finally {
+			setIsPending(false);
 		}
 	};
 

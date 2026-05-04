@@ -89,6 +89,7 @@ export async function registerCricketTeam(
 			method: "POST",
 			body: payload,
 			cache: "no-store",
+			signal: AbortSignal.timeout(60_000),
 		});
 		const body = (await res.json().catch(() => null)) as {
 			id?: number | string;

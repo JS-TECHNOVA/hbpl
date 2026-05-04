@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import hbplLogo from "@/assets/hbpl_logo-removebg-preview.png";
 import { useLanguage } from "@/hooks/use-language";
+import NewsTicker from "@/components/NewsTicker";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -251,6 +252,8 @@ const Header = () => {
         ))}
         <span ref={moreMeasureRef} className="px-4 py-2 rounded-lg font-medium whitespace-nowrap">More</span>
       </div>
+
+      <NewsTicker />
 
       {/* ===== Mobile Menu (Animated) ===== */}
       <AnimatePresence>

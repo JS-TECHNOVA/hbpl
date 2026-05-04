@@ -123,10 +123,7 @@ const Home = () => {
 					</p>
 
 					<div className="flex flex-col sm:flex-row gap-4 justify-center">
-						<Link
-							href="/team-registration"
-							
-						>
+						<Link href="/team-registration">
 							<Button
 								size="lg"
 								className="text-sm md:text-lg px-8 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
@@ -463,7 +460,7 @@ const Home = () => {
 						)}
 					</p>
 					<a
-						href="https://forms.gle/i96EQf9S1Xbkvgi28"
+						href="/team-registration"
 						target="_blank"
 						rel="noopener noreferrer"
 					>

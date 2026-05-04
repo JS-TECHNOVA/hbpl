@@ -918,7 +918,7 @@ export default function AdminExamStudentsPage() {
 										}
 									}}
 								/>
-								<Button size="sm" variant="outline" className="w-full" onClick={() => testCopyRef.current?.click()} disabled={mutation.isPending || !can('api.change_examregistration')}>
+								<Button size="sm" variant="outline" className="w-full" onClick={() => { if (testCopyRef.current) { testCopyRef.current.value = ''; testCopyRef.current.click(); } }} disabled={mutation.isPending || !can('api.change_examregistration')}>
 									<Upload className="w-3 h-3 mr-1" />
 									{selected.test_copy_url ? 'Replace' : 'Upload'}
 								</Button>
@@ -949,7 +949,7 @@ export default function AdminExamStudentsPage() {
 										}
 									}}
 								/>
-								<Button size="sm" variant="outline" className="w-full" onClick={() => resultFileRef.current?.click()} disabled={mutation.isPending || !can('api.change_examregistration')}>
+								<Button size="sm" variant="outline" className="w-full" onClick={() => { if (resultFileRef.current) { resultFileRef.current.value = ''; resultFileRef.current.click(); } }} disabled={mutation.isPending || !can('api.change_examregistration')}>
 									<Upload className="w-3 h-3 mr-1" />
 									{selected.result_file_url ? 'Replace' : 'Upload'}
 								</Button>
