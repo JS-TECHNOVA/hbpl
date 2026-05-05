@@ -5,6 +5,7 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     # ── Public endpoints ──────────────────────────────────────────────────────
+    path("news-ticker/", views.NewsTickerListView.as_view(), name="news-ticker-list"),
     path("teams/", views.TeamListView.as_view(), name="team-list"),
     path("matches/", views.MatchListView.as_view(), name="match-list"),
     path("management/", views.ManagementListView.as_view(), name="management-list"),
@@ -54,6 +55,8 @@ urlpatterns += [
     path("admin/team-registrations/", views.AdminTeamRegistrationListView.as_view(), name="admin-team-registration-list"),
     path("admin/matches/", views.AdminMatchListCreateView.as_view(), name="admin-match-list"),
     path("admin/matches/<int:pk>/", views.AdminMatchDetailView.as_view(), name="admin-match-detail"),
+    path("admin/news-ticker/", views.AdminNewsTickerListCreateView.as_view(), name="admin-news-ticker-list"),
+    path("admin/news-ticker/<int:pk>/", views.AdminNewsTickerDetailView.as_view(), name="admin-news-ticker-detail"),
     path("admin/exam/important-dates/", views.AdminExamImportantDateListCreateView.as_view(), name="admin-exam-important-date-list"),
     path("admin/exam/important-dates/<int:pk>/", views.AdminExamImportantDateDetailView.as_view(), name="admin-exam-important-date-detail"),
     path("admin/exam/support-schools/", views.AdminExamSupportSchoolListCreateView.as_view(), name="admin-exam-support-school-list"),

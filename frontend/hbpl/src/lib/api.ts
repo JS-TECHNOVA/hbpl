@@ -823,7 +823,7 @@ export const adminImportMarks = async (
   return body as AdminMarksImportResult;
 };
 
-// ── News Ticker (stored in Next.js, not Django) ───────────────────────────────
+// ── News Ticker ───────────────────────────────────────────────────────────────
 
 export interface TickerItem {
   id: number;
@@ -833,51 +833,20 @@ export interface TickerItem {
   order: number;
 }
 
-export const fetchTickerItems = async (): Promise<TickerItem[]> => {
-  try {
-    const res = await fetch('/api/news-ticker/', { cache: 'no-store' });
-    if (!res.ok) return [];
-    return res.json() as Promise<TickerItem[]>;
-  } catch {
-    return [];
-  }
-};
+export const fetchTickerItems = (): Promise<TickerItem[]> =>
+  get<TickerItem[]>("/api/news-ticker/");
 
-export const adminFetchTickerItems = async (t: string): Promise<TickerItem[]> => {
-  const res = await fetch('/api/admin/news-ticker/', { headers: authHeaders(t) });
-  if (!res.ok) throw new Error('Failed to fetch ticker items');
-  return res.json() as Promise<TickerItem[]>;
-};
+export const adminFetchTickerItems = (t: string) =>
+  adminGet<TickerItem[]>(t, "/api/admin/news-ticker/");
 
-export const adminCreateTickerItem = async (t: string, d: object): Promise<TickerItem> => {
-  const res = await fetch('/api/admin/news-ticker/', {
-    method: 'POST',
-    headers: { ...authHeaders(t), 'Content-Type': 'application/json' },
-    body: JSON.stringify(d),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(JSON.stringify(data) || 'Create failed');
-  return data as TickerItem;
-};
+export const adminCreateTickerItem = (t: string, d: object) =>
+  adminPost<TickerItem>(t, "/api/admin/news-ticker/", d);
 
-export const adminUpdateTickerItem = async (t: string, id: number, d: object): Promise<TickerItem> => {
-  const res = await fetch(`/api/admin/news-ticker/${id}/`, {
-    method: 'PATCH',
-    headers: { ...authHeaders(t), 'Content-Type': 'application/json' },
-    body: JSON.stringify(d),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(JSON.stringify(data) || 'Update failed');
-  return data as TickerItem;
-};
+export const adminUpdateTickerItem = (t: string, id: number, d: object) =>
+  adminPatch<TickerItem>(t, `/api/admin/news-ticker/${id}/`, d);
 
-export const adminDeleteTickerItem = async (t: string, id: number): Promise<void> => {
-  const res = await fetch(`/api/admin/news-ticker/${id}/`, {
-    method: 'DELETE',
-    headers: authHeaders(t),
-  });
-  if (!res.ok && res.status !== 204) throw new Error(`Delete failed: ${res.status}`);
-};
+export const adminDeleteTickerItem = (t: string, id: number) =>
+  adminDelete(t, `/api/admin/news-ticker/${id}/`);
 
 // ── Test Copy Bulk Upload ─────────────────────────────────────────────────────
 

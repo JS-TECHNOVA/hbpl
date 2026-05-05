@@ -306,6 +306,19 @@ class ExamTopper(models.Model):
         return f"Rank {self.rank}: {self.student.full_name}"
 
 
+class NewsTicker(models.Model):
+    text = models.CharField(max_length=500)
+    link = models.CharField(max_length=500, blank=True)
+    is_active = models.BooleanField(default=True)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return self.text[:60]
+
+
 class ExamSettings(models.Model):
     registration_closed = models.BooleanField(
         default=False,

@@ -421,7 +421,7 @@ const HBPL_Examportal: React.FC = () => {
 
         <RollNoSearch language={language} />
 
-        <h3 className="text-lg sm:text-xl font-bold mt-12 mb-2">{tr('Top 20 Toppers', 'टॉप 20 टॉपर्स', language)}</h3>
+        <h3 className="text-lg sm:text-xl font-bold mt-12 mb-2">{tr('Top 60 Toppers', 'टॉप 60 टॉपर्स', language)}</h3>
         <p className="text-xs sm:text-sm text-gray-300 mb-6">
           {tr(
             'Top performers published by staff will appear here with rank and score.',

@@ -20,6 +20,7 @@ from .models import (
     ExamCenterDetail,
     ExamFaq,
     ExamTopper,
+    NewsTicker,
 )
 
 class ComplaintCreateSerializer(serializers.ModelSerializer):
@@ -631,3 +632,15 @@ class AdminMatchSerializer(serializers.ModelSerializer):
             "team1", "team2", "team1_score", "team2_score",
             "result", "player_of_match", "season",
         ]
+
+
+class NewsTickerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NewsTicker
+        fields = ["id", "text", "link", "is_active", "order"]
+
+
+class AdminNewsTickerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NewsTicker
+        fields = ["id", "text", "link", "is_active", "order"]

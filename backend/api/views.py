@@ -39,6 +39,7 @@ from .models import (
     ExamTopper,
     ExamSettings,
     Complaint,
+    NewsTicker,
 )
 from .serializers import (
     TeamSerializer,
@@ -77,6 +78,8 @@ from .serializers import (
     ComplaintSerializer,
     ComplaintCreateSerializer,
     AdminComplaintSerializer,
+    NewsTickerSerializer,
+    AdminNewsTickerSerializer,
 )
 from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
@@ -1404,6 +1407,25 @@ class AdminExamImportMarksView(APIView):
             "errors": errors[:50],
             "error_count": len(errors),
         })
+
+
+class NewsTickerListView(generics.ListAPIView):
+    serializer_class = NewsTickerSerializer
+    queryset = NewsTicker.objects.filter(is_active=True)
+
+
+class AdminNewsTickerListCreateView(generics.ListCreateAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    serializer_class = AdminNewsTickerSerializer
+    queryset = NewsTicker.objects.all()
+
+
+class AdminNewsTickerDetailView(generics.RetrieveUpdateDestroyAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    serializer_class = AdminNewsTickerSerializer
+    queryset = NewsTicker.objects.all()
 
 
 class AdminExamUploadTestCopiesView(APIView):

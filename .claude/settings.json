@@ -4,7 +4,8 @@
       "Read(//c/Users/elske/AppData/Local/Temp/claude/c--Users-elske-Desktop-hbpl/7b3c6d5e-a869-4b11-a20f-f2cd3e43adc4/tasks/**)",
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\elske\\\\Desktop\\\\hbpl\\\\frontend\\\\hbpl\" -Recurse -Directory)",
       "Bash(Select-Object -ExpandProperty FullName)",
-      "Bash(Sort-Object)"
+      "Bash(Sort-Object)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\elske\\\\Desktop\\\\hbpl\" -Recurse -Directory)"
     ]
   }
 }

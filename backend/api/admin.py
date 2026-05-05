@@ -3,8 +3,17 @@ from django.shortcuts import redirect
 from django.urls import path
 from .models import (
  Match, ManagementMember, GalleryImage, Volunteer,
-    TeamRegistration, ExamRegistration, ExamSettings,Complaint
+    TeamRegistration, ExamRegistration, ExamSettings, Complaint, NewsTicker
 )
+
+
+@admin.register(NewsTicker)
+class NewsTickerAdmin(admin.ModelAdmin):
+    list_display = ["text", "is_active", "order"]
+    list_filter = ["is_active"]
+    list_editable = ["is_active", "order"]
+    search_fields = ["text"]
+    ordering = ["order", "id"]
 
 
 @admin.register(Complaint)

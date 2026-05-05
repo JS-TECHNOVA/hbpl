@@ -314,7 +314,7 @@ export default function AdminExamPortalPage() {
         </div>
       </Panel>
 
-      <Panel title="Top 20 Toppers">
+      <Panel title="Top 60 Toppers">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           <select className="border rounded-md px-3 py-2 text-sm" value={topperForm.student} onChange={(e) => setTopperForm({ ...topperForm, student: e.target.value })}>
             <option value="">Select student</option>
