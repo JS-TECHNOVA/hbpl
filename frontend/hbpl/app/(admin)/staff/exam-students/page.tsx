@@ -1,8 +1,8 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BarChart2, CheckCircle, Clock, Download, FileSpreadsheet, FolderOpen, Loader2, Trash2, Upload, X } from 'lucide-react';
+import { BarChart2, CheckCircle, Clock, Download, FileSpreadsheet, FolderOpen, Loader2, Search, Trash2, Upload, X } from 'lucide-react';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -56,6 +56,19 @@ export default function AdminExamStudentsPage() {
 	const [filterClass, setFilterClass] = useState('');
 	const [filterSchool, setFilterSchool] = useState('');
 	const [filterStatus, setFilterStatus] = useState('');
+	const [quickQuery, setQuickQuery] = useState('');
+	const [showDropdown, setShowDropdown] = useState(false);
+	const quickSearchRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		const handler = (e: MouseEvent) => {
+			if (quickSearchRef.current && !quickSearchRef.current.contains(e.target as Node)) {
+				setShowDropdown(false);
+			}
+		};
+		document.addEventListener('mousedown', handler);
+		return () => document.removeEventListener('mousedown', handler);
+	}, []);
 	const [isImportOpen, setIsImportOpen] = useState(false);
 	const [importFile, setImportFile] = useState<File | null>(null);
 	const [importScan, setImportScan] = useState<AdminStudentImportScanResult | null>(null);
@@ -294,6 +307,19 @@ export default function AdminExamStudentsPage() {
 
 	const publishedCount = students.filter((student) => student.result_status === 'published').length;
 
+	const quickResults = quickQuery.trim().length >= 1
+		? students.filter((s) => {
+				const q = quickQuery.toLowerCase();
+				return (
+					s.full_name.toLowerCase().includes(q) ||
+					s.roll_number.toLowerCase().includes(q) ||
+					s.school_name.toLowerCase().includes(q) ||
+					s.phone.includes(q) ||
+					s.father_name.toLowerCase().includes(q)
+				);
+			}).slice(0, 10)
+		: [];
+
 	return (
 		<div className="space-y-6">
 			<SectionHeader title="Exam Students" />
@@ -309,13 +335,76 @@ export default function AdminExamStudentsPage() {
 					</div>
 				))}
 			</div>
+			{/* ── Quick Find Student ── */}
+			<div ref={quickSearchRef} className="relative">
+				<div className="flex items-center gap-3 bg-white dark:bg-gray-900 border dark:border-gray-800 rounded-2xl px-4 py-3 shadow-sm">
+					<Search className="w-5 h-5 text-gray-400 flex-shrink-0" />
+					<input
+						className="flex-1 bg-transparent outline-none text-base text-gray-900 dark:text-white placeholder:text-gray-400"
+						placeholder="Quick find — type name, roll number, phone or father's name..."
+						value={quickQuery}
+						onChange={(e) => { setQuickQuery(e.target.value); setShowDropdown(true); }}
+						onFocus={() => setShowDropdown(true)}
+					/>
+					{quickQuery && (
+						<button onClick={() => { setQuickQuery(''); setShowDropdown(false); }} className="text-gray-400 hover:text-gray-600">
+							<X className="w-4 h-4" />
+						</button>
+					)}
+					{quickQuery && (
+						<span className="text-xs text-gray-400 whitespace-nowrap">{quickResults.length} match{quickResults.length !== 1 ? 'es' : ''}</span>
+					)}
+				</div>
+
+				{showDropdown && quickResults.length > 0 && (
+					<div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl shadow-xl overflow-hidden">
+						{quickResults.map((student) => (
+							<button
+								key={student.id}
+								className="w-full flex items-center gap-3 px-4 py-3 hover:bg-blue-50 dark:hover:bg-gray-800 transition-colors text-left border-b dark:border-gray-800 last:border-0"
+								onClick={() => { openStudent(student); setShowDropdown(false); setQuickQuery(''); }}
+							>
+								{student.student_image_url ? (
+									<Image src={student.student_image_url} alt={student.full_name} width={36} height={36} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+								) : (
+									<div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 flex-shrink-0 flex items-center justify-center text-sm font-bold text-gray-500">
+										{student.full_name.charAt(0)}
+									</div>
+								)}
+								<div className="flex-1 min-w-0">
+									<div className="flex items-center gap-2">
+										<span className="font-semibold text-sm text-gray-900 dark:text-white truncate">{student.full_name}</span>
+										<span className={`flex-shrink-0 text-xs px-1.5 py-0.5 rounded-full font-medium ${student.result_status === 'published' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+											{student.result_status === 'published' ? 'Published' : 'Pending'}
+										</span>
+									</div>
+									<div className="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
+										<span className="font-mono">{student.roll_number || '—'}</span>
+										{student.school_name && <><span>·</span><span className="truncate">{student.school_name}</span></>}
+										{student.class_name && <><span>·</span><span>{student.class_name}</span></>}
+										{student.marks_obtained != null && <><span>·</span><span className="text-blue-500 font-medium">{student.marks_obtained}/{student.total_marks}</span></>}
+									</div>
+								</div>
+								<span className="text-xs text-blue-500 flex-shrink-0">Edit →</span>
+							</button>
+						))}
+					</div>
+				)}
+
+				{showDropdown && quickQuery.trim().length >= 1 && quickResults.length === 0 && (
+					<div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-xl shadow-xl px-4 py-6 text-center text-sm text-gray-400">
+						No students found for &ldquo;{quickQuery}&rdquo;
+					</div>
+				)}
+			</div>
+
 			<div className="bg-white dark:bg-gray-900 rounded-xl border dark:border-gray-800">
 				<div className="p-4 border-b dark:border-gray-800 space-y-3">
 				<div className="flex items-center justify-between gap-3">
 					<Input
 						value={search}
 						onChange={(event) => setSearch(event.target.value)}
-						placeholder="Search by name, roll number or school..."
+						placeholder="Filter table by name, roll number or school..."
 						className="max-w-sm"
 					/>
 					<div className="flex items-center gap-2">
