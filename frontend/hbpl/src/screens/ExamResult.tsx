@@ -172,7 +172,7 @@ const ExamResult = () => {
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
                       >
-                        <ExternalLink className="w-4 h-4" /> View Test Copy
+                        <ExternalLink className="w-4 h-4" /> View Result Copy
                       </a>
                     )}
                     {result.result_file_url && (
