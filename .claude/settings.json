@@ -5,7 +5,9 @@
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\elske\\\\Desktop\\\\hbpl\\\\frontend\\\\hbpl\" -Recurse -Directory)",
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(Sort-Object)",
-      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\elske\\\\Desktop\\\\hbpl\" -Recurse -Directory)"
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\elske\\\\Desktop\\\\hbpl\" -Recurse -Directory)",
+      "Bash(python -c ' *)",
+      "Bash(python manage.py makemigrations api --name=\"add_community_highlight_and_gallery_categories\")"
     ]
   }
 }

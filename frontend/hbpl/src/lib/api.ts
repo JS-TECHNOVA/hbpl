@@ -856,18 +856,35 @@ export interface AdminTestCopyUploadResult {
   errors: Array<{ file: string; error: string }>;
 }
 
+const TEST_COPY_BATCH_SIZE = 25;
+
 export const adminUploadTestCopies = async (
   token: string,
   files: File[],
+  onProgress?: (current: number, total: number) => void,
 ): Promise<AdminTestCopyUploadResult> => {
-  const formData = new FormData();
-  for (const file of files) formData.append("files", file);
-  const res = await fetch(`${API_URL}/api/admin/exam/registrations/upload-test-copies/`, {
-    method: "POST",
-    headers: authHeaders(token),
-    body: formData,
-  });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(typeof body?.detail === "string" ? body.detail : "Upload failed");
-  return body as AdminTestCopyUploadResult;
+  const batches: File[][] = [];
+  for (let i = 0; i < files.length; i += TEST_COPY_BATCH_SIZE)
+    batches.push(files.slice(i, i + TEST_COPY_BATCH_SIZE));
+
+  const aggregated: AdminTestCopyUploadResult = { uploaded: 0, not_found: [], errors: [] };
+
+  for (let i = 0; i < batches.length; i++) {
+    onProgress?.(i + 1, batches.length);
+    const formData = new FormData();
+    for (const file of batches[i]) formData.append("files", file);
+    const res = await fetch(`${API_URL}/api/admin/exam/registrations/upload-test-copies/`, {
+      method: "POST",
+      headers: authHeaders(token),
+      body: formData,
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(typeof body?.detail === "string" ? body.detail : "Upload failed");
+    const result = body as AdminTestCopyUploadResult;
+    aggregated.uploaded += result.uploaded;
+    aggregated.not_found.push(...result.not_found);
+    aggregated.errors.push(...result.errors);
+  }
+
+  return aggregated;
 };

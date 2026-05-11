@@ -56,6 +56,7 @@ export default function AdminExamStudentsPage() {
 	const [filterClass, setFilterClass] = useState('');
 	const [filterSchool, setFilterSchool] = useState('');
 	const [filterStatus, setFilterStatus] = useState('');
+	const [filterPending, setFilterPending] = useState('');
 	const [quickQuery, setQuickQuery] = useState('');
 	const [showDropdown, setShowDropdown] = useState(false);
 	const quickSearchRef = useRef<HTMLDivElement>(null);
@@ -84,6 +85,7 @@ export default function AdminExamStudentsPage() {
 	const [isTestCopiesOpen, setIsTestCopiesOpen] = useState(false);
 	const [testCopiesFiles, setTestCopiesFiles] = useState<File[]>([]);
 	const [testCopiesResult, setTestCopiesResult] = useState<AdminTestCopyUploadResult | null>(null);
+	const [testCopiesBatchProgress, setTestCopiesBatchProgress] = useState<{ current: number; total: number } | null>(null);
 	const [selected, setSelected] = useState<AdminExamRegistration | null>(null);
 	const [rollNumber, setRollNumber] = useState('');
 	const [fatherName, setFatherName] = useState('');
@@ -230,13 +232,20 @@ export default function AdminExamStudentsPage() {
 	});
 
 	const uploadTestCopiesMutation = useMutation({
-		mutationFn: () => adminUploadTestCopies(token, testCopiesFiles),
+		mutationFn: () => {
+			setTestCopiesBatchProgress(null);
+			return adminUploadTestCopies(token, testCopiesFiles, (current, total) =>
+				setTestCopiesBatchProgress({ current, total }),
+			);
+		},
 		onSuccess: (result) => {
+			setTestCopiesBatchProgress(null);
 			setTestCopiesResult(result);
 			void queryClient.invalidateQueries({ queryKey: ['admin-students'] });
 			toast({ title: 'Upload complete', description: `${result.uploaded} file(s) uploaded.` });
 		},
 		onError: (error) => {
+			setTestCopiesBatchProgress(null);
 			toast({ title: 'Upload Failed', description: error instanceof Error ? error.message : 'Upload failed', variant: 'destructive' });
 		},
 	});
@@ -282,10 +291,14 @@ export default function AdminExamStudentsPage() {
 		const matchesClass = !filterClass || student.class_name === filterClass;
 		const matchesSchool = !filterSchool || student.school_name === filterSchool;
 		const matchesStatus = !filterStatus || student.result_status === filterStatus;
-		return matchesSearch && matchesClass && matchesSchool && matchesStatus;
+		const matchesPending =
+			!filterPending ||
+			(filterPending === 'no_test_copy' && !student.test_copy_url) ||
+			(filterPending === 'result_pending' && student.result_status === 'pending');
+		return matchesSearch && matchesClass && matchesSchool && matchesStatus && matchesPending;
 	});
 
-	const hasActiveFilters = filterClass !== '' || filterSchool !== '' || filterStatus !== '';
+	const hasActiveFilters = filterClass !== '' || filterSchool !== '' || filterStatus !== '' || filterPending !== '';
 
 	const mappingTargets = [
 		'full_name',
@@ -533,9 +546,18 @@ export default function AdminExamStudentsPage() {
 						<option value="pending">Pending</option>
 						<option value="published">Published</option>
 					</select>
+					<select
+						value={filterPending}
+						onChange={(e) => setFilterPending(e.target.value)}
+						className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+					>
+						<option value="">All Students</option>
+						<option value="no_test_copy">Copy Not Uploaded</option>
+						<option value="result_pending">Result Not Published</option>
+					</select>
 					{hasActiveFilters && (
 						<button
-							onClick={() => { setFilterClass(''); setFilterSchool(''); setFilterStatus(''); }}
+							onClick={() => { setFilterClass(''); setFilterSchool(''); setFilterStatus(''); setFilterPending(''); }}
 							className="text-xs text-blue-500 hover:underline"
 						>
 							Clear filters
@@ -826,7 +848,7 @@ export default function AdminExamStudentsPage() {
 									onClick={() => uploadTestCopiesMutation.mutate()}
 								>
 									{uploadTestCopiesMutation.isPending
-										? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Uploading {testCopiesFiles.length} file(s)…</>
+										? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{testCopiesBatchProgress ? `Batch ${testCopiesBatchProgress.current}/${testCopiesBatchProgress.total}…` : `Uploading ${testCopiesFiles.length} file(s)…`}</>
 										: `Upload ${testCopiesFiles.length} PDF(s)`}
 								</Button>
 							</>
