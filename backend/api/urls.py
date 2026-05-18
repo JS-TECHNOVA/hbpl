@@ -50,11 +50,6 @@ urlpatterns += [
     path("admin/gallery/<int:pk>/", views.AdminGalleryDetailView.as_view(), name="admin-gallery-detail"),
     path("admin/management/", views.AdminManagementListCreateView.as_view(), name="admin-management-list"),
     path("admin/management/<int:pk>/", views.AdminManagementDetailView.as_view(), name="admin-management-detail"),
-    path("admin/teams/", views.AdminTeamListCreateView.as_view(), name="admin-team-list"),
-    path("admin/teams/<int:pk>/", views.AdminTeamDetailView.as_view(), name="admin-team-detail"),
-    path("admin/team-registrations/", views.AdminTeamRegistrationListView.as_view(), name="admin-team-registration-list"),
-    path("admin/matches/", views.AdminMatchListCreateView.as_view(), name="admin-match-list"),
-    path("admin/matches/<int:pk>/", views.AdminMatchDetailView.as_view(), name="admin-match-detail"),
     path("admin/news-ticker/", views.AdminNewsTickerListCreateView.as_view(), name="admin-news-ticker-list"),
     path("admin/news-ticker/<int:pk>/", views.AdminNewsTickerDetailView.as_view(), name="admin-news-ticker-detail"),
     path("admin/exam/important-dates/", views.AdminExamImportantDateListCreateView.as_view(), name="admin-exam-important-date-list"),
@@ -72,6 +67,7 @@ urlpatterns += [
     path("admin/exam/toppers/", views.AdminExamTopperListCreateView.as_view(), name="admin-exam-topper-list"),
     path("admin/exam/toppers/<int:pk>/", views.AdminExamTopperDetailView.as_view(), name="admin-exam-topper-detail"),
 ]
+
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -22,6 +22,7 @@ ALLOWED_HOSTS = [
 ]
 
 INSTALLED_APPS = [
+    "daphne",  # must be first — enables ASGI/WebSocket in dev server
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -31,8 +32,15 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "rest_framework.authtoken",
+    "rest_framework_simplejwt",
+    "channels",
     "api",
     "hbpl",
+    "core",
+    "cms",
+    "exams",
+    "cricket",
+    "import_export",
 ]
 
 MIDDLEWARE = [
@@ -65,6 +73,24 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "hbpl_project.wsgi.application"
+ASGI_APPLICATION = "hbpl_project.asgi.application"
+
+# ── Django Channels ───────────────────────────────────────────────────────────
+# InMemoryChannelLayer for dev. In production set REDIS_URL and switch backend.
+_REDIS_URL = os.environ.get("REDIS_URL", "")
+if _REDIS_URL:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {"hosts": [_REDIS_URL]},
+        }
+    }
+else:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        }
+    }
 
 # ── Database ─────────────────────────────────────────────────────────────────
 # In production set DATABASE_URL=postgres://user:pass@host:5432/dbname
@@ -175,6 +201,7 @@ SERVER_EMAIL = DEFAULT_FROM_EMAIL
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.TokenAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
@@ -183,4 +210,13 @@ REST_FRAMEWORK = {
         "rest_framework.parsers.MultiPartParser",
         "rest_framework.parsers.FormParser",
     ],
+}
+
+# ── SimpleJWT ─────────────────────────────────────────────────────────────────
+from datetime import timedelta
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=8),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
 }

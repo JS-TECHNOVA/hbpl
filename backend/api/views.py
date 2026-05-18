@@ -40,6 +40,17 @@ from .models import (
     ExamSettings,
     Complaint,
     NewsTicker,
+    Player,
+    CricketTeam,
+    MatchPlayerStats,
+    Tournament,
+    TournamentTeam,
+    Innings,
+    Over,
+    Ball,
+    BatsmanScore,
+    BowlerScore,
+    Event,
 )
 from .serializers import (
     TeamSerializer,
@@ -80,6 +91,21 @@ from .serializers import (
     AdminComplaintSerializer,
     NewsTickerSerializer,
     AdminNewsTickerSerializer,
+    PlayerSerializer,
+    PlayerCreateSerializer,
+    TeamWithPlayersSerializer,
+    TournamentListSerializer,
+    TournamentDetailSerializer,
+    TournamentTeamSerializer,
+    TournamentRegistrationSerializer,
+    LiveMatchSerializer,
+    InningsSerializer,
+    BallSerializer,
+    AdminTournamentSerializer,
+    AdminTournamentTeamSerializer,
+    AdminPlayerSerializer,
+    AdminInningsSerializer,
+    AdminBallSerializer,
 )
 from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
@@ -310,10 +336,11 @@ class MatchListView(generics.ListAPIView):
     serializer_class = MatchSerializer
 
     def get_queryset(self):
-        qs = Match.objects.all()
-        season = self.request.query_params.get("season")
-        if season is not None:
-            qs = qs.filter(season=season)
+        qs = Match.objects.all().order_by("date", "id")
+        for param, field in [("season", "season"), ("tournament", "tournament_id"), ("match_status", "match_status")]:
+            val = self.request.query_params.get(param)
+            if val is not None:
+                qs = qs.filter(**{field: val})
         return qs
 
 
@@ -662,6 +689,7 @@ class AdminExamListView(generics.ListAPIView):
         school_name = self.request.query_params.get("school_name")
         result_status = self.request.query_params.get("result_status")
         examination_center = self.request.query_params.get("examination_center")
+        has_test_copy = self.request.query_params.get("has_test_copy")
         if class_name:
             qs = qs.filter(class_name__iexact=class_name)
         if school_name:
@@ -670,6 +698,11 @@ class AdminExamListView(generics.ListAPIView):
             qs = qs.filter(result_status=result_status)
         if examination_center:
             qs = qs.filter(examination_center__iexact=examination_center)
+        if has_test_copy == "yes":
+            qs = qs.exclude(test_copy__isnull=True).exclude(test_copy="")
+        elif has_test_copy == "no":
+            from django.db.models import Q
+            qs = qs.filter(Q(test_copy__isnull=True) | Q(test_copy=""))
         return qs
 
 
@@ -772,7 +805,14 @@ class AdminMatchListCreateView(generics.ListCreateAPIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [StaffWithModelPermissions]
     serializer_class = AdminMatchSerializer
-    queryset = Match.objects.all().order_by("date", "id")
+
+    def get_queryset(self):
+        qs = Match.objects.all().order_by("date", "id")
+        for param, field in [("tournament", "tournament_id"), ("match_status", "match_status"), ("season", "season")]:
+            val = self.request.query_params.get(param)
+            if val:
+                qs = qs.filter(**{field: val})
+        return qs
 
 
 class AdminMatchDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -1463,3 +1503,861 @@ class AdminExamUploadTestCopiesView(APIView):
             "not_found": not_found,
             "errors": errors,
         })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CRICKET PHASE 2+ VIEWS
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Public ────────────────────────────────────────────────────────────────────
+
+class TournamentLeaderboardView(APIView):
+    """Public: aggregated batting & bowling leaders for a tournament."""
+
+    def get(self, request, pk):
+        from django.db.models import Sum, Count
+
+        tournament = generics.get_object_or_404(Tournament, pk=pk)
+
+        stats = list(
+            MatchPlayerStats.objects
+            .filter(match__tournament=tournament)
+            .values("player_id", "player__name", "team_id", "team__name", "team__short_name")
+            .annotate(
+                matches=Count("match_id", distinct=True),
+                total_runs=Sum("runs"),
+                total_wickets=Sum("wickets"),
+                total_balls_faced=Sum("balls_faced"),
+                total_fours=Sum("fours"),
+                total_sixes=Sum("sixes"),
+                total_overs_bowled=Sum("overs_bowled"),
+                total_runs_conceded=Sum("runs_conceded"),
+                total_catches=Sum("catches"),
+            )
+        )
+
+        batters = sorted(
+            [s for s in stats if s["total_runs"]],
+            key=lambda x: x["total_runs"] or 0,
+            reverse=True,
+        )[:10]
+
+        bowlers = sorted(
+            [s for s in stats if s["total_wickets"]],
+            key=lambda x: (x["total_wickets"] or 0, -(x["total_runs_conceded"] or 999)),
+            reverse=True,
+        )[:10]
+
+        _BATTER_FIELDS = ("total_runs", "total_balls_faced", "total_fours", "total_sixes")
+        _BOWLER_FIELDS = ("total_wickets", "total_overs_bowled", "total_runs_conceded", "total_catches")
+
+        def fmt(rows, fields):
+            return [
+                {
+                    "player_id": r["player_id"],
+                    "player_name": r["player__name"],
+                    "team_name": r["team__name"],
+                    "team_short": r["team__short_name"],
+                    "matches": r["matches"],
+                    **{k: r[k] for k in fields},
+                }
+                for r in rows
+            ]
+
+        return Response({
+            "tournament_id": tournament.id,
+            "tournament_name": tournament.name,
+            "top_batters": fmt(batters, _BATTER_FIELDS),
+            "top_bowlers": fmt(bowlers, _BOWLER_FIELDS),
+        })
+
+
+class TournamentListView(generics.ListAPIView):
+    queryset = Tournament.objects.all()
+    serializer_class = TournamentListSerializer
+
+
+class TournamentDetailView(generics.RetrieveAPIView):
+    queryset = Tournament.objects.prefetch_related("team_registrations__team")
+    serializer_class = TournamentDetailSerializer
+    lookup_field = "pk"
+
+
+class TeamDetailView(generics.RetrieveAPIView):
+    """Public team page with player roster."""
+    queryset = TeamRegistration.objects.filter(is_approved=True).prefetch_related("players")
+    serializer_class = TeamWithPlayersSerializer
+    lookup_field = "pk"
+
+
+class PlayerListByTeamView(generics.ListAPIView):
+    """Public: list players for an approved team."""
+    serializer_class = PlayerSerializer
+
+    def get_queryset(self):
+        team_id = self.kwargs["team_pk"]
+        return Player.objects.filter(team_id=team_id, team__is_approved=True)
+
+
+class PlayerCreateView(generics.CreateAPIView):
+    """
+    Public: add a player to a registered team.
+    Requires the team's registered phone number for lightweight verification.
+    """
+    serializer_class = PlayerCreateSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def perform_create(self, serializer):
+        team = serializer.validated_data["team"]
+        provided_phone = self.request.data.get("team_phone", "").strip()
+        if team.phone != provided_phone:
+            raise DRFValidationError({"team_phone": "Phone number does not match team registration."})
+        serializer.save()
+
+
+class TournamentRegistrationView(generics.CreateAPIView):
+    """Public: team applies to a tournament."""
+    serializer_class = TournamentRegistrationSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(status="pending")
+
+
+class LiveMatchView(generics.RetrieveAPIView):
+    """Public: live match data with full innings/scorecard."""
+    queryset = Match.objects.prefetch_related(
+        "innings__batsman_scores__batsman",
+        "innings__bowler_scores__bowler",
+        "innings__overs__balls__batsman",
+        "innings__overs__balls__bowler",
+    )
+    serializer_class = LiveMatchSerializer
+    lookup_field = "pk"
+
+
+# ── Admin ─────────────────────────────────────────────────────────────────────
+
+class AdminTournamentListCreateView(generics.ListCreateAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    queryset = Tournament.objects.all()
+    serializer_class = AdminTournamentSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+
+class AdminTournamentDetailView(generics.RetrieveUpdateDestroyAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    queryset = Tournament.objects.all()
+    serializer_class = AdminTournamentSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+
+class AdminTournamentTeamListView(generics.ListAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    serializer_class = AdminTournamentTeamSerializer
+
+    def get_queryset(self):
+        qs = TournamentTeam.objects.select_related("team", "tournament")
+        tournament_id = self.request.query_params.get("tournament")
+        if tournament_id:
+            qs = qs.filter(tournament_id=tournament_id)
+        return qs
+
+
+class AdminTournamentTeamDetailView(generics.RetrieveUpdateDestroyAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    queryset = TournamentTeam.objects.select_related("team", "tournament")
+    serializer_class = AdminTournamentTeamSerializer
+
+    def perform_update(self, serializer):
+        from django.utils import timezone
+        instance = serializer.save()
+        if instance.status == "approved" and not instance.approved_at:
+            instance.approved_at = timezone.now()
+            instance.save(update_fields=["approved_at"])
+
+
+class AdminPlayerListCreateView(generics.ListCreateAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    serializer_class = AdminPlayerSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get_queryset(self):
+        qs = Player.objects.select_related("team")
+        team_id = self.request.query_params.get("team")
+        if team_id:
+            qs = qs.filter(team_id=team_id)
+        return qs
+
+
+class AdminPlayerDetailView(generics.RetrieveUpdateDestroyAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    queryset = Player.objects.select_related("team")
+    serializer_class = AdminPlayerSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+
+class AdminInningsListCreateView(generics.ListCreateAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    serializer_class = AdminInningsSerializer
+
+    def get_queryset(self):
+        match_id = self.request.query_params.get("match")
+        qs = Innings.objects.all()
+        if match_id:
+            qs = qs.filter(match_id=match_id)
+        return qs
+
+
+class AdminInningsDetailView(generics.RetrieveUpdateDestroyAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    queryset = Innings.objects.all()
+    serializer_class = AdminInningsSerializer
+
+
+class AdminBallCreateView(generics.CreateAPIView):
+    """
+    Record a single ball delivery.
+    Automatically updates Over totals and Innings totals after creation.
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    serializer_class = AdminBallSerializer
+
+    def perform_create(self, serializer):
+        ball = serializer.save()
+        self._update_over(ball)
+        self._update_innings(ball)
+        self._update_batsman_score(ball)
+        self._update_bowler_score(ball)
+
+    def _update_over(self, ball):
+        from django.db.models import Sum, Count, Q
+        over = ball.over
+        agg = over.balls.aggregate(
+            runs=Sum("runs_off_bat"),
+            extras=Sum("extra_runs"),
+            wickets=Count("id", filter=Q(is_wicket=True)),
+        )
+        over.runs = (agg["runs"] or 0) + (agg["extras"] or 0)
+        over.wickets = agg["wickets"] or 0
+        over.extras = agg["extras"] or 0
+        over.save(update_fields=["runs", "wickets", "extras"])
+
+    def _update_innings(self, ball):
+        from django.db.models import Sum, Count, Q
+        innings = ball.over.innings
+        agg = Ball.objects.filter(over__innings=innings).aggregate(
+            runs=Sum("runs_off_bat"),
+            extras=Sum("extra_runs"),
+            wickets=Count("id", filter=Q(is_wicket=True)),
+        )
+        innings.total_runs = (agg["runs"] or 0) + (agg["extras"] or 0)
+        innings.wickets = agg["wickets"] or 0
+        innings.extras = agg["extras"] or 0
+        completed_overs = innings.overs.filter(is_completed=True).count()
+        cur = innings.overs.filter(is_completed=False).first()
+        legal_in_current = cur.balls.filter(is_extra=False).count() if cur else 0
+        innings.overs_completed = completed_overs + (legal_in_current / 10)
+        innings.save(update_fields=["total_runs", "wickets", "extras", "overs_completed"])
+
+    def _update_batsman_score(self, ball):
+        if not ball.batsman:
+            return
+        innings = ball.over.innings
+        score, _ = BatsmanScore.objects.get_or_create(
+            innings=innings, batsman=ball.batsman
+        )
+        score.runs += ball.runs_off_bat
+        if not ball.is_extra or ball.extra_type == "no_ball":
+            score.balls_faced += 1
+        if ball.is_boundary and not ball.is_six:
+            score.fours += 1
+        if ball.is_six:
+            score.sixes += 1
+        if ball.is_wicket:
+            score.is_out = True
+            score.dismissal_type = ball.wicket_type
+            score.bowler = ball.bowler
+            score.fielder = ball.fielder
+            score.is_batting = False
+            innings.refresh_from_db()
+            score.fall_of_wicket_score = innings.total_runs
+            score.fall_of_wicket_over = str(innings.overs_completed)
+        score.save()
+
+    def _update_bowler_score(self, ball):
+        if not ball.bowler:
+            return
+        innings = ball.over.innings
+        score, _ = BowlerScore.objects.get_or_create(innings=innings, bowler=ball.bowler)
+        score.runs += ball.runs_off_bat
+        if ball.extra_type in ("wide", "no_ball"):
+            score.runs += ball.extra_runs
+        if ball.is_wicket:
+            score.wickets += 1
+        if ball.extra_type == "wide":
+            score.wides += 1
+        if ball.extra_type == "no_ball":
+            score.no_balls += 1
+        completed = innings.overs.filter(is_completed=True, bowler=ball.bowler).count()
+        cur = innings.overs.filter(is_completed=False, bowler=ball.bowler).first()
+        legal_balls = cur.balls.filter(is_extra=False).count() if cur else 0
+        score.overs = float(f"{completed}.{legal_balls}")
+        score.save()
+
+
+# ── WebSocket broadcast helper ────────────────────────────────────────────────
+
+def _ws_broadcast(group: str, payload: dict):
+    try:
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        layer = get_channel_layer()
+        if layer:
+            async_to_sync(layer.group_send)(group, {"type": payload["type"].replace("-", "_"), "data": payload})
+    except Exception:
+        pass  # Never fail an API call due to WS issues
+
+
+def _build_score_payload(match, innings, ball=None):
+    from .consumers import _balls_for_over
+    current_over = innings.overs.filter(is_completed=False).first()
+    recent_balls = _balls_for_over(current_over)
+
+    current_batsmen = []
+    for bs in BatsmanScore.objects.filter(innings=innings, is_batting=True).select_related("batsman"):
+        current_batsmen.append({
+            "id": bs.batsman.id,
+            "name": bs.batsman.name,
+            "runs": bs.runs,
+            "balls": bs.balls_faced,
+            "fours": bs.fours,
+            "sixes": bs.sixes,
+        })
+
+    current_bowler = None
+    if current_over and current_over.bowler:
+        bs = BowlerScore.objects.filter(innings=innings, bowler=current_over.bowler).first()
+        current_bowler = {
+            "id": current_over.bowler.id,
+            "name": current_over.bowler.name,
+            "overs": str(bs.overs) if bs else "0.0",
+            "runs": bs.runs if bs else 0,
+            "wickets": bs.wickets if bs else 0,
+        }
+
+    innings.refresh_from_db()
+    return {
+        "type": "score_update",
+        "match_id": match.id,
+        "match_status": match.match_status,
+        "innings_id": innings.id,
+        "innings_number": innings.innings_number,
+        "batting_team": innings.batting_team_name,
+        "bowling_team": innings.bowling_team_name,
+        "total_runs": innings.total_runs,
+        "wickets": innings.wickets,
+        "overs": str(innings.overs_completed),
+        "target": innings.target,
+        "extras": innings.extras,
+        "current_batsmen": current_batsmen,
+        "current_bowler": current_bowler,
+        "last_ball": recent_balls[-1] if recent_balls else "",
+        "recent_balls": recent_balls,
+    }
+
+
+# ── Match Setup ───────────────────────────────────────────────────────────────
+
+class MatchSetupView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+
+    def post(self, request, pk):
+        match = get_object_or_404(Match, pk=pk)
+        data = request.data
+
+        match.toss_winner = data.get("toss_winner", "")
+        match.toss_decision = data.get("toss_decision", "")
+        match.match_status = "live"
+        match.save(update_fields=["toss_winner", "toss_decision", "match_status"])
+
+        batting_team = data.get("batting_team_name", match.team1)
+        bowling_team = data.get("bowling_team_name", match.team2)
+
+        innings, _ = Innings.objects.get_or_create(
+            match=match, innings_number=1,
+            defaults={
+                "batting_team_name": batting_team,
+                "bowling_team_name": bowling_team,
+                "total_runs": 0, "wickets": 0,
+                "overs_completed": 0.0, "extras": 0, "is_completed": False,
+            },
+        )
+        innings.batting_team_name = batting_team
+        innings.bowling_team_name = bowling_team
+        innings.save(update_fields=["batting_team_name", "bowling_team_name"])
+
+        striker_id = data.get("striker_id")
+        non_striker_id = data.get("non_striker_id")
+        opening_bowler_id = data.get("opening_bowler_id")
+
+        for i, pid in enumerate(data.get("batting_order", [])):
+            score, created = BatsmanScore.objects.get_or_create(
+                innings=innings, batsman_id=pid,
+                defaults={"batting_position": i + 1},
+            )
+            if not created:
+                score.batting_position = i + 1
+                score.save(update_fields=["batting_position"])
+            is_batting = str(pid) in [str(striker_id), str(non_striker_id)]
+            BatsmanScore.objects.filter(innings=innings, batsman_id=pid).update(is_batting=is_batting)
+
+        if opening_bowler_id:
+            Over.objects.get_or_create(
+                innings=innings, over_number=1,
+                defaults={"bowler_id": opening_bowler_id, "runs": 0, "wickets": 0, "extras": 0, "is_completed": False},
+            )
+
+        _ws_broadcast(f"match_{match.id}", {
+            "type": "score_update",
+            "match_id": match.id,
+            "match_status": "live",
+            "batting_team": batting_team,
+            "bowling_team": bowling_team,
+            "total_runs": 0, "wickets": 0, "overs": "0.0",
+            "current_batsmen": [], "current_bowler": None,
+            "last_ball": "", "recent_balls": [],
+        })
+        return Response({"success": True, "innings_id": innings.id})
+
+
+# ── Record Ball (main scoring endpoint) ───────────────────────────────────────
+
+class RecordBallView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+
+    def post(self, request, pk):
+        match = get_object_or_404(Match, pk=pk)
+        innings = match.innings.filter(is_completed=False).first()
+        if not innings:
+            return Response({"error": "No active innings."}, status=400)
+
+        current_over = innings.overs.filter(is_completed=False).first()
+        if not current_over:
+            return Response({"error": "No active over. Use end-over to start a new over."}, status=400)
+
+        d = request.data
+        runs = int(d.get("runs", 0))
+        is_wide = bool(d.get("is_wide", False))
+        is_no_ball = bool(d.get("is_no_ball", False))
+        is_bye = bool(d.get("is_bye", False))
+        is_leg_bye = bool(d.get("is_leg_bye", False))
+        is_wicket = bool(d.get("is_wicket", False))
+        wicket_type = d.get("wicket_type", "")
+        next_batsman_id = d.get("next_batsman_id")
+
+        is_extra = is_wide or is_no_ball or is_bye or is_leg_bye
+        if is_wide:
+            extra_type, extra_runs, runs_off_bat = "wide", 1 + runs, 0
+        elif is_no_ball:
+            extra_type, extra_runs, runs_off_bat = "no_ball", 1, runs
+        elif is_bye:
+            extra_type, extra_runs, runs_off_bat = "bye", runs, 0
+        elif is_leg_bye:
+            extra_type, extra_runs, runs_off_bat = "leg_bye", runs, 0
+        else:
+            extra_type, extra_runs, runs_off_bat = "", 0, runs
+
+        ball_number = current_over.balls.count() + 1
+        batsman = Player.objects.filter(pk=d.get("batsman_id")).first()
+        non_striker = Player.objects.filter(pk=d.get("non_striker_id")).first()
+        bowler = Player.objects.filter(pk=d.get("bowler_id")).first() or current_over.bowler
+        fielder = Player.objects.filter(pk=d.get("fielder_id")).first()
+
+        ball = Ball.objects.create(
+            over=current_over,
+            ball_number=ball_number,
+            batsman=batsman,
+            non_striker=non_striker,
+            bowler=bowler,
+            fielder=fielder if is_wicket else None,
+            runs_off_bat=runs_off_bat,
+            is_extra=is_extra,
+            extra_type=extra_type,
+            extra_runs=extra_runs,
+            is_wicket=is_wicket,
+            wicket_type=wicket_type if is_wicket else "",
+            is_boundary=(runs_off_bat == 4),
+            is_six=(runs_off_bat == 6),
+            commentary=d.get("commentary", ""),
+        )
+
+        self._update_over(ball)
+        self._update_innings(ball)
+        self._update_batsman_score(ball)
+        self._update_bowler_score(ball)
+
+        # Bring in next batsman after wicket
+        if is_wicket and next_batsman_id:
+            BatsmanScore.objects.filter(innings=innings, batsman=batsman).update(is_batting=False)
+            score, _ = BatsmanScore.objects.get_or_create(
+                innings=innings, batsman_id=next_batsman_id,
+                defaults={"batting_position": innings.batsman_scores.count() + 1, "is_batting": True},
+            )
+            BatsmanScore.objects.filter(innings=innings, batsman_id=next_batsman_id).update(is_batting=True)
+
+        payload = _build_score_payload(match, innings, ball)
+        _ws_broadcast(f"match_{match.id}", payload)
+        return Response({"success": True, "ball_id": ball.id, "scorecard": payload})
+
+    def _update_over(self, ball):
+        from django.db.models import Sum, Count, Q
+        over = ball.over
+        agg = over.balls.aggregate(
+            runs=Sum("runs_off_bat"),
+            extras=Sum("extra_runs"),
+            wickets=Count("id", filter=Q(is_wicket=True)),
+        )
+        over.runs = (agg["runs"] or 0) + (agg["extras"] or 0)
+        over.wickets = agg["wickets"] or 0
+        over.extras = agg["extras"] or 0
+        over.save(update_fields=["runs", "wickets", "extras"])
+
+    def _update_innings(self, ball):
+        from django.db.models import Sum, Count, Q
+        innings = ball.over.innings
+        agg = Ball.objects.filter(over__innings=innings).aggregate(
+            runs=Sum("runs_off_bat"),
+            extras=Sum("extra_runs"),
+            wickets=Count("id", filter=Q(is_wicket=True)),
+        )
+        innings.total_runs = (agg["runs"] or 0) + (agg["extras"] or 0)
+        innings.wickets = agg["wickets"] or 0
+        innings.extras = agg["extras"] or 0
+        completed_overs = innings.overs.filter(is_completed=True).count()
+        cur = innings.overs.filter(is_completed=False).first()
+        legal_in_current = cur.balls.filter(is_extra=False).count() if cur else 0
+        innings.overs_completed = completed_overs + (legal_in_current / 10)
+        innings.save(update_fields=["total_runs", "wickets", "extras", "overs_completed"])
+
+    def _update_batsman_score(self, ball):
+        if not ball.batsman:
+            return
+        innings = ball.over.innings
+        score, _ = BatsmanScore.objects.get_or_create(innings=innings, batsman=ball.batsman)
+        score.runs += ball.runs_off_bat
+        if not ball.is_extra or ball.extra_type == "no_ball":
+            score.balls_faced += 1
+        if ball.is_boundary and not ball.is_six:
+            score.fours += 1
+        if ball.is_six:
+            score.sixes += 1
+        if ball.is_wicket:
+            score.is_out = True
+            score.dismissal_type = ball.wicket_type
+            score.bowler = ball.bowler
+            score.fielder = ball.fielder
+            score.is_batting = False
+            innings.refresh_from_db()
+            score.fall_of_wicket_score = innings.total_runs
+            score.fall_of_wicket_over = str(innings.overs_completed)
+        score.save()
+
+    def _update_bowler_score(self, ball):
+        if not ball.bowler:
+            return
+        innings = ball.over.innings
+        score, _ = BowlerScore.objects.get_or_create(innings=innings, bowler=ball.bowler)
+        score.runs += ball.runs_off_bat
+        if ball.extra_type in ("wide", "no_ball"):
+            score.runs += ball.extra_runs
+        if ball.is_wicket:
+            score.wickets += 1
+        if ball.extra_type == "wide":
+            score.wides += 1
+        if ball.extra_type == "no_ball":
+            score.no_balls += 1
+        completed = innings.overs.filter(is_completed=True, bowler=ball.bowler).count()
+        cur = innings.overs.filter(is_completed=False, bowler=ball.bowler).first()
+        legal = cur.balls.filter(is_extra=False).count() if cur else 0
+        score.overs = float(f"{completed}.{legal}")
+        score.save()
+
+
+# ── End Over ──────────────────────────────────────────────────────────────────
+
+class EndOverView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+
+    def post(self, request, pk):
+        match = get_object_or_404(Match, pk=pk)
+        innings = match.innings.filter(is_completed=False).first()
+        if not innings:
+            return Response({"error": "No active innings."}, status=400)
+
+        current_over = innings.overs.filter(is_completed=False).first()
+        if not current_over:
+            return Response({"error": "No active over."}, status=400)
+
+        current_over.is_completed = True
+        current_over.save(update_fields=["is_completed"])
+
+        completed_overs = innings.overs.filter(is_completed=True).count()
+        innings.overs_completed = float(completed_overs)
+        innings.save(update_fields=["overs_completed"])
+
+        next_bowler_id = request.data.get("next_bowler_id")
+        new_over = None
+        if next_bowler_id:
+            new_over = Over.objects.create(
+                innings=innings,
+                over_number=current_over.over_number + 1,
+                bowler_id=next_bowler_id,
+                runs=0, wickets=0, extras=0, is_completed=False,
+            )
+
+        return Response({
+            "success": True,
+            "over_completed": current_over.over_number,
+            "new_over_id": new_over.id if new_over else None,
+        })
+
+
+# ── Declare Winner ────────────────────────────────────────────────────────────
+
+class DeclareWinnerView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+
+    def post(self, request, pk):
+        match = get_object_or_404(Match, pk=pk)
+        match.match_status = "completed"
+        match.result = request.data.get("result_summary", "")
+        match.save(update_fields=["match_status", "result"])
+
+        innings = match.innings.filter(is_completed=False).first()
+        if innings:
+            innings.is_completed = True
+            innings.save(update_fields=["is_completed"])
+
+        _ws_broadcast(f"match_{match.id}", {
+            "type": "score_update",
+            "match_id": match.id,
+            "match_status": "completed",
+            "result": match.result,
+        })
+        return Response({"success": True})
+
+
+# ── Active Match ──────────────────────────────────────────────────────────────
+
+class ActiveMatchView(APIView):
+    def get(self, request):
+        match = (
+            Match.objects.filter(match_status="live").first()
+            or Match.objects.filter(match_status="scheduled").order_by("date").first()
+        )
+        if not match:
+            return Response(None)
+        from .serializers import LiveMatchSerializer
+        return Response(LiveMatchSerializer(match).data)
+
+
+# ── Events (public + admin) ───────────────────────────────────────────────────
+
+class EventListView(generics.ListAPIView):
+    queryset = Event.objects.filter(is_published=True)
+    serializer_class = None  # assigned below
+
+    def get_serializer_class(self):
+        from .serializers import EventSerializer
+        return EventSerializer
+
+
+class AdminEventListCreateView(generics.ListCreateAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    queryset = Event.objects.all()
+
+    def get_serializer_class(self):
+        from .serializers import EventSerializer
+        return EventSerializer
+
+    def perform_create(self, serializer):
+        event = serializer.save()
+        from .serializers import EventSerializer as ES
+        _ws_broadcast("events", {
+            "type": "event_update",
+            "action": "created",
+            "event": ES(event).data,
+        })
+
+
+class AdminEventDetailView(generics.RetrieveUpdateDestroyAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    queryset = Event.objects.all()
+
+    def get_serializer_class(self):
+        from .serializers import EventSerializer
+        return EventSerializer
+
+    def perform_update(self, serializer):
+        event = serializer.save()
+        from .serializers import EventSerializer as ES
+        _ws_broadcast("events", {
+            "type": "event_update",
+            "action": "updated",
+            "event": ES(event).data,
+        })
+
+
+# ── CricketTeam (public list + admin CRUD) ────────────────────────────────────
+
+class CricketTeamListView(generics.ListAPIView):
+    """Public: list all active cricket teams."""
+    queryset = CricketTeam.objects.filter(is_active=True).prefetch_related("players")
+
+    def get_serializer_class(self):
+        from .serializers import CricketTeamSerializer
+        return CricketTeamSerializer
+
+
+class AdminCricketTeamListCreateView(generics.ListCreateAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    queryset = CricketTeam.objects.prefetch_related("players").all()
+
+    def get_serializer_class(self):
+        from .serializers import CricketTeamDetailSerializer
+        return CricketTeamDetailSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        # logo is not a writable serializer field; attach it from FILES before saving
+        extra = {}
+        if request.FILES.get("logo"):
+            extra["logo"] = request.FILES["logo"]
+        team = serializer.save(**extra)
+        from .serializers import CricketTeamDetailSerializer as S
+        return Response(S(team, context={"request": request}).data, status=status.HTTP_201_CREATED)
+
+
+class AdminCricketTeamDetailView(generics.RetrieveUpdateDestroyAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    queryset = CricketTeam.objects.prefetch_related("players").all()
+
+    def get_serializer_class(self):
+        from .serializers import CricketTeamDetailSerializer
+        return CricketTeamDetailSerializer
+
+    def partial_update(self, request, *args, **kwargs):
+        team = self.get_object()
+        for field in ["name", "short_name", "city", "captain_name", "primary_color", "description"]:
+            if field in request.data:
+                setattr(team, field, request.data[field])
+        if "is_active" in request.data:
+            team.is_active = str(request.data["is_active"]).lower() not in ("false", "0")
+        if request.FILES.get("logo"):
+            team.logo = request.FILES["logo"]
+        if "registration" in request.data:
+            try:
+                team.registration_id = int(request.data["registration"])
+            except (ValueError, TypeError):
+                team.registration = None
+        team.save()
+        from .serializers import CricketTeamDetailSerializer as S
+        return Response(S(team, context={"request": request}).data)
+
+
+# ── CricketTeam Player management ─────────────────────────────────────────────
+
+class AdminCricketTeamPlayerListCreateView(generics.ListCreateAPIView):
+    """List or add players for a specific CricketTeam."""
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+
+    def get_queryset(self):
+        team = get_object_or_404(CricketTeam, pk=self.kwargs["team_pk"])
+        return Player.objects.filter(cricket_team=team)
+
+    def get_serializer_class(self):
+        from .serializers import AdminPlayerSerializer
+        return AdminPlayerSerializer
+
+    def perform_create(self, serializer):
+        team = get_object_or_404(CricketTeam, pk=self.kwargs["team_pk"])
+        # CricketTeam players still need the team FK on Player — use a dummy or the registration
+        # We set cricket_team; for team (FK to TeamRegistration) we use the linked registration or leave null
+        if team.registration:
+            serializer.save(cricket_team=team, team=team.registration)
+        else:
+            # team field is required on the model — create a stub registration if none exists
+            reg, _ = TeamRegistration.objects.get_or_create(
+                team_name=team.name,
+                defaults={
+                    "captain_name": team.captain_name or "TBD",
+                    "phone": "0000000000",
+                    "player_count": 0,
+                    "season": 2025,
+                }
+            )
+            serializer.save(cricket_team=team, team=reg)
+
+
+class AdminCricketTeamPlayerDetailView(generics.RetrieveUpdateDestroyAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+
+    def get_queryset(self):
+        return Player.objects.filter(cricket_team_id=self.kwargs["team_pk"])
+
+    def get_serializer_class(self):
+        from .serializers import AdminPlayerSerializer
+        return AdminPlayerSerializer
+
+
+# ── MatchPlayerStats ──────────────────────────────────────────────────────────
+
+class MatchPlayerStatsView(generics.ListCreateAPIView):
+    """Public GET; staff-only POST."""
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return []
+        return [IsStaffUser()]
+
+    def get_queryset(self):
+        return MatchPlayerStats.objects.filter(match_id=self.kwargs["match_pk"]).select_related("player", "team")
+
+    def get_serializer_class(self):
+        from .serializers import MatchPlayerStatsSerializer
+        return MatchPlayerStatsSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(match_id=self.kwargs["match_pk"])
+
+
+class MatchPlayerStatsDetailView(generics.RetrieveUpdateDestroyAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+
+    def get_queryset(self):
+        return MatchPlayerStats.objects.filter(match_id=self.kwargs["match_pk"])
+
+    def get_serializer_class(self):
+        from .serializers import MatchPlayerStatsSerializer
+        return MatchPlayerStatsSerializer

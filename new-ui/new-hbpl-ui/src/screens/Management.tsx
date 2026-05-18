@@ -1,49 +1,70 @@
-const team = [
-  {
-    name: "Dr. Arun Kumar Singh",
-    role: "President",
-    bio: "Visionary leader with 20+ years of community service and policy experience.",
-    initials: "AK",
-    accent: "bg-primary text-white",
-  },
-  {
-    name: "Priya Sharma",
-    role: "Secretary General",
-    bio: "Overseeing operations, events, and community outreach across 50+ partner schools.",
-    initials: "PS",
-    accent: "bg-accent-peach text-accent-dark",
-  },
-  {
-    name: "Rajiv Mehta",
-    role: "Cricket Director",
-    bio: "Former state cricketer leading the HBPL Cricket League into its third season.",
-    initials: "RM",
-    accent: "bg-primary-light text-primary",
-  },
-  {
-    name: "Dr. Sunita Gupta",
-    role: "Exam Director",
-    bio: "Designing and overseeing the annual aptitude competition for 2000+ students.",
-    initials: "SG",
-    accent: "bg-accent-peach text-accent-dark",
-  },
-  {
-    name: "Amit Verma",
-    role: "Treasurer",
-    bio: "Managing finances, scholarship distribution, and annual budgeting.",
-    initials: "AV",
-    accent: "bg-primary-light text-primary",
-  },
-  {
-    name: "Kavya Nair",
-    role: "Social Media Manager",
-    bio: "Building HBPL's digital presence and fostering the online community.",
-    initials: "KN",
-    accent: "bg-accent-peach text-accent-dark",
-  },
-];
+"use client";
+
+import { useEffect, useState } from "react";
+
+const API = process.env.NEXT_PUBLIC_API_URL ?? "https://myhbpl.org";
+
+interface Member {
+  id: number;
+  name: string;
+  role: string;
+  description: string;
+  email: string;
+  image_url: string | null;
+}
+
+function MemberCard({ m }: { m: Member }) {
+  const initials = m.name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+  return (
+    <div className="bg-white rounded-3xl p-8 shadow-[0px_1px_3px_rgba(0,0,0,0.07),0px_4px_16px_rgba(0,0,0,0.05)] flex flex-col gap-6">
+      {m.image_url ? (
+        <img
+          src={m.image_url}
+          alt={m.name}
+          className="w-16 h-16 rounded-2xl object-cover"
+        />
+      ) : (
+        <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center shrink-0">
+          <span className="font-heading font-extrabold text-[22px] text-white">{initials}</span>
+        </div>
+      )}
+      <div className="flex flex-col gap-1">
+        <h3 className="font-heading font-extrabold text-[20px] text-primary">{m.name}</h3>
+        <p className="text-accent text-[13px] font-semibold tracking-wide">{m.role}</p>
+      </div>
+      <p className="text-text-body text-[14px] leading-[1.65]">{m.description}</p>
+    </div>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <div className="bg-white rounded-3xl p-8 shadow-[0px_1px_3px_rgba(0,0,0,0.07),0px_4px_16px_rgba(0,0,0,0.05)] flex flex-col gap-6 animate-pulse">
+      <div className="w-16 h-16 rounded-2xl bg-gray-200" />
+      <div className="flex flex-col gap-2">
+        <div className="h-5 w-40 rounded bg-gray-200" />
+        <div className="h-3.5 w-24 rounded bg-gray-100" />
+      </div>
+      <div className="flex flex-col gap-2">
+        <div className="h-3 w-full rounded bg-gray-100" />
+        <div className="h-3 w-4/5 rounded bg-gray-100" />
+      </div>
+    </div>
+  );
+}
 
 export default function Management() {
+  const [members, setMembers] = useState<Member[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API}/api/management/`)
+      .then(r => r.json())
+      .then(d => setMembers(Array.isArray(d) ? d : d.results ?? []))
+      .catch(() => setMembers([]))
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <div className="bg-page">
 
@@ -70,28 +91,13 @@ export default function Management() {
       {/* ── Team grid ── */}
       <section className="max-w-7xl mx-auto px-8 pb-20">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {team.map((m) => (
-            <div
-              key={m.name}
-              className="bg-white rounded-3xl p-8 shadow-[0px_1px_3px_rgba(0,0,0,0.07),0px_4px_16px_rgba(0,0,0,0.05)] flex flex-col gap-6"
-            >
-              {/* Avatar */}
-              <div className={`w-16 h-16 rounded-2xl ${m.accent} flex items-center justify-center shrink-0`}>
-                <span className="font-heading font-extrabold text-[22px]">
-                  {m.initials}
-                </span>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <h3 className="font-heading font-extrabold text-[20px] text-primary">
-                  {m.name}
-                </h3>
-                <p className="text-accent text-[13px] font-semibold tracking-wide">{m.role}</p>
-              </div>
-
-              <p className="text-text-body text-[14px] leading-[1.65]">{m.bio}</p>
-            </div>
-          ))}
+          {loading
+            ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
+            : members.map(m => <MemberCard key={m.id} m={m} />)
+          }
+          {!loading && members.length === 0 && (
+            <p className="col-span-3 text-center text-text-muted py-16">No team members found.</p>
+          )}
         </div>
       </section>
 
@@ -107,12 +113,11 @@ export default function Management() {
               Want to reach out?
             </h2>
             <p className="text-primary-light text-[15px] leading-relaxed">
-              For partnerships, media inquiries, or general questions about
-              HBPL Community.
+              For partnerships, media inquiries, or general questions about HBPL Community.
             </p>
           </div>
           <a
-            href="mailto:contact@hbplcommunity.org"
+            href="mailto:myhbpl@gmail.com"
             className="shrink-0 bg-white text-primary font-semibold text-[14px] px-8 py-4 rounded-xl hover:bg-primary-light transition-colors whitespace-nowrap"
           >
             Contact Management

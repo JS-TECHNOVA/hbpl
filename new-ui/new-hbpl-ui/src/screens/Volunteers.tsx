@@ -1,4 +1,18 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
+
+const API = process.env.NEXT_PUBLIC_API_URL ?? "https://myhbpl.org";
+
+interface VolunteerItem {
+  id: number;
+  name: string;
+  role: string;
+  description: string;
+  img: string;
+  image_url: string | null;
+}
 
 const benefits = [
   {
@@ -38,6 +52,15 @@ const roles = [
 ];
 
 export default function Volunteers() {
+  const [volunteers, setVolunteers] = useState<VolunteerItem[]>([]);
+
+  useEffect(() => {
+    fetch(`${API}/api/volunteers/`)
+      .then(r => r.json())
+      .then(data => setVolunteers(Array.isArray(data) ? data : (data.results ?? [])))
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="bg-page">
 
@@ -140,6 +163,50 @@ export default function Volunteers() {
           </div>
         </div>
       </section>
+
+      {/* ── Volunteer List ── */}
+      {volunteers.length > 0 && (
+        <section className="bg-section py-16">
+          <div className="max-w-7xl mx-auto px-8">
+            <div className="flex flex-col gap-3 mb-10">
+              <h2 className="font-heading font-extrabold text-[36px] leading-tight text-primary tracking-tight">
+                Meet Our Volunteers
+              </h2>
+              <div className="w-12 h-1 rounded-full bg-accent" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {volunteers.map(v => {
+                const photo = v.image_url || (v.img || null);
+                const initials = v.name.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
+                return (
+                  <div key={v.id} className="bg-white rounded-3xl overflow-hidden shadow-[0px_1px_3px_rgba(0,0,0,0.07),0px_4px_16px_rgba(0,0,0,0.05)] flex flex-col group hover:shadow-[0px_8px_32px_rgba(0,63,135,0.12)] transition-shadow duration-200">
+                    {/* Photo */}
+                    <div className="aspect-square bg-primary-light overflow-hidden">
+                      {photo ? (
+                        <img src={photo} alt={v.name} className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="text-primary font-extrabold text-[48px] opacity-30">{initials}</span>
+                        </div>
+                      )}
+                    </div>
+                    {/* Content */}
+                    <div className="p-5 flex flex-col gap-2 flex-1">
+                      <div>
+                        <h3 className="font-heading font-extrabold text-[16px] text-primary leading-tight">{v.name}</h3>
+                        <p className="text-accent text-[11px] font-semibold uppercase tracking-widest mt-1">{v.role}</p>
+                      </div>
+                      {v.description && (
+                        <p className="text-text-body text-[13px] leading-[1.65] mt-1">{v.description}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── Apply CTA ── */}
       <section className="max-w-7xl mx-auto px-8 py-16">

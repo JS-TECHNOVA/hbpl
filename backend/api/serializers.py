@@ -21,6 +21,16 @@ from .models import (
     ExamFaq,
     ExamTopper,
     NewsTicker,
+    Player,
+    CricketTeam,
+    MatchPlayerStats,
+    Tournament,
+    TournamentTeam,
+    Innings,
+    Over,
+    Ball,
+    BatsmanScore,
+    BowlerScore,
 )
 
 class ComplaintCreateSerializer(serializers.ModelSerializer):
@@ -114,7 +124,7 @@ class VolunteerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Volunteer
-        fields = ["id", "name", "role", "img", "image_url", "order"]
+        fields = ["id", "name", "role", "description", "img", "image_url", "order"]
 
     def get_image_url(self, obj):
         if not obj.image:
@@ -523,7 +533,7 @@ class AdminVolunteerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Volunteer
-        fields = ["id", "name", "role", "img", "image", "image_url", "order"]
+        fields = ["id", "name", "role", "description", "img", "image", "image_url", "order"]
         extra_kwargs = {"image": {"required": False, "allow_null": True}}
 
     def get_image_url(self, obj):
@@ -631,6 +641,9 @@ class AdminMatchSerializer(serializers.ModelSerializer):
             "id", "stage", "match_type", "date", "time", "venue",
             "team1", "team2", "team1_score", "team2_score",
             "result", "player_of_match", "season",
+            "tournament", "match_status", "youtube_stream_url",
+            "team1_obj", "team2_obj",
+            "toss_winner", "toss_decision",
         ]
 
 
@@ -644,3 +657,422 @@ class AdminNewsTickerSerializer(serializers.ModelSerializer):
     class Meta:
         model = NewsTicker
         fields = ["id", "text", "link", "is_active", "order"]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CRICKET PHASE 2+ SERIALIZERS
+# ─────────────────────────────────────────────────────────────────────────────
+
+class PlayerSerializer(serializers.ModelSerializer):
+    photo_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Player
+        fields = [
+            "id", "name", "role", "batting_style", "bowling_style",
+            "jersey_number", "is_captain", "is_substitute",
+            "photo_url",
+        ]
+
+    def get_photo_url(self, obj):
+        if not obj.photo:
+            return None
+        request = self.context.get("request")
+        return request.build_absolute_uri(obj.photo.url) if request else obj.photo.url
+
+
+class PlayerCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Player
+        fields = [
+            "id", "team", "name", "role", "batting_style", "bowling_style",
+            "jersey_number", "is_captain", "is_substitute", "phone",
+            "date_of_birth", "photo",
+        ]
+        extra_kwargs = {
+            "photo": {"required": False, "allow_null": True},
+            "phone": {"required": False, "allow_blank": True},
+            "date_of_birth": {"required": False, "allow_null": True},
+            "jersey_number": {"required": False, "allow_null": True},
+        }
+
+
+class TeamWithPlayersSerializer(serializers.ModelSerializer):
+    players = PlayerSerializer(many=True, read_only=True)
+    team_image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TeamRegistration
+        fields = [
+            "id", "team_name", "captain_name", "address",
+            "team_image_url", "player_count", "players",
+        ]
+
+    def get_team_image_url(self, obj):
+        if not obj.team_image:
+            return None
+        request = self.context.get("request")
+        return request.build_absolute_uri(obj.team_image.url) if request else obj.team_image.url
+
+
+class TournamentListSerializer(serializers.ModelSerializer):
+    banner_url = serializers.SerializerMethodField()
+    approved_team_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Tournament
+        fields = [
+            "id", "name", "season", "format", "max_teams", "status",
+            "description", "start_date", "end_date", "registration_deadline",
+            "registration_fee_paise", "banner_url", "approved_team_count",
+        ]
+
+    def get_banner_url(self, obj):
+        if not obj.banner:
+            return None
+        request = self.context.get("request")
+        return request.build_absolute_uri(obj.banner.url) if request else obj.banner.url
+
+
+class TournamentDetailSerializer(TournamentListSerializer):
+    teams = serializers.SerializerMethodField()
+
+    class Meta(TournamentListSerializer.Meta):
+        fields = TournamentListSerializer.Meta.fields + ["rules", "teams"]
+
+    def get_teams(self, obj):
+        approved = obj.team_registrations.filter(status="approved").select_related("team")
+        return [
+            {
+                "id": tr.team.id,
+                "team_name": tr.team.team_name,
+                "captain_name": tr.team.captain_name,
+                "team_image_url": (
+                    self.context.get("request").build_absolute_uri(tr.team.team_image.url)
+                    if tr.team.team_image and self.context.get("request")
+                    else None
+                ),
+            }
+            for tr in approved
+        ]
+
+
+class TournamentTeamSerializer(serializers.ModelSerializer):
+    team_name = serializers.CharField(source="team.team_name", read_only=True)
+    captain_name = serializers.CharField(source="team.captain_name", read_only=True)
+
+    class Meta:
+        model = TournamentTeam
+        fields = [
+            "id", "tournament", "team", "team_name", "captain_name",
+            "status", "applied_at", "payment_id",
+        ]
+        read_only_fields = ["id", "applied_at", "status"]
+
+
+class TournamentRegistrationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TournamentTeam
+        fields = ["tournament", "team"]
+
+    def validate(self, attrs):
+        tournament = attrs["tournament"]
+        team = attrs["team"]
+        if not tournament.registration_open:
+            raise serializers.ValidationError("Tournament registration is not open.")
+        if tournament.approved_team_count >= tournament.max_teams:
+            raise serializers.ValidationError("Tournament is full.")
+        if TournamentTeam.objects.filter(tournament=tournament, team=team).exists():
+            raise serializers.ValidationError("This team is already registered for this tournament.")
+        return attrs
+
+
+# ── Live Scoring Serializers ──────────────────────────────────────────────────
+
+class BatsmanScoreSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source="batsman.name", read_only=True)
+    role = serializers.CharField(source="batsman.role", read_only=True)
+    is_captain = serializers.BooleanField(source="batsman.is_captain", read_only=True)
+    is_wicketkeeper = serializers.SerializerMethodField()
+    strike_rate = serializers.FloatField(read_only=True)
+    bowler_name = serializers.CharField(source="bowler.name", read_only=True, default=None)
+    fielder_name = serializers.CharField(source="fielder.name", read_only=True, default=None)
+    dismissal_text = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BatsmanScore
+        fields = [
+            "id", "batsman", "name", "role", "is_captain", "is_wicketkeeper",
+            "batting_position", "runs", "balls_faced",
+            "fours", "sixes", "strike_rate", "is_out", "dismissal_type",
+            "bowler_name", "fielder_name", "dismissal_text",
+            "fall_of_wicket_score", "fall_of_wicket_over",
+            "is_batting", "did_not_bat",
+        ]
+
+    def get_is_wicketkeeper(self, obj):
+        return obj.batsman.role == "wicketkeeper"
+
+    def get_dismissal_text(self, obj):
+        if not obj.is_out:
+            return "not out"
+        dt = obj.dismissal_type
+        bowler = obj.bowler.name if obj.bowler else ""
+        fielder = obj.fielder.name if obj.fielder else ""
+        if dt == "bowled":
+            return f"b {bowler}"
+        if dt == "caught":
+            return f"c {fielder} b {bowler}" if fielder else f"c&b {bowler}"
+        if dt == "lbw":
+            return f"lbw b {bowler}"
+        if dt == "run_out":
+            return f"run out ({fielder})" if fielder else "run out"
+        if dt == "stumped":
+            return f"st {fielder} b {bowler}" if fielder else f"st b {bowler}"
+        if dt == "hit_wicket":
+            return f"hit wicket b {bowler}"
+        return dt
+
+
+class BowlerScoreSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source="bowler.name", read_only=True)
+    economy = serializers.FloatField(read_only=True)
+
+    class Meta:
+        model = BowlerScore
+        fields = [
+            "id", "bowler", "name", "overs", "maidens", "runs",
+            "wickets", "wides", "no_balls", "economy",
+        ]
+
+
+class BallSerializer(serializers.ModelSerializer):
+    batsman_name = serializers.CharField(source="batsman.name", read_only=True)
+    bowler_name = serializers.CharField(source="bowler.name", read_only=True)
+
+    class Meta:
+        model = Ball
+        fields = [
+            "id", "ball_number", "batsman", "batsman_name", "bowler", "bowler_name",
+            "runs_off_bat", "is_extra", "extra_type", "extra_runs",
+            "is_wicket", "wicket_type", "is_boundary", "is_six",
+            "commentary", "timestamp",
+        ]
+
+
+class OverSerializer(serializers.ModelSerializer):
+    bowler_name = serializers.CharField(source="bowler.name", read_only=True, default="")
+    balls = BallSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Over
+        fields = [
+            "id", "over_number", "bowler", "bowler_name",
+            "runs", "wickets", "extras", "is_completed", "balls",
+        ]
+
+
+class InningsSerializer(serializers.ModelSerializer):
+    batsman_scores = BatsmanScoreSerializer(many=True, read_only=True)
+    bowler_scores = BowlerScoreSerializer(many=True, read_only=True)
+    overs = OverSerializer(many=True, read_only=True)
+    run_rate = serializers.FloatField(read_only=True)
+    required_run_rate = serializers.FloatField(read_only=True, default=None)
+
+    class Meta:
+        model = Innings
+        fields = [
+            "id", "innings_number", "batting_team_name", "bowling_team_name",
+            "total_runs", "wickets", "overs_completed", "extras",
+            "is_completed", "target", "run_rate", "required_run_rate",
+            "batsman_scores", "bowler_scores", "overs",
+        ]
+
+
+class LiveMatchSerializer(serializers.ModelSerializer):
+    innings = InningsSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Match
+        fields = [
+            "id", "stage", "match_type", "date", "time", "venue",
+            "team1", "team2", "season", "match_status",
+            "toss_winner", "toss_decision",
+            "team1_score", "team2_score", "result",
+            "youtube_stream_url",
+            "innings",
+        ]
+
+
+# ── Admin Cricket Serializers ─────────────────────────────────────────────────
+
+class AdminTournamentSerializer(serializers.ModelSerializer):
+    banner_url = serializers.SerializerMethodField(read_only=True)
+    approved_team_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Tournament
+        fields = [
+            "id", "name", "season", "format", "max_teams", "status",
+            "description", "rules", "start_date", "end_date",
+            "registration_deadline", "registration_fee_paise",
+            "banner", "banner_url", "approved_team_count", "created_at",
+        ]
+        extra_kwargs = {"banner": {"required": False, "allow_null": True}}
+
+    def get_banner_url(self, obj):
+        if not obj.banner:
+            return None
+        request = self.context.get("request")
+        return request.build_absolute_uri(obj.banner.url) if request else obj.banner.url
+
+
+class AdminTournamentTeamSerializer(serializers.ModelSerializer):
+    team_name = serializers.CharField(source="team.team_name", read_only=True)
+    captain_name = serializers.CharField(source="team.captain_name", read_only=True)
+    phone = serializers.CharField(source="team.phone", read_only=True)
+    tournament_name = serializers.CharField(source="tournament.name", read_only=True)
+
+    class Meta:
+        model = TournamentTeam
+        fields = [
+            "id", "tournament", "tournament_name", "team", "team_name",
+            "captain_name", "phone", "status", "applied_at", "approved_at",
+            "payment_id", "payment_amount_paise", "admin_note",
+        ]
+        read_only_fields = ["id", "applied_at", "team_name", "captain_name", "phone", "tournament_name"]
+
+
+class AdminPlayerSerializer(serializers.ModelSerializer):
+    team_name = serializers.CharField(source="team.team_name", read_only=True)
+    photo_url = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = Player
+        fields = [
+            "id", "team", "team_name", "name", "role",
+            "batting_style", "bowling_style", "jersey_number",
+            "is_captain", "is_substitute", "phone", "date_of_birth",
+            "photo", "photo_url",
+        ]
+        extra_kwargs = {
+            "photo": {"required": False, "allow_null": True},
+            "phone": {"required": False, "allow_blank": True},
+            "date_of_birth": {"required": False, "allow_null": True},
+            "jersey_number": {"required": False, "allow_null": True},
+        }
+
+    def get_photo_url(self, obj):
+        if not obj.photo:
+            return None
+        request = self.context.get("request")
+        return request.build_absolute_uri(obj.photo.url) if request else obj.photo.url
+
+
+class AdminInningsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Innings
+        fields = [
+            "id", "match", "innings_number", "batting_team_name",
+            "bowling_team_name", "batting_team", "bowling_team",
+            "total_runs", "wickets", "overs_completed", "extras",
+            "is_completed", "target",
+        ]
+
+
+class AdminBallSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ball
+        fields = [
+            "id", "over", "ball_number", "batsman", "non_striker", "bowler",
+            "runs_off_bat", "is_extra", "extra_type", "extra_runs",
+            "is_wicket", "wicket_type", "fielder", "is_boundary", "is_six",
+            "commentary",
+        ]
+        read_only_fields = ["id"]
+
+
+# ── CricketTeam Serializers ───────────────────────────────────────────────────
+
+class CricketTeamPlayerSerializer(serializers.ModelSerializer):
+    photo_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Player
+        fields = [
+            "id", "name", "role", "batting_style", "bowling_style",
+            "jersey_number", "is_captain", "date_of_birth", "photo_url",
+        ]
+
+    def get_photo_url(self, obj):
+        if not obj.photo:
+            return None
+        request = self.context.get("request")
+        return request.build_absolute_uri(obj.photo.url) if request else obj.photo.url
+
+
+class CricketTeamSerializer(serializers.ModelSerializer):
+    logo_url = serializers.SerializerMethodField()
+    player_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CricketTeam
+        fields = [
+            "id", "name", "short_name", "city", "captain_name",
+            "logo_url", "primary_color", "description", "is_active",
+            "registration", "player_count", "created_at",
+        ]
+
+    def get_logo_url(self, obj):
+        if not obj.logo:
+            return None
+        request = self.context.get("request")
+        return request.build_absolute_uri(obj.logo.url) if request else obj.logo.url
+
+    def get_player_count(self, obj):
+        return obj.players.count()
+
+
+class CricketTeamDetailSerializer(CricketTeamSerializer):
+    players = CricketTeamPlayerSerializer(many=True, read_only=True)
+
+    class Meta(CricketTeamSerializer.Meta):
+        fields = CricketTeamSerializer.Meta.fields + ["players"]
+
+
+# ── MatchPlayerStats Serializer ───────────────────────────────────────────────
+
+class MatchPlayerStatsSerializer(serializers.ModelSerializer):
+    player_name = serializers.CharField(source="player.name", read_only=True)
+    player_role = serializers.CharField(source="player.role", read_only=True)
+    team_name = serializers.CharField(source="team.name", read_only=True, default="")
+    strike_rate = serializers.FloatField(read_only=True)
+    economy = serializers.FloatField(read_only=True)
+
+    class Meta:
+        model = MatchPlayerStats
+        fields = [
+            "id", "match", "player", "player_name", "player_role", "team", "team_name",
+            # batting
+            "runs", "balls_faced", "fours", "sixes", "is_out", "dismissal_type",
+            "did_not_bat", "strike_rate",
+            # bowling
+            "overs_bowled", "runs_conceded", "wickets", "maidens",
+            "wides", "no_balls", "economy",
+            # fielding
+            "catches", "run_outs", "stumpings",
+        ]
+
+
+# ── Event Serializer ──────────────────────────────────────────────────────────
+
+from .models import Event as EventModel  # noqa: E402
+
+
+class EventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EventModel
+        fields = [
+            "id", "title", "description", "date", "location",
+            "category", "is_published", "created_at",
+        ]

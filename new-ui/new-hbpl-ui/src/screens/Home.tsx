@@ -3,35 +3,35 @@ import LiveCricketWidget from "../components/LiveCricketWidget";
 
 /* ─── DATA ─────────────────────────────────────────────────────── */
 const stats = [
-  { value: "2000+", label: "Active Students" },
-  { value: "50+",   label: "Partner Schools" },
-  { value: "10+",   label: "Annual Events" },
+  { value: "1000+", label: "Active Students" },
+  { value: "10+",   label: "Partner Schools" },
+  { value: "5+",   label: "Annual Events" },
 ];
 
 const testimonials = [
   {
     quote:
       "The Aptitude Exam was a turning point for my confidence. The community support is unlike anything I've seen in other student platforms.",
-    name: "Aditi Sharma",
-    role: "Student, Model High School",
+    name: "Anuj Kumar Gupta",
+    role: "Student, DPS, Class 10",
     avatarBg: "bg-primary-light",
     avatarText: "AS",
   },
   {
     quote:
       "HBPL Community provides our students with practical challenges that standard curriculum often misses. Their events are impeccably managed.",
-    name: "Dr. Rajesh Kumar",
-    role: "Principal, St. Xavier's Academy",
+    name: "Mr. Sundarlal Singh Patel",
+    role: "Director, Priyam Public School",
     avatarBg: "bg-accent-peach",
-    avatarText: "RK",
+    avatarText: "SL",
   },
   {
     quote:
       "From cricket fields to social causes, HBPL is truly building the future leaders of our society. Proud to be a volunteer here.",
-    name: "Vikram Mehra",
+    name: "Mannu Kushwaha",
     role: "Volunteer & Alumni",
     avatarBg: "bg-primary",
-    avatarText: "VM",
+    avatarText: "MK",
   },
 ];
 
@@ -99,7 +99,7 @@ export default function Home() {
             <div className="absolute -bottom-10 -right-10 w-56 h-56 bg-primary-light rounded-full blur-3xl opacity-35 pointer-events-none" />
             <div className="relative rounded-[40px] overflow-hidden shadow-[0px_32px_64px_-12px_rgba(0,0,0,0.28)] aspect-square">
               <img
-                src="https://images.unsplash.com/photo-1529390079861-591de354faf5?w=800&q=80"
+                src="/hero.jpeg"
                 alt="Students collaborating"
                 className="w-full h-full object-cover"
               />
@@ -158,17 +158,17 @@ export default function Home() {
                 className="w-full h-full object-cover opacity-25"
               />
               {/* Gradient fade to white */}
-              <div className="absolute inset-0 bg-gradient-to-r from-white via-white/60 to-transparent" />
+              <div className="absolute inset-0 bg-linear-to-r from-white via-white/60 to-transparent" />
             </div>
 
             {/* Foreground content */}
             <div className="relative flex flex-col gap-3">
               <span className="inline-flex items-center gap-2 bg-accent/10 text-accent border border-accent/20 text-[11px] font-semibold tracking-[0.12em] uppercase px-3.5 py-1.5 rounded-full w-fit">
                 <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-                Upcoming Event
+                Completed Event
               </span>
               <h3 className="font-heading font-extrabold text-[30px] text-primary leading-tight">
-                Aptitude Exam 2024
+                Aptitude Exam 2026
               </h3>
               <p className="text-text-body text-[15px] leading-relaxed max-w-sm">
                 Test your logical reasoning and analytical skills across various

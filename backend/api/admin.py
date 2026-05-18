@@ -1,10 +1,32 @@
 from django.contrib import admin
 from django.shortcuts import redirect
 from django.urls import path
+from import_export.admin import ImportExportModelAdmin, ExportMixin
 from .models import (
- Match, ManagementMember, GalleryImage, Volunteer,
-    TeamRegistration, ExamRegistration, ExamSettings, Complaint, NewsTicker
+    Match, ManagementMember, GalleryImage, Volunteer,
+    TeamRegistration, ExamRegistration, ExamSettings, Complaint, NewsTicker,
+    Player, CricketTeam, MatchPlayerStats,
 )
+from exams.resources import ExamRegistrationResource
+from import_export import resources as ie_resources
+
+class PlayerResource(ie_resources.ModelResource):
+    class Meta:
+        model = Player
+        fields = ("id", "name", "role", "batting_style", "bowling_style")
+        import_id_fields = ("name",)
+
+class CricketTeamResource(ie_resources.ModelResource):
+    class Meta:
+        model = CricketTeam
+        fields = ("id", "name", "short_name")
+        import_id_fields = ("name",)
+
+class MatchPlayerStatsResource(ie_resources.ModelResource):
+    class Meta:
+        model = MatchPlayerStats
+        fields = ("id", "player", "match", "team", "runs", "wickets")
+        import_id_fields = ("match", "player")
 
 
 @admin.register(NewsTicker)
@@ -95,7 +117,8 @@ def unpublish_certificates(modeladmin, request, queryset):
 
 
 @admin.register(ExamRegistration)
-class ExamRegistrationAdmin(admin.ModelAdmin):
+class ExamRegistrationAdmin(ImportExportModelAdmin):
+    resource_classes = [ExamRegistrationResource]
     list_display = [
         "roll_number",
         "full_name",
@@ -184,3 +207,26 @@ class ExamSettingsAdmin(admin.ModelAdmin):
         extra_context = extra_context or {}
         extra_context["registration_open"] = not settings.registration_closed
         return super().changelist_view(request, extra_context=extra_context)
+
+
+@admin.register(Player)
+class PlayerAdmin(ImportExportModelAdmin):
+    resource_classes = [PlayerResource]
+    list_display = ["name", "role", "batting_style", "bowling_style", "team", "cricket_team"]
+    list_filter = ["role", "batting_style"]
+    search_fields = ["name", "team__team_name", "cricket_team__name"]
+
+
+@admin.register(CricketTeam)
+class CricketTeamAdmin(ImportExportModelAdmin):
+    resource_classes = [CricketTeamResource]
+    list_display = ["name", "short_name", "city", "captain_name"]
+    search_fields = ["name", "short_name"]
+
+
+@admin.register(MatchPlayerStats)
+class MatchPlayerStatsAdmin(ImportExportModelAdmin):
+    resource_classes = [MatchPlayerStatsResource]
+    list_display = ["player", "match", "team", "runs", "wickets"]
+    list_filter = ["match", "team"]
+    search_fields = ["player__name"]

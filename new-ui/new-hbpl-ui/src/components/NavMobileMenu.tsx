@@ -8,9 +8,10 @@ const links = [
   { label: "About", href: "/about" },
   { label: "Events", href: "/events" },
   { label: "Management", href: "/management" },
-  { label: "Community", href: "/community" },
+  { label: "Community Volunteer", href: "/community" },
   { label: "Exams", href: "/exams" },
-  { label: "Cricket", href: "/cricket" },
+  { label: "Cricket Portal", href: "/cricket" },
+  { label: "Gallery", href: "/gallery" },
 ];
 
 export function NavMobileMenu() {
@@ -24,24 +25,18 @@ export function NavMobileMenu() {
         aria-label="Toggle menu"
         aria-expanded={open}
       >
-        <span
-          className={`block w-6 h-0.5 bg-primary transition-transform ${open ? "translate-y-2 rotate-45" : ""}`}
-        />
-        <span
-          className={`block w-6 h-0.5 bg-primary transition-opacity ${open ? "opacity-0" : ""}`}
-        />
-        <span
-          className={`block w-6 h-0.5 bg-primary transition-transform ${open ? "-translate-y-2 -rotate-45" : ""}`}
-        />
+        <span className={`block w-6 h-0.5 bg-ds-text transition-transform ${open ? "translate-y-2 rotate-45" : ""}`} />
+        <span className={`block w-6 h-0.5 bg-ds-text transition-opacity ${open ? "opacity-0" : ""}`} />
+        <span className={`block w-6 h-0.5 bg-ds-text transition-transform ${open ? "-translate-y-2 -rotate-45" : ""}`} />
       </button>
 
       {open && (
-        <div className="md:hidden absolute top-full left-0 right-0 bg-white/95 backdrop-blur-md border-t border-border/20 shadow-lg py-4 px-6 flex flex-col gap-3">
+        <div className="md:hidden absolute top-full left-0 right-0 glass border-t border-ds-border py-5 px-6 flex flex-col gap-1">
           {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm font-semibold text-text-body hover:text-primary py-2 border-b border-border/10 last:border-0"
+              className="text-[14px] font-medium text-ds-text-muted hover:text-ds-text py-2.5 border-b border-ds-border last:border-0 transition-colors"
               onClick={() => setOpen(false)}
             >
               {link.label}
@@ -49,7 +44,7 @@ export function NavMobileMenu() {
           ))}
           <Link
             href="/exams"
-            className="mt-2 bg-primary text-white text-sm font-semibold text-center px-6 py-3 rounded-lg"
+            className="mt-3 bg-linear-to-r from-ds-purple to-ds-purple-500 text-white text-[14px] font-semibold text-center px-6 py-3 rounded-xl shadow-[0_0_20px_rgba(109,40,217,0.3)]"
             onClick={() => setOpen(false)}
           >
             Exam Portal
