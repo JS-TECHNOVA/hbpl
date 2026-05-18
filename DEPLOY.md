@@ -100,6 +100,7 @@ ALLOWED_HOSTS=80.225.229.50,yourdomain.com,www.yourdomain.com
 
 DATABASE_URL=postgres://hbpl_user:CHANGE_THIS_PASSWORD@127.0.0.1:5432/hbpl_db
 DB_SSL=False
+DB_CONN_MAX_AGE=0
 
 HTTPS_ENABLED=False
 HSTS_SECONDS=0

@@ -1,7 +1,7 @@
 import json
 from django.core.serializers.json import DjangoJSONEncoder
 from channels.generic.websocket import AsyncWebsocketConsumer
-from asgiref.sync import sync_to_async
+from channels.db import database_sync_to_async
 
 
 class MatchConsumer(AsyncWebsocketConsumer):
@@ -31,7 +31,7 @@ class MatchConsumer(AsyncWebsocketConsumer):
         if data:
             await self.send(text_data=json.dumps({"type": "initial_state", "data": data}, cls=DjangoJSONEncoder))
 
-    @sync_to_async
+    @database_sync_to_async
     def _get_live_data(self):
         from cricket.models import Match
         from cricket.serializers import LiveScoreSerializer
