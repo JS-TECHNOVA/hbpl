@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
+import imageCompression from "browser-image-compression";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "https://myhbpl.org";
 const V1 = `${API}/api/v1/cricket`;
@@ -23,6 +25,11 @@ interface PlayerForm {
   jersey_number: string;
   batting_style: string;
   bowling_style: string;
+  is_captain: boolean;
+  is_vice_captain: boolean;
+  photo: File | null;
+  photoPreview: string | null;
+  compressing: boolean;
 }
 
 interface TeamForm {
@@ -51,6 +58,11 @@ const emptyPlayer = (): PlayerForm => ({
   jersey_number: "",
   batting_style: "right_hand",
   bowling_style: "none",
+  is_captain: false,
+  is_vice_captain: false,
+  photo: null,
+  photoPreview: null,
+  compressing: false,
 });
 
 const ROLES = [
@@ -82,6 +94,8 @@ const BOWL_STYLES = [
 export default function CricketRegisterPage() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [teamForm, setTeamForm] = useState<TeamForm>(EMPTY_TEAM);
+  const [teamLogo, setTeamLogo] = useState<File | null>(null);
+  const [teamLogoPreview, setTeamLogoPreview] = useState<string | null>(null);
   const [players, setPlayers] = useState<PlayerForm[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,6 +112,13 @@ export default function CricketRegisterPage() {
     setTeamForm(p => ({ ...p, [field]: value }));
   }
 
+  function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setTeamLogo(file);
+    setTeamLogoPreview(URL.createObjectURL(file));
+  }
+
   function addPlayer() {
     setPlayers(p => [...p, emptyPlayer()]);
   }
@@ -107,21 +128,49 @@ export default function CricketRegisterPage() {
   }
 
   function updatePlayer<K extends keyof PlayerForm>(idx: number, field: K, value: PlayerForm[K]) {
-    setPlayers(p => p.map((pl, i) => (i === idx ? { ...pl, [field]: value } : pl)));
+    setPlayers(prev =>
+      prev.map((pl, i) => {
+        if (i !== idx) {
+          // clear captain/vc from other rows when setting
+          if (field === "is_captain" && value) return { ...pl, is_captain: false };
+          if (field === "is_vice_captain" && value) return { ...pl, is_vice_captain: false };
+          return pl;
+        }
+        const updated = { ...pl, [field]: value };
+        // a player can't be both captain and vice captain
+        if (field === "is_captain" && value) updated.is_vice_captain = false;
+        if (field === "is_vice_captain" && value) updated.is_captain = false;
+        return updated;
+      })
+    );
+  }
+
+  async function handlePlayerPhoto(idx: number, e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPlayers(prev => prev.map((p, i) => i === idx ? { ...p, compressing: true } : p));
+    try {
+      const compressed = await imageCompression(file, {
+        maxSizeMB: 0.3,
+        maxWidthOrHeight: 600,
+        useWebWorker: true,
+      });
+      const preview = URL.createObjectURL(compressed);
+      setPlayers(prev => prev.map((p, i) =>
+        i === idx ? { ...p, photo: compressed as File, photoPreview: preview, compressing: false } : p
+      ));
+    } catch {
+      setPlayers(prev => prev.map((p, i) => i === idx ? { ...p, compressing: false } : p));
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    if (!teamForm.tournament_id) {
-      setError("Please select a tournament.");
-      return;
-    }
-    if (!teamForm.name.trim()) {
-      setError("Team name is required.");
-      return;
-    }
+    if (!teamForm.tournament_id) { setError("Please select a tournament."); return; }
+    if (!teamForm.name.trim()) { setError("Team name is required."); return; }
+
     const namedPlayers = players.filter(p => p.name.trim());
     if (namedPlayers.length > 0 && namedPlayers.length < 11) {
       setError(`Please add at least 11 players (you have ${namedPlayers.length}). You can also leave players empty and add them later.`);
@@ -130,27 +179,35 @@ export default function CricketRegisterPage() {
 
     setLoading(true);
     try {
-      const payload = {
-        tournament: teamForm.tournament_id,
-        name: teamForm.name.trim(),
-        short_name: teamForm.short_name.trim(),
-        home_city: teamForm.home_city.trim(),
-        contact_name: teamForm.contact_name.trim(),
-        contact_email: teamForm.contact_email.trim(),
-        contact_phone: teamForm.contact_phone.trim(),
-        players: namedPlayers.map(p => ({
-          name: p.name.trim(),
-          role: p.role,
-          jersey_number: p.jersey_number ? parseInt(p.jersey_number) : null,
-          batting_style: p.batting_style,
-          bowling_style: p.bowling_style,
-        })),
-      };
+      const fd = new FormData();
+      fd.append("tournament", teamForm.tournament_id);
+      fd.append("name", teamForm.name.trim());
+      fd.append("short_name", teamForm.short_name.trim());
+      fd.append("home_city", teamForm.home_city.trim());
+      fd.append("contact_name", teamForm.contact_name.trim());
+      fd.append("contact_email", teamForm.contact_email.trim());
+      fd.append("contact_phone", teamForm.contact_phone.trim());
+      if (teamLogo) fd.append("logo", teamLogo, teamLogo.name);
+
+      // players as JSON (photos handled separately below)
+      fd.append("players", JSON.stringify(namedPlayers.map(p => ({
+        name: p.name.trim(),
+        role: p.role,
+        jersey_number: p.jersey_number ? parseInt(p.jersey_number) : null,
+        batting_style: p.batting_style,
+        bowling_style: p.bowling_style,
+        is_captain: p.is_captain,
+        is_vice_captain: p.is_vice_captain,
+      }))));
+
+      // attach player photos with indexed keys
+      namedPlayers.forEach((p, i) => {
+        if (p.photo) fd.append(`player_photo_${i}`, p.photo, p.photo.name);
+      });
 
       const res = await fetch(`${V1}/teams/register/`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: fd,
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -278,6 +335,28 @@ export default function CricketRegisterPage() {
                   className={inp}
                 />
               </Field>
+
+              {/* Team Logo */}
+              <Field label="Team Logo" className="md:col-span-2">
+                <label className="flex items-center gap-4 border border-dashed border-border rounded-xl px-4 py-3 bg-page hover:border-primary/50 hover:bg-primary/5 transition-colors cursor-pointer group">
+                  <div className="w-14 h-14 rounded-xl border border-border bg-white flex items-center justify-center overflow-hidden shrink-0">
+                    {teamLogoPreview ? (
+                      <Image src={teamLogoPreview} alt="logo" width={56} height={56} className="object-cover w-full h-full" />
+                    ) : (
+                      <svg className="w-6 h-6 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 18h16.5M21 12V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-0.5 min-w-0">
+                    <span className="text-[13px] font-semibold text-text-primary group-hover:text-primary transition-colors truncate">
+                      {teamLogo ? teamLogo.name : "Upload team logo"}
+                    </span>
+                    <span className="text-[11px] text-text-muted">JPG, PNG, or WebP · Optional</span>
+                  </div>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
+                </label>
+              </Field>
             </div>
           </FormCard>
 
@@ -359,6 +438,7 @@ export default function CricketRegisterPage() {
                       index={idx}
                       player={player}
                       onUpdate={(field, value) => updatePlayer(idx, field, value)}
+                      onPhotoChange={e => handlePlayerPhoto(idx, e)}
                       onRemove={() => removePlayer(idx)}
                     />
                   ))}
@@ -412,13 +492,17 @@ function PlayerCard({
   index,
   player,
   onUpdate,
+  onPhotoChange,
   onRemove,
 }: {
   index: number;
   player: PlayerForm;
   onUpdate: <K extends keyof PlayerForm>(field: K, value: PlayerForm[K]) => void;
+  onPhotoChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemove: () => void;
 }) {
+  const photoRef = useRef<HTMLInputElement>(null);
+
   const roleColor: Record<string, string> = {
     batsman: "bg-blue-50 text-blue-600 border-blue-200",
     bowler: "bg-green-50 text-green-600 border-green-200",
@@ -429,6 +513,7 @@ function PlayerCard({
 
   return (
     <div className="rounded-2xl border border-border bg-page">
+      {/* Header row */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-border/50">
         <div className="flex items-center gap-2.5">
           <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-[11px] font-extrabold flex items-center justify-center">{index + 1}</span>
@@ -441,45 +526,97 @@ function PlayerCard({
             </span>
           )}
         </div>
-        <button
-          type="button"
-          onClick={onRemove}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-1">
+          {/* Captain / VC toggles */}
+          <button
+            type="button"
+            onClick={() => onUpdate("is_captain", !player.is_captain)}
+            title="Set as Captain"
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold border transition-colors cursor-pointer ${
+              player.is_captain
+                ? "bg-amber-100 border-amber-400 text-amber-700"
+                : "border-border text-text-muted hover:border-amber-300 hover:text-amber-600"
+            }`}
+          >
+            C
+          </button>
+          <button
+            type="button"
+            onClick={() => onUpdate("is_vice_captain", !player.is_vice_captain)}
+            title="Set as Vice Captain"
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold border transition-colors cursor-pointer ${
+              player.is_vice_captain
+                ? "bg-blue-100 border-blue-400 text-blue-700"
+                : "border-border text-text-muted hover:border-blue-300 hover:text-blue-600"
+            }`}
+          >
+            VC
+          </button>
+          <button
+            type="button"
+            onClick={onRemove}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer ml-1"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
 
-      <div className="px-5 py-5 grid grid-cols-2 md:grid-cols-3 gap-3">
-        <div className="col-span-2">
-          <label className={lbl}>Name <span className="text-accent">*</span></label>
-          <input type="text" required placeholder="Full name" value={player.name}
-            onChange={e => onUpdate("name", e.target.value)} className={inp} />
-        </div>
-        <div>
-          <label className={lbl}>Role</label>
-          <select value={player.role} onChange={e => onUpdate("role", e.target.value)} className={inp}>
-            {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className={lbl}>Jersey No.</label>
-          <input type="number" min={1} max={99} placeholder="e.g. 7" value={player.jersey_number}
-            onChange={e => onUpdate("jersey_number", e.target.value)} className={inp} />
-        </div>
-        <div>
-          <label className={lbl}>Batting Style</label>
-          <select value={player.batting_style} onChange={e => onUpdate("batting_style", e.target.value)} className={inp}>
-            {BAT_STYLES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className={lbl}>Bowling Style</label>
-          <select value={player.bowling_style} onChange={e => onUpdate("bowling_style", e.target.value)} className={inp}>
-            {BOWL_STYLES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-          </select>
+      <div className="px-5 py-5 flex gap-4">
+        {/* Photo upload */}
+        <button
+          type="button"
+          onClick={() => photoRef.current?.click()}
+          title="Upload player photo"
+          className="shrink-0 w-16 h-16 rounded-xl border border-dashed border-border bg-white hover:border-primary/50 hover:bg-primary/5 flex items-center justify-center overflow-hidden transition-colors cursor-pointer"
+        >
+          {player.compressing ? (
+            <svg className="w-5 h-5 text-text-muted animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          ) : player.photoPreview ? (
+            <Image src={player.photoPreview} alt="player" width={64} height={64} className="object-cover w-full h-full" />
+          ) : (
+            <svg className="w-6 h-6 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+            </svg>
+          )}
+        </button>
+        <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={onPhotoChange} />
+
+        {/* Fields */}
+        <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="col-span-2">
+            <label className={lbl}>Name <span className="text-accent">*</span></label>
+            <input type="text" required placeholder="Full name" value={player.name}
+              onChange={e => onUpdate("name", e.target.value)} className={inp} />
+          </div>
+          <div>
+            <label className={lbl}>Jersey No.</label>
+            <input type="number" min={1} max={99} placeholder="e.g. 7" value={player.jersey_number}
+              onChange={e => onUpdate("jersey_number", e.target.value)} className={inp} />
+          </div>
+          <div>
+            <label className={lbl}>Role</label>
+            <select value={player.role} onChange={e => onUpdate("role", e.target.value)} className={inp}>
+              {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={lbl}>Batting Style</label>
+            <select value={player.batting_style} onChange={e => onUpdate("batting_style", e.target.value)} className={inp}>
+              {BAT_STYLES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={lbl}>Bowling Style</label>
+            <select value={player.bowling_style} onChange={e => onUpdate("bowling_style", e.target.value)} className={inp}>
+              {BOWL_STYLES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </div>
         </div>
       </div>
     </div>
