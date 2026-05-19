@@ -82,13 +82,38 @@ class TeamSerializer(serializers.ModelSerializer):
 
 
 class MatchSerializer(serializers.ModelSerializer):
+    team1_logo_url = serializers.SerializerMethodField()
+    team2_logo_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Match
         fields = [
             "id", "stage", "match_type", "date", "time", "venue",
             "team1", "team2", "team1_score", "team2_score",
             "result", "player_of_match", "season",
+            "team1_logo_url", "team2_logo_url",
         ]
+
+    def _logo_url(self, obj_logo, request):
+        if not obj_logo:
+            return None
+        return request.build_absolute_uri(obj_logo.url) if request else obj_logo.url
+
+    def get_team1_logo_url(self, obj):
+        request = self.context.get("request")
+        if obj.team1_obj and obj.team1_obj.logo:
+            return self._logo_url(obj.team1_obj.logo, request)
+        if obj.team1_registration and obj.team1_registration.team_image:
+            return self._logo_url(obj.team1_registration.team_image, request)
+        return None
+
+    def get_team2_logo_url(self, obj):
+        request = self.context.get("request")
+        if obj.team2_obj and obj.team2_obj.logo:
+            return self._logo_url(obj.team2_obj.logo, request)
+        if obj.team2_registration and obj.team2_registration.team_image:
+            return self._logo_url(obj.team2_registration.team_image, request)
+        return None
 
 
 class ManagementMemberSerializer(serializers.ModelSerializer):
@@ -670,7 +695,7 @@ class PlayerSerializer(serializers.ModelSerializer):
         model = Player
         fields = [
             "id", "name", "role", "batting_style", "bowling_style",
-            "jersey_number", "is_captain", "is_substitute",
+            "jersey_number", "is_captain", "is_vice_captain", "is_substitute",
             "photo_url",
         ]
 
@@ -686,7 +711,7 @@ class PlayerCreateSerializer(serializers.ModelSerializer):
         model = Player
         fields = [
             "id", "team", "name", "role", "batting_style", "bowling_style",
-            "jersey_number", "is_captain", "is_substitute", "phone",
+            "jersey_number", "is_captain", "is_vice_captain", "is_substitute", "phone",
             "date_of_birth", "photo",
         ]
         extra_kwargs = {

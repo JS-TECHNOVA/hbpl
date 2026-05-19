@@ -117,7 +117,7 @@ const Header = () => {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-lg border-b border-border shadow-sm">
+    <header className="sticky top-0 z-50 bg-background border-b border-border shadow-sm">
       <nav className="container mx-auto px-4 py-3 flex items-center justify-between">
         {/* Logo Section */}
         <Link href="/" className="flex items-center gap-3 group">
@@ -229,7 +229,7 @@ const Header = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden rounded-full"
+            className="md:hidden rounded-full text-foreground"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
             {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -259,7 +259,7 @@ const Header = () => {
       <AnimatePresence>
         {isMenuOpen && (
           <motion.div
-            className="md:hidden bg-background/95 backdrop-blur-md border-t border-border px-4 py-4"
+            className="md:hidden bg-background border-t border-border px-4 py-4"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}

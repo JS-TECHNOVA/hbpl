@@ -419,6 +419,7 @@ class Player(models.Model):
     )
     jersey_number = models.PositiveSmallIntegerField(blank=True, null=True)
     is_captain = models.BooleanField(default=False)
+    is_vice_captain = models.BooleanField(default=False)
     is_substitute = models.BooleanField(default=False)
     phone = models.CharField(max_length=15, blank=True)
     date_of_birth = models.DateField(blank=True, null=True)

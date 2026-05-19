@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 export type RegistrationResult = {
 	success: boolean;
 	teamId?: string;
+	registrationId?: number;
 	receiptUrl?: string;
 	error?: string;
 };
@@ -100,15 +101,18 @@ export async function registerCricketTeam(
 			return { success: false, error: getErrorMessage(body) };
 		}
 
+		const rawId = body?.id;
+		const registrationId = rawId != null ? Number(rawId) : undefined;
 		const teamId =
-			body?.id != null
-				? `HBPL-${String(body.id).toUpperCase()}`
+			rawId != null
+				? `HBPL-${String(rawId).toUpperCase()}`
 				: `HBPL-${Date.now().toString(36).toUpperCase()}`;
 
 		revalidatePath("/team-registration");
 		return {
 			success: true,
 			teamId,
+			registrationId,
 			receiptUrl: body?.receipt_download_url,
 		};
 	} catch (err) {
@@ -117,5 +121,21 @@ export async function registerCricketTeam(
 			success: false,
 			error: "Something went wrong. Please try again.",
 		};
+	}
+}
+
+export async function submitTeamPlayers(
+	registrationId: number,
+	formData: FormData,
+): Promise<void> {
+	try {
+		await fetch(`${API_URL}/api/register/${registrationId}/players/`, {
+			method: "POST",
+			body: formData,
+			cache: "no-store",
+			signal: AbortSignal.timeout(120_000),
+		});
+	} catch (err) {
+		console.error("Player submission error:", err);
 	}
 }

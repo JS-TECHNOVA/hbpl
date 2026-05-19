@@ -24,6 +24,8 @@ export interface Match {
   result: string;
   player_of_match: string;
   season: number;
+  team1_logo_url: string | null;
+  team2_logo_url: string | null;
 }
 
 export interface ManagementMember {

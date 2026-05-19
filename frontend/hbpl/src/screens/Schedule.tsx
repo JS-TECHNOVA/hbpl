@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/hooks/use-language";
 import { tr } from "@/lib/i18n";
+import Image from "next/image";
 import { Calendar, MapPin, Clock, ChevronRight, Download, Trophy } from "lucide-react";
 import { fetchMatches } from "@/lib/api";
 import type { Match } from "@/lib/api";
@@ -214,13 +215,19 @@ const Schedule = () => {
                             </Badge>
                           </div>
                           <div className="flex items-center gap-4">
-                            <div className="flex-1 text-right">
-                              <p className="font-semibold text-sm md:text-lg">{match.team1}</p>
+                            <div className="flex-1 flex flex-col items-end gap-1">
+                              {match.team1_logo_url && (
+                                <Image src={match.team1_logo_url} alt={match.team1} width={36} height={36} className="rounded-full object-cover border border-border" />
+                              )}
+                              <p className="font-semibold text-sm md:text-lg text-right">{match.team1}</p>
                             </div>
                             <div className="px-4 py-2 bg-muted rounded-lg font-bold text-muted-foreground text-xs md:text-sm">
                               VS
                             </div>
-                            <div className="flex-1">
+                            <div className="flex-1 flex flex-col items-start gap-1">
+                              {match.team2_logo_url && (
+                                <Image src={match.team2_logo_url} alt={match.team2} width={36} height={36} className="rounded-full object-cover border border-border" />
+                              )}
                               <p className="font-semibold text-sm md:text-lg">{match.team2}</p>
                             </div>
                           </div>

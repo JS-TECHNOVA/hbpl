@@ -13,6 +13,7 @@ urlpatterns = [
     path("volunteers/", views.VolunteerListView.as_view(), name="volunteer-list"),
     path("register/payment-order/", views.TeamRegistrationPaymentOrderView.as_view(), name="register-payment-order"),
     path("register/", views.TeamRegistrationCreateView.as_view(), name="register"),
+    path("register/<int:pk>/players/", views.TeamRegistrationPlayersBulkView.as_view(), name="register-players"),
     path("register/<int:pk>/receipt/", views.TeamRegistrationReceiptDownloadView.as_view(), name="register-receipt-download"),
     path("exam/registrations/", views.ExamRegistrationCreateView.as_view(), name="exam-registration-create"),
     path("exam/results/lookup/", views.ExamResultLookupView.as_view(), name="exam-result-lookup"),

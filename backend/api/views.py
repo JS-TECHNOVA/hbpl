@@ -91,8 +91,8 @@ from .serializers import (
     AdminComplaintSerializer,
     NewsTickerSerializer,
     AdminNewsTickerSerializer,
-    PlayerSerializer,
     PlayerCreateSerializer,
+    PlayerSerializer,
     TeamWithPlayersSerializer,
     TournamentListSerializer,
     TournamentDetailSerializer,
@@ -336,7 +336,9 @@ class MatchListView(generics.ListAPIView):
     serializer_class = MatchSerializer
 
     def get_queryset(self):
-        qs = Match.objects.all().order_by("date", "id")
+        qs = Match.objects.select_related(
+            "team1_obj", "team2_obj", "team1_registration", "team2_registration"
+        ).all().order_by("date", "id")
         for param, field in [("season", "season"), ("tournament", "tournament_id"), ("match_status", "match_status")]:
             val = self.request.query_params.get(param)
             if val is not None:
@@ -423,6 +425,57 @@ class TeamRegistrationCreateView(generics.CreateAPIView):
         return Response(
             _build_team_registration_response(request, registration),
             status=status.HTTP_201_CREATED,
+        )
+
+
+class TeamRegistrationPlayersBulkView(APIView):
+    """Public endpoint — submit players for a team registration (immediately after registration)."""
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, pk, *args, **kwargs):
+        try:
+            team = TeamRegistration.objects.get(pk=pk)
+        except TeamRegistration.DoesNotExist:
+            return Response({"detail": "Registration not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            player_count = int(request.data.get("player_count", 0))
+        except (TypeError, ValueError):
+            return Response({"detail": "Invalid player_count."}, status=status.HTTP_400_BAD_REQUEST)
+
+        created_ids = []
+        errors = []
+
+        for i in range(player_count):
+            def _bool(key):
+                return str(request.data.get(key, "")).lower() == "true"
+
+            player_data = {
+                "team": team.id,
+                "name": request.data.get(f"player_{i}_name", "").strip(),
+                "role": request.data.get(f"player_{i}_role", "batter"),
+                "batting_style": request.data.get(f"player_{i}_batting_style", "right_handed"),
+                "bowling_style": request.data.get(f"player_{i}_bowling_style", "not_applicable"),
+                "jersey_number": request.data.get(f"player_{i}_jersey_number") or None,
+                "is_captain": _bool(f"player_{i}_is_captain"),
+                "is_vice_captain": _bool(f"player_{i}_is_vice_captain"),
+                "is_substitute": False,
+            }
+            photo = request.FILES.get(f"player_{i}_photo")
+
+            serializer = PlayerCreateSerializer(data=player_data)
+            if serializer.is_valid():
+                player = serializer.save()
+                if photo:
+                    player.photo = photo
+                    player.save(update_fields=["photo"])
+                created_ids.append(player.id)
+            else:
+                errors.append({"index": i, "name": player_data.get("name"), "errors": serializer.errors})
+
+        return Response(
+            {"created": len(created_ids), "errors": errors},
+            status=status.HTTP_201_CREATED if created_ids else status.HTTP_400_BAD_REQUEST,
         )
 
 
