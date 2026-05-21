@@ -85,7 +85,7 @@ class BallService:
             bowling_card.wides += 1
         elif extra_type == "no_ball":
             bowling_card.no_balls += 1
-        bowling_card.runs_given += runs_scored + (extras if extra_type in ("wide", "no_ball") else 0)
+        bowling_card.runs_given += runs_scored + (1 + extras if extra_type in ("wide", "no_ball") else 0)
         if is_wicket and wicket_type != "run_out":
             bowling_card.wickets += 1
         bowling_card.save()
@@ -99,7 +99,7 @@ class BallService:
             match=match, innings_number=match.current_innings
         )
         if extra_type == "wide":
-            extras_record.wides += 1 + (extras - 1 if extras > 1 else 0)
+            extras_record.wides += 1 + extras
         elif extra_type == "no_ball":
             extras_record.no_balls += 1
         elif extra_type == "leg_bye":
@@ -109,7 +109,12 @@ class BallService:
         extras_record.save()
 
         # -- Match score -------------------------------------------------------
-        total_runs = runs_scored + (extras if extra_type in ("wide", "no_ball", "leg_bye", "bye") else 0)
+        if extra_type in ("wide", "no_ball"):
+            total_runs = runs_scored + 1 + extras  # 1 penalty run always applies
+        elif extra_type in ("leg_bye", "bye"):
+            total_runs = runs_scored + extras
+        else:
+            total_runs = runs_scored
         self._update_match_score(match, total_runs, is_wicket, is_legal)
 
         # -- Commentary --------------------------------------------------------

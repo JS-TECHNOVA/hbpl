@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "https://myhbpl.org";
 
@@ -11,6 +12,16 @@ export default function StaffLoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    setIsLoggedIn(!!localStorage.getItem("admin_token"));
+  }, []);
+
+  function handleLogout() {
+    localStorage.removeItem("admin_token");
+    setIsLoggedIn(false);
+  }
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -31,6 +42,39 @@ export default function StaffLoginPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center px-4">
+        <div className="w-full max-w-sm">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <p className="font-heading font-extrabold text-white text-[28px]">HBPL Staff</p>
+            <p className="text-white/40 text-[13px] mt-1">You are already signed in</p>
+          </div>
+
+          <div className="bg-[#1e293b] rounded-3xl p-7 flex flex-col gap-3 border border-white/8">
+            <Link
+              href="/staff"
+              className="bg-primary hover:bg-primary-dark text-white font-semibold text-[15px] py-3 rounded-xl transition-colors text-center"
+            >
+              Go to Dashboard
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="bg-white/5 hover:bg-white/10 text-white/70 hover:text-white font-semibold text-[14px] py-3 rounded-xl transition-colors border border-white/10"
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

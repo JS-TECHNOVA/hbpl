@@ -1,3 +1,5 @@
+import json
+
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.db.models import Q, Sum, Count, Max
@@ -242,18 +244,49 @@ class PublicTeamRegistrationView(APIView):
             is_visible=False,
         )
 
+        # Multipart FormData sends players as a JSON string — parse it manually
+        players_raw = request.data.get("players", "[]")
+        if isinstance(players_raw, str):
+            try:
+                players_list = json.loads(players_raw)
+            except (json.JSONDecodeError, ValueError):
+                players_list = []
+        elif isinstance(players_raw, list):
+            players_list = players_raw
+        else:
+            players_list = []
+
+        captain = None
+        vice_captain = None
         player_count = 0
-        for p_data in data.get("players", []):
-            Player.objects.create(
+
+        for p_data in players_list:
+            if not isinstance(p_data, dict) or not p_data.get("name", "").strip():
+                continue
+            player = Player.objects.create(
                 team=team,
                 tournament=tournament,
-                name=p_data["name"],
+                name=p_data["name"].strip(),
                 role=p_data.get("role", "batsman"),
-                jersey_number=p_data.get("jersey_number"),
+                jersey_number=p_data.get("jersey_number") or None,
                 batting_style=p_data.get("batting_style", "right_hand"),
                 bowling_style=p_data.get("bowling_style", "none"),
             )
+            if p_data.get("is_captain"):
+                captain = player
+            if p_data.get("is_vice_captain"):
+                vice_captain = player
             player_count += 1
+
+        if captain or vice_captain:
+            update_fields = []
+            if captain:
+                team.captain = captain
+                update_fields.append("captain")
+            if vice_captain:
+                team.vice_captain = vice_captain
+                update_fields.append("vice_captain")
+            team.save(update_fields=update_fields)
 
         return Response(
             {
