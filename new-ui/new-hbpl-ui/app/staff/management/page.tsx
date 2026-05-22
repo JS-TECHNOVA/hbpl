@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { token } from "../layout";
+import { mediaUrl } from "@/src/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "https://myhbpl.org";
 
@@ -93,7 +94,7 @@ export default function ManagementPage() {
                 <tr key={m.id} className="border-b border-border/20 last:border-0 hover:bg-section/40 transition-colors">
                   <td className="px-5 py-3">
                     {m.image_url ? (
-                      <img src={m.image_url} alt={m.name} className="w-9 h-9 rounded-full object-cover" />
+                      <img src={mediaUrl(m.image_url)} alt={m.name} className="w-9 h-9 rounded-full object-cover" />
                     ) : (
                       <div className="w-9 h-9 rounded-full bg-primary/15 flex items-center justify-center">
                         <span className="font-heading font-extrabold text-primary text-[12px]">{m.name[0]}</span>
@@ -131,7 +132,7 @@ export default function ManagementPage() {
                   {imgFile ? (
                     <img src={URL.createObjectURL(imgFile)} alt="" className="w-full h-full object-cover" />
                   ) : editing.image_url ? (
-                    <img src={editing.image_url} alt="" className="w-full h-full object-cover" />
+                    <img src={mediaUrl(editing.image_url)} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <span className="text-text-muted text-[12px]">Photo</span>
                   )}

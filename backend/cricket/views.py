@@ -1,7 +1,12 @@
 import json
+import os
+from datetime import datetime
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+from django.conf import settings
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from django.db.models import Q, Sum, Count, Max
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
@@ -244,6 +249,15 @@ class PublicTeamRegistrationView(APIView):
             is_visible=False,
         )
 
+        # Save team logo if uploaded
+        logo_file = request.FILES.get("logo")
+        if logo_file:
+            ext = os.path.splitext(logo_file.name)[1].lower()
+            save_path = f"team_logos/{team.id}{ext}"
+            default_storage.save(save_path, ContentFile(logo_file.read()))
+            team.logo_url = request.build_absolute_uri(settings.MEDIA_URL + save_path)
+            team.save(update_fields=["logo_url"])
+
         # Multipart FormData sends players as a JSON string — parse it manually
         players_raw = request.data.get("players", "[]")
         if isinstance(players_raw, str):
@@ -258,9 +272,9 @@ class PublicTeamRegistrationView(APIView):
 
         captain = None
         vice_captain = None
-        player_count = 0
+        created_players = []
 
-        for p_data in players_list:
+        for i, p_data in enumerate(players_list):
             if not isinstance(p_data, dict) or not p_data.get("name", "").strip():
                 continue
             player = Player.objects.create(
@@ -272,11 +286,20 @@ class PublicTeamRegistrationView(APIView):
                 batting_style=p_data.get("batting_style", "right_hand"),
                 bowling_style=p_data.get("bowling_style", "none"),
             )
+            # Save player photo if uploaded
+            photo_file = request.FILES.get(f"player_photo_{i}")
+            if photo_file:
+                ext = os.path.splitext(photo_file.name)[1].lower()
+                save_path = f"player_photos/{player.id}{ext}"
+                default_storage.save(save_path, ContentFile(photo_file.read()))
+                player.photo_url = request.build_absolute_uri(settings.MEDIA_URL + save_path)
+                player.save(update_fields=["photo_url"])
+
             if p_data.get("is_captain"):
                 captain = player
             if p_data.get("is_vice_captain"):
                 vice_captain = player
-            player_count += 1
+            created_players.append(player)
 
         if captain or vice_captain:
             update_fields = []
@@ -288,11 +311,16 @@ class PublicTeamRegistrationView(APIView):
                 update_fields.append("vice_captain")
             team.save(update_fields=update_fields)
 
+        year = datetime.now().year % 100
+        reg_num = int(str(team.id).replace("-", "")[-6:], 16) % 10000
+        registration_code = f"HBPL{year:02d}{reg_num:04d}"
+
         return Response(
             {
                 "team_id": str(team.id),
+                "registration_code": registration_code,
                 "team_name": team.name,
-                "player_count": player_count,
+                "player_count": len(created_players),
                 "message": "Registration submitted. We will review and contact you shortly.",
             },
             status=status.HTTP_201_CREATED,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { mediaUrl } from "@/src/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "https://myhbpl.org";
 
@@ -19,7 +20,7 @@ function MemberCard({ m }: { m: Member }) {
     <div className="bg-white rounded-3xl p-8 shadow-[0px_1px_3px_rgba(0,0,0,0.07),0px_4px_16px_rgba(0,0,0,0.05)] flex flex-col gap-6">
       {m.image_url ? (
         <img
-          src={m.image_url}
+          src={mediaUrl(m.image_url)}
           alt={m.name}
           className="w-16 h-16 rounded-2xl object-cover"
         />

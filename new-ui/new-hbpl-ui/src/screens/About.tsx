@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { mediaUrl } from "@/src/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "https://myhbpl.org";
 
@@ -508,7 +509,7 @@ export default function About() {
 							>
 								{img.image_url ? (
 									<img
-										src={img.image_url}
+										src={mediaUrl(img.image_url)}
 										alt={img.title}
 										className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
 									/>

@@ -25,18 +25,18 @@ export function NavMobileMenu() {
         aria-label="Toggle menu"
         aria-expanded={open}
       >
-        <span className={`block w-6 h-0.5 bg-ds-text transition-transform ${open ? "translate-y-2 rotate-45" : ""}`} />
-        <span className={`block w-6 h-0.5 bg-ds-text transition-opacity ${open ? "opacity-0" : ""}`} />
-        <span className={`block w-6 h-0.5 bg-ds-text transition-transform ${open ? "-translate-y-2 -rotate-45" : ""}`} />
+        <span className={`block w-6 h-0.5 bg-black transition-transform ${open ? "translate-y-2 rotate-45" : ""}`} />
+        <span className={`block w-6 h-0.5 bg-black transition-opacity ${open ? "opacity-0" : ""}`} />
+        <span className={`block w-6 h-0.5 bg-black transition-transform ${open ? "-translate-y-2 -rotate-45" : ""}`} />
       </button>
 
       {open && (
-        <div className="md:hidden absolute top-full left-0 right-0 glass border-t border-ds-border py-5 px-6 flex flex-col gap-1">
+        <div className="md:hidden absolute top-full left-0 right-0 bg-white border-t border-ds-border py-5 px-6 flex flex-col gap-1">
           {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-[14px] font-medium text-ds-text-muted hover:text-ds-text py-2.5 border-b border-ds-border last:border-0 transition-colors"
+              className="text-[14px] font-medium text-black hover:text-ds-text py-2.5 border-b border-ds-border last:border-0 transition-colors"
               onClick={() => setOpen(false)}
             >
               {link.label}

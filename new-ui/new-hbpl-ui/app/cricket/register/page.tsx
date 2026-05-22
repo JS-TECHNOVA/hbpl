@@ -113,7 +113,7 @@ export default function CricketRegisterPage() {
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [payError, setPayError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ team_name: string; player_count: number; team_id: string } | null>(null);
+  const [result, setResult] = useState<{ team_name: string; player_count: number; team_id: string; registration_code: string } | null>(null);
 
   useEffect(() => {
     fetch(`${V1}/tournaments/?status=registration_open`)
@@ -268,10 +268,10 @@ export default function CricketRegisterPage() {
           <div className="bg-white rounded-3xl p-8 shadow-[0px_4px_20px_rgba(0,0,0,0.08)] w-full flex flex-col gap-3 items-center">
             <span className="text-text-muted text-[12px] font-semibold tracking-widest uppercase">Team Name</span>
             <span className="font-heading font-extrabold text-[28px] text-primary leading-none">{result.team_name}</span>
-            {result.team_id && (
-              <div className="mt-1 px-5 py-2 rounded-xl bg-primary/8 border border-primary/20">
-                <span className="text-[11px] font-semibold text-text-muted uppercase tracking-widest block mb-0.5">Registration ID</span>
-                <span className="font-heading font-extrabold text-[22px] text-primary tracking-wider">{result.team_id}</span>
+            {result.registration_code && (
+              <div className="mt-1 px-6 py-3 rounded-xl bg-primary/8 border border-primary/20">
+                <span className="text-[11px] font-semibold text-text-muted uppercase tracking-widest block mb-1">Registration ID</span>
+                <span className="font-heading font-extrabold text-[30px] text-primary tracking-widest">{result.registration_code}</span>
               </div>
             )}
             {result.player_count > 0 && (

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { token } from "../layout";
+import { mediaUrl } from "@/src/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "https://myhbpl.org";
 
@@ -82,7 +83,7 @@ export default function VolunteersPage() {
             {items.map(v => (
               <div key={v.id} className="flex items-center gap-4 bg-section rounded-2xl p-4">
                 {v.image_url ? (
-                  <img src={v.image_url} alt={v.name} className="w-12 h-12 rounded-full object-cover shrink-0" />
+                  <img src={mediaUrl(v.image_url)} alt={v.name} className="w-12 h-12 rounded-full object-cover shrink-0" />
                 ) : (
                   <div className="w-12 h-12 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
                     <span className="font-heading font-extrabold text-primary text-[14px]">{v.name[0]}</span>
@@ -111,7 +112,7 @@ export default function VolunteersPage() {
                 {imgFile ? (
                   <img src={URL.createObjectURL(imgFile)} alt="" className="w-full h-full object-cover" />
                 ) : editing.image_url ? (
-                  <img src={editing.image_url} alt="" className="w-full h-full object-cover" />
+                  <img src={mediaUrl(editing.image_url)} alt="" className="w-full h-full object-cover" />
                 ) : (
                   <span className="text-text-muted text-[12px]">Photo</span>
                 )}

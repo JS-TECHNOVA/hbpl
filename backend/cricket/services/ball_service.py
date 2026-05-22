@@ -34,7 +34,12 @@ class BallService:
         bowler_id = payload.get("bowler_id") or match.current_bowler_id
 
         is_legal = extra_type not in ("wide", "no_ball")
-        ball_number = match.current_ball + 1 if is_legal else match.current_ball
+        # Use total delivery count in this over so wides/no_balls never collide
+        ball_number = BallCommentary.objects.filter(
+            match=match,
+            innings_number=match.current_innings,
+            over_number=match.current_over,
+        ).count() + 1
 
         # -- Batting scorecard (striker) ---------------------------------------
         batting_card, _ = BattingScorecard.objects.select_for_update().get_or_create(

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
+import { mediaUrl } from "@/src/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "https://myhbpl.org";
 const WS_HOST = (process.env.NEXT_PUBLIC_API_URL ?? "https://myhbpl.org").replace(/^http/, "ws");
@@ -91,7 +92,7 @@ const IconTeam = () => (
 function TeamAvatar({ team, size = "sm" }: { team: TeamBrief; size?: "sm" | "md" | "lg" }) {
   const s = size === "lg" ? "w-14 h-14 text-xl" : size === "md" ? "w-10 h-10 text-base" : "w-8 h-8 text-sm";
   if (team.logo_url) {
-    return <img src={team.logo_url} alt={team.name} className={`${s} rounded-full object-cover ring-1 ring-white/10`} />;
+    return <img src={mediaUrl(team.logo_url)} alt={team.name} className={`${s} rounded-full object-cover ring-1 ring-white/10`} />;
   }
   return (
     <div className={`${s} rounded-full bg-linear-to-br from-slate-600 to-slate-800 ring-1 ring-white/10 flex items-center justify-center font-extrabold text-white`}>
@@ -537,7 +538,7 @@ export default function Cricket() {
                 className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col items-center gap-3 text-center hover:border-slate-700 hover:bg-slate-800/80 transition-all duration-200 cursor-pointer group"
               >
                 {team.logo_url ? (
-                  <img src={team.logo_url} alt={team.name} className="w-12 h-12 rounded-full object-cover ring-2 ring-white/5 group-hover:ring-accent/30 transition-all" />
+                  <img src={mediaUrl(team.logo_url)} alt={team.name} className="w-12 h-12 rounded-full object-cover ring-2 ring-white/5 group-hover:ring-accent/30 transition-all" />
                 ) : (
                   <div className="w-12 h-12 rounded-full bg-linear-to-br from-slate-700 to-slate-900 ring-2 ring-white/5 group-hover:ring-accent/30 flex items-center justify-center text-white font-extrabold text-[15px] transition-all">
                     {(team.short_name || team.name).slice(0, 2).toUpperCase()}

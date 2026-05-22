@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { token } from "../layout";
+import { mediaUrl } from "@/src/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "https://myhbpl.org";
 
@@ -131,7 +132,7 @@ function SchoolsSection() {
       title="Support Schools"
       onAdd={() => { setEditing({ name: "", principal_name: "", address: "", order: 0 }); setImgFile(null); }}
       items={items}
-      renderRow={item => <><td className="px-5 py-3">{item.image_url && <img src={item.image_url} className="w-8 h-8 rounded object-cover" alt="" />}</td><td className="px-5 py-3 font-semibold text-text-primary">{item.name}</td><td className="px-5 py-3 text-text-muted">{item.principal_name}</td><td className="px-5 py-3 text-text-muted">{item.order}</td></>}
+      renderRow={item => <><td className="px-5 py-3">{item.image_url && <img src={mediaUrl(item.image_url)} className="w-8 h-8 rounded object-cover" alt="" />}</td><td className="px-5 py-3 font-semibold text-text-primary">{item.name}</td><td className="px-5 py-3 text-text-muted">{item.principal_name}</td><td className="px-5 py-3 text-text-muted">{item.order}</td></>}
       cols={["", "School", "Principal", "Order"]}
       onEdit={item => { setEditing({ ...item }); setImgFile(null); }}
       onDelete={item => del(item.id)}

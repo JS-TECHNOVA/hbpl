@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { mediaUrl } from "@/src/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "https://myhbpl.org";
 
@@ -176,7 +177,7 @@ export default function Volunteers() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {volunteers.map(v => {
-                const photo = v.image_url || (v.img || null);
+                const photo = mediaUrl(v.image_url || v.img || null) || null;
                 const initials = v.name.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
                 return (
                   <div key={v.id} className="bg-white rounded-3xl overflow-hidden shadow-[0px_1px_3px_rgba(0,0,0,0.07),0px_4px_16px_rgba(0,0,0,0.05)] flex flex-col group hover:shadow-[0px_8px_32px_rgba(0,63,135,0.12)] transition-shadow duration-200">

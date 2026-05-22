@@ -3,6 +3,7 @@
 import { use, useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useMatchSocket, type LiveScore, type InningsData } from "@/src/hooks/useMatchSocket";
+import { mediaUrl } from "@/src/lib/api";
 
 // ── Icons ─────────────────────────────────────────────────────────────────
 const IconBack = () => (
@@ -80,7 +81,7 @@ function commentaryScoreColor(c: { is_wicket: boolean; is_six: boolean; is_four:
 // ── Sub-components ─────────────────────────────────────────────────────────
 function TeamLogo({ name, short_name, logo_url, size = "md" }: { name: string; short_name?: string; logo_url?: string; size?: "sm" | "md" | "lg" }) {
   const s = size === "lg" ? "w-16 h-16 text-xl" : size === "md" ? "w-10 h-10 text-sm" : "w-7 h-7 text-xs";
-  if (logo_url) return <img src={logo_url} alt={name} className={`${s} rounded-full object-cover ring-1 ring-white/10`} />;
+  if (logo_url) return <img src={mediaUrl(logo_url)} alt={name} className={`${s} rounded-full object-cover ring-1 ring-white/10`} />;
   return (
     <div className={`${s} rounded-full bg-linear-to-br from-slate-600 to-slate-800 ring-1 ring-white/10 flex items-center justify-center font-extrabold text-white`}>
       {(short_name || name).slice(0, 2).toUpperCase()}
@@ -248,7 +249,7 @@ function ManOfMatchCard({
       </div>
       {player.photo_url ? (
         <img
-          src={player.photo_url}
+          src={mediaUrl(player.photo_url)}
           alt={player.name}
           className="relative w-14 h-14 rounded-full object-cover ring-2 ring-red-500/40 shrink-0"
         />
@@ -279,7 +280,7 @@ function PlayerCard({ p, isCapt, isVC, isWK }: { p: TeamPlayer; isCapt: boolean;
   return (
     <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-800/40 last:border-0 hover:bg-white/2 transition-colors">
       {p.photo_url ? (
-        <img src={p.photo_url} alt={p.name} className="w-10 h-10 rounded-full object-cover ring-1 ring-white/10 shrink-0" />
+        <img src={mediaUrl(p.photo_url)} alt={p.name} className="w-10 h-10 rounded-full object-cover ring-1 ring-white/10 shrink-0" />
       ) : (
         <div className="w-10 h-10 rounded-full bg-linear-to-br from-slate-600 to-slate-800 ring-1 ring-white/10 flex items-center justify-center shrink-0">
           <span className="text-white text-[11px] font-extrabold">{initials}</span>
@@ -348,7 +349,7 @@ function PlayersTab({ team1Id, team2Id }: { team1Id: string; team2Id: string }) 
           <div key={idx} className="rounded-2xl bg-slate-900/60 border border-slate-800 overflow-hidden">
             <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-800 bg-slate-900">
               {team.logo_url ? (
-                <img src={team.logo_url} alt={team.name} className="w-8 h-8 rounded-full object-cover ring-1 ring-white/10" />
+                <img src={mediaUrl(team.logo_url)} alt={team.name} className="w-8 h-8 rounded-full object-cover ring-1 ring-white/10" />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-linear-to-br from-slate-600 to-slate-800 ring-1 ring-white/10 flex items-center justify-center">
                   <span className="text-white text-[10px] font-extrabold">{team.short_name?.slice(0, 2)}</span>

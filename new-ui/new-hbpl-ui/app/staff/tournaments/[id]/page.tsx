@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { mediaUrl } from "@/src/lib/api";
 import { token } from "../../layout";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "https://myhbpl.org";
@@ -308,7 +309,7 @@ export default function TournamentDetailPage() {
                       <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
                           {team.logo_url
-                            ? <img src={team.logo_url} alt={team.name} className="w-full h-full object-cover" />
+                            ? <img src={mediaUrl(team.logo_url)} alt={team.name} className="w-full h-full object-cover" />
                             : <span className="font-heading font-extrabold text-primary text-[11px]">{(team.short_name || team.name).slice(0,2).toUpperCase()}</span>}
                         </div>
                         <div>

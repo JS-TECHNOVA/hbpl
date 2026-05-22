@@ -6,6 +6,17 @@
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "https://myhbpl.org";
 
+/**
+ * Converts a relative /media/... path from Django into a full URL.
+ * Already-absolute URLs are returned unchanged. Null/undefined returns "".
+ */
+export function mediaUrl(path: string | null | undefined): string {
+  if (!path) return "";
+  if (/^https?:\/\//.test(path)) return path;
+  const base = API_URL.replace(/\/$/, "");
+  return `${base}${path.startsWith("/") ? "" : "/"}${path}`;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PUBLIC TYPES
 // ─────────────────────────────────────────────────────────────────────────────

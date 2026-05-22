@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { token } from "../layout";
+import { mediaUrl } from "@/src/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "https://myhbpl.org";
 const V1 = `${API}/api/v1/cricket`;
@@ -248,7 +249,7 @@ export default function CricketTeamsPage() {
                   className={`flex items-center gap-4 px-5 py-4 cursor-pointer transition-colors hover:bg-section/60 ${selectedTeam?.id === team.id ? "bg-primary/5 border-l-2 border-l-primary" : ""}`}>
                   <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 overflow-hidden bg-primary/10">
                     {team.logo_url ? (
-                      <img src={team.logo_url} alt={team.name} className="w-full h-full object-cover" />
+                      <img src={mediaUrl(team.logo_url)} alt={team.name} className="w-full h-full object-cover" />
                     ) : (
                       <span className="font-heading font-extrabold text-primary text-[14px]">
                         {(team.short_name || team.name).slice(0, 2).toUpperCase()}
@@ -321,7 +322,7 @@ export default function CricketTeamsPage() {
                   <div key={p.id} className="flex items-center gap-3 px-4 py-3 border-b border-border/15 last:border-0 hover:bg-section/40 transition-colors">
                     <span className="w-6 text-center text-text-muted text-[12px] font-semibold shrink-0">{i + 1}</span>
                     {p.photo_url ? (
-                      <img src={p.photo_url} alt={p.name} className="w-9 h-9 rounded-full object-cover shrink-0" />
+                      <img src={mediaUrl(p.photo_url)} alt={p.name} className="w-9 h-9 rounded-full object-cover shrink-0" />
                     ) : (
                       <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                         <span className="font-heading font-extrabold text-primary text-[12px]">{p.name[0]}</span>
@@ -439,7 +440,7 @@ export default function CricketTeamsPage() {
                 {photoFile ? (
                   <img src={URL.createObjectURL(photoFile)} alt="" className="w-full h-full object-cover" />
                 ) : editPlayer.photo_url ? (
-                  <img src={editPlayer.photo_url} alt="" className="w-full h-full object-cover" />
+                  <img src={mediaUrl(editPlayer.photo_url)} alt="" className="w-full h-full object-cover" />
                 ) : (
                   <span className="font-heading font-extrabold text-primary text-[22px]">
                     {(editPlayer.name || "?")[0].toUpperCase()}

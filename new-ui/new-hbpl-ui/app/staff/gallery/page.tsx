@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { token } from "../layout";
+import { mediaUrl } from "@/src/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "https://myhbpl.org";
 
@@ -90,7 +91,7 @@ export default function GalleryPage() {
           {filtered.map(item => (
             <div key={item.id} className="group relative rounded-2xl overflow-hidden bg-section aspect-square shadow-sm">
               {item.image_url && (
-                <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" />
+                <img src={mediaUrl(item.image_url)} alt={item.title} className="w-full h-full object-cover" />
               )}
               {/* Overlay */}
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex flex-col items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
@@ -119,7 +120,7 @@ export default function GalleryPage() {
                 {imgFile ? (
                   <img src={URL.createObjectURL(imgFile)} alt="" className="w-full h-full object-cover" />
                 ) : editing.image_url ? (
-                  <img src={editing.image_url} alt="" className="w-full h-full object-cover" />
+                  <img src={mediaUrl(editing.image_url)} alt="" className="w-full h-full object-cover" />
                 ) : (
                   <p className="text-text-muted text-[13px]">No image selected</p>
                 )}

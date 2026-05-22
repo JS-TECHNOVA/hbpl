@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
+import { mediaUrl } from "@/src/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "https://myhbpl.org";
 const V1 = `${API}/api/v1/cricket`;
@@ -435,7 +436,7 @@ export default function TournamentDetailPage({ params }: { params: Promise<{ id:
 
 function TeamAvatar({ team, size = "md" }: { team: { name: string; short_name: string; logo_url: string }; size?: "sm" | "md" | "lg" }) {
   const cls = size === "lg" ? "w-14 h-14 text-lg" : size === "md" ? "w-9 h-9 text-sm" : "w-6 h-6 text-[10px]";
-  if (team.logo_url) return <img src={team.logo_url} alt={team.name} className={`${cls} rounded-full object-cover`} />;
+  if (team.logo_url) return <img src={mediaUrl(team.logo_url)} alt={team.name} className={`${cls} rounded-full object-cover`} />;
   return (
     <div className={`${cls} rounded-full bg-primary/10 text-primary font-extrabold flex items-center justify-center shrink-0`}>
       {(team.short_name || team.name).slice(0, 2).toUpperCase()}

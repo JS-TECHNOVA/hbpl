@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { token } from "../layout";
+import { mediaUrl } from "@/src/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "https://myhbpl.org";
 
@@ -430,7 +431,7 @@ export default function ExamStudentsPage() {
                   <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">Student Photo</p>
                   <div className="w-full aspect-square bg-section rounded-2xl overflow-hidden flex items-center justify-center">
                     {selected.student_image_url ? (
-                      <img src={selected.student_image_url} alt="" className="w-full h-full object-cover" />
+                      <img src={mediaUrl(selected.student_image_url)} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-text-muted text-[12px]">No photo</span>
                     )}
@@ -443,7 +444,7 @@ export default function ExamStudentsPage() {
                   <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">Signature</p>
                   <div className="w-full h-20 bg-section rounded-xl overflow-hidden flex items-center justify-center">
                     {selected.signature_image_url ? (
-                      <img src={selected.signature_image_url} alt="" className="h-full object-contain" />
+                      <img src={mediaUrl(selected.signature_image_url)} alt="" className="h-full object-contain" />
                     ) : (
                       <span className="text-text-muted text-[12px]">No signature</span>
                     )}

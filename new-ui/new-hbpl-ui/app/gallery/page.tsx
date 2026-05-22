@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { mediaUrl } from "@/src/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "https://myhbpl.org";
 
@@ -79,7 +80,7 @@ function Lightbox({
       >
         {item.image_url && (
           <img
-            src={item.image_url}
+            src={mediaUrl(item.image_url)}
             alt={item.title}
             className="w-full h-full max-h-[75vh] object-contain rounded-2xl shadow-2xl"
           />
@@ -234,7 +235,7 @@ export default function GalleryPage() {
                 >
                   {img.image_url ? (
                     <img
-                      src={img.image_url}
+                      src={mediaUrl(img.image_url)}
                       alt={img.title}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       loading="lazy"

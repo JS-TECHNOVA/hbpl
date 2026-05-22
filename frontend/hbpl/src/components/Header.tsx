@@ -117,7 +117,7 @@ const Header = () => {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 bg-background border-b border-border shadow-sm">
+    <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm">
       <nav className="container mx-auto px-4 py-3 flex items-center justify-between">
         {/* Logo Section */}
         <Link href="/" className="flex items-center gap-3 group">
@@ -226,14 +226,14 @@ const Header = () => {
           </Button>
 
           {/* Mobile Menu Toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden rounded-full text-foreground"
+          <button
+            type="button"
+            className="md:hidden p-2 rounded-full text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-label={isMenuOpen ? "Close menu" : "Open menu"}
           >
             {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </Button>
+          </button>
         </div>
       </nav>
 
@@ -259,22 +259,22 @@ const Header = () => {
       <AnimatePresence>
         {isMenuOpen && (
           <motion.div
-            className="md:hidden bg-background border-t border-border px-4 py-4"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            className="md:hidden bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-4 py-4 overflow-hidden"
+            initial={{ height: 0 }}
+            animate={{ height: "auto" }}
+            exit={{ height: 0 }}
+            transition={{ duration: 0.25, ease: "easeInOut" }}
           >
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
               {navLinks.map((link) => (
                 <Link
                   key={link.path}
                   href={link.path}
                   onClick={() => setIsMenuOpen(false)}
-                  className={`block px-4 py-3 rounded-lg text-center font-medium transition-all duration-300 ${
+                  className={`block px-4 py-3 rounded-lg text-center font-semibold transition-colors duration-200 ${
                     isActive(link.path)
-                      ? "bg-primary text-primary-foreground"
-                      : "text-foreground hover:bg-muted hover:text-primary"
+                      ? "bg-blue-600 text-white"
+                      : "text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800"
                   }`}
                 >
                   {language === "hi" ? link.name.hi : link.name.en}
