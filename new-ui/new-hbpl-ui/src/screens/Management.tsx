@@ -17,23 +17,27 @@ interface Member {
 function MemberCard({ m }: { m: Member }) {
   const initials = m.name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
   return (
-    <div className="bg-white rounded-3xl p-8 shadow-[0px_1px_3px_rgba(0,0,0,0.07),0px_4px_16px_rgba(0,0,0,0.05)] flex flex-col gap-6">
+    <div className="bg-white rounded-3xl overflow-hidden shadow-[0px_1px_3px_rgba(0,0,0,0.07),0px_4px_16px_rgba(0,0,0,0.05)] flex flex-col">
       {m.image_url ? (
-        <img
-          src={mediaUrl(m.image_url)}
-          alt={m.name}
-          className="w-16 h-16 rounded-2xl object-cover"
-        />
+        <div className="w-full aspect-4/3 overflow-hidden">
+          <img
+            src={mediaUrl(m.image_url)}
+            alt={m.name}
+            className="w-full h-full object-cover"
+          />
+        </div>
       ) : (
-        <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center shrink-0">
-          <span className="font-heading font-extrabold text-[22px] text-white">{initials}</span>
+        <div className="w-full aspect-4/3 bg-primary flex items-center justify-center">
+          <span className="font-heading font-extrabold text-[40px] text-white">{initials}</span>
         </div>
       )}
-      <div className="flex flex-col gap-1">
-        <h3 className="font-heading font-extrabold text-[20px] text-primary">{m.name}</h3>
-        <p className="text-accent text-[13px] font-semibold tracking-wide">{m.role}</p>
+      <div className="flex flex-col gap-6 p-8">
+        <div className="flex flex-col gap-1">
+          <h3 className="font-heading font-extrabold text-[20px] text-primary">{m.name}</h3>
+          <p className="text-accent text-[13px] font-semibold tracking-wide">{m.role}</p>
+        </div>
+        <p className="text-text-body text-[14px] leading-[1.65]">{m.description}</p>
       </div>
-      <p className="text-text-body text-[14px] leading-[1.65]">{m.description}</p>
     </div>
   );
 }
@@ -41,7 +45,7 @@ function MemberCard({ m }: { m: Member }) {
 function SkeletonCard() {
   return (
     <div className="bg-white rounded-3xl p-8 shadow-[0px_1px_3px_rgba(0,0,0,0.07),0px_4px_16px_rgba(0,0,0,0.05)] flex flex-col gap-6 animate-pulse">
-      <div className="w-16 h-16 rounded-2xl bg-gray-200" />
+      <div className="w-28 h-28 rounded-2xl bg-gray-200" />
       <div className="flex flex-col gap-2">
         <div className="h-5 w-40 rounded bg-gray-200" />
         <div className="h-3.5 w-24 rounded bg-gray-100" />
