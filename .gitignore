@@ -291,14 +291,6 @@ out
 # Nuxt.js build / generate output
 .nuxt
 dist
-migrations
-# Django schema migrations are source code and must be kept for the examination app.
-!backend/api/migrations/
-!backend/api/migrations/*.py
-!backend/core/migrations/
-!backend/core/migrations/*.py
-!backend/exams/migrations/
-!backend/exams/migrations/*.py
 
 # Gatsby files
 .cache/
