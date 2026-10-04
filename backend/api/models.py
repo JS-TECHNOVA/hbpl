@@ -200,6 +200,8 @@ class ExamRegistration(models.Model):
     admit_card_file = models.FileField(upload_to="exam/admit-cards/", blank=True, null=True)
     participation_certificate_file = models.FileField(upload_to="exam/certificates/", blank=True, null=True)
     publish_admit_card = models.BooleanField(default=False)
+    admit_card_email_sent_at = models.DateTimeField(null=True, blank=True)
+    admit_card_email_last_error = models.TextField(blank=True)
     publish_participation_certificate = models.BooleanField(default=False)
     marks_obtained = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
     total_marks = models.DecimalField(max_digits=5, decimal_places=2, default=100)
@@ -286,9 +288,12 @@ class ExamSyllabusItem(models.Model):
 
 
 class ExamSamplePaper(models.Model):
-    class_name = models.CharField(max_length=50)
+    exam = models.ForeignKey(
+        "exams.Exam", null=True, blank=True, on_delete=models.CASCADE, related_name="sample_papers",
+    )
+    class_name = models.CharField(max_length=50, blank=True, default="")
     title = models.CharField(max_length=200)
-    description = models.TextField(blank=True)
+    caption = models.TextField(blank=True)
     file = models.FileField(upload_to="exam/sample-papers/", blank=True, null=True)
     external_url = models.URLField(blank=True)
     order = models.PositiveIntegerField(default=0)
@@ -297,7 +302,8 @@ class ExamSamplePaper(models.Model):
         ordering = ["order", "id"]
 
     def __str__(self):
-        return f"{self.class_name} — {self.title}"
+        scope = self.exam.name if self.exam_id else (f"Class {self.class_name}" if self.class_name else "Unassigned")
+        return f"{scope} — {self.title}"
 
 
 class ExamCenterDetail(models.Model):
@@ -324,19 +330,6 @@ class ExamFaq(models.Model):
 
     def __str__(self):
         return self.question
-
-
-class ExamTopper(models.Model):
-    student = models.ForeignKey(ExamRegistration, on_delete=models.CASCADE, related_name="topper_entries")
-    rank = models.PositiveIntegerField(default=1)
-    highlight_text = models.CharField(max_length=200, blank=True)
-    order = models.PositiveIntegerField(default=0)
-
-    class Meta:
-        ordering = ["order", "rank", "id"]
-
-    def __str__(self):
-        return f"Rank {self.rank}: {self.student.full_name}"
 
 
 class NewsTicker(models.Model):

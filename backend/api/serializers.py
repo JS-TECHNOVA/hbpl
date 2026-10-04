@@ -19,7 +19,6 @@ from .models import (
     ExamSamplePaper,
     ExamCenterDetail,
     ExamFaq,
-    ExamTopper,
     NewsTicker,
     Player,
     CricketTeam,
@@ -344,11 +343,13 @@ class AdminExamRegistrationSerializer(serializers.ModelSerializer):
             "result_status", "marks_obtained", "total_marks", "rank", "remarks",
             "test_copy", "result_file", "admit_card_file", "participation_certificate_file",
             "publish_admit_card", "publish_participation_certificate",
+            "admit_card_email_sent_at", "admit_card_email_last_error",
             "test_copy_url", "result_file_url", "admit_card_url", "participation_certificate_url",
             "created_at", "updated_at",
         ]
         read_only_fields = [
             "id", "created_at", "updated_at",
+            "admit_card_email_sent_at", "admit_card_email_last_error",
             "student_image_url", "signature_image_url", "test_copy_url", "result_file_url",
             "admit_card_url", "participation_certificate_url",
         ]
@@ -431,6 +432,7 @@ class ExamSyllabusItemSerializer(serializers.ModelSerializer):
 
 
 class ExamSamplePaperSerializer(serializers.ModelSerializer):
+    description = serializers.CharField(source="caption", read_only=True)
     file_url = serializers.SerializerMethodField()
 
     class Meta:
@@ -454,27 +456,6 @@ class ExamFaqSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExamFaq
         fields = ["id", "question", "answer", "order"]
-
-
-class ExamTopperSerializer(serializers.ModelSerializer):
-    student_name = serializers.CharField(source="student.full_name", read_only=True)
-    school_name = serializers.CharField(source="student.school_name", read_only=True)
-    class_name = serializers.CharField(source="student.class_name", read_only=True)
-    marks_obtained = serializers.DecimalField(source="student.marks_obtained", max_digits=5, decimal_places=2, read_only=True)
-    student_image_url = serializers.SerializerMethodField(read_only=True)
-
-    class Meta:
-        model = ExamTopper
-        fields = [
-            "id", "student", "student_name", "school_name", "class_name",
-            "marks_obtained", "rank", "highlight_text", "student_image_url", "order",
-        ]
-
-    def get_student_image_url(self, obj):
-        if not obj.student.student_image:
-            return None
-        request = self.context.get("request")
-        return request.build_absolute_uri(obj.student.student_image.url) if request else obj.student.student_image.url
 
 
 class AdminExamImportantDateSerializer(serializers.ModelSerializer):
@@ -517,6 +498,7 @@ class AdminExamSyllabusItemSerializer(serializers.ModelSerializer):
 
 
 class AdminExamSamplePaperSerializer(serializers.ModelSerializer):
+    description = serializers.CharField(source="caption", required=False, allow_blank=True)
     file_url = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
@@ -541,14 +523,6 @@ class AdminExamFaqSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExamFaq
         fields = ["id", "question", "answer", "order"]
-
-
-class AdminExamTopperSerializer(serializers.ModelSerializer):
-    student_name = serializers.CharField(source="student.full_name", read_only=True)
-
-    class Meta:
-        model = ExamTopper
-        fields = ["id", "student", "student_name", "rank", "highlight_text", "order"]
 
 
 # ── Admin CRUD serializers ────────────────────────────────────────────────────

@@ -17,12 +17,15 @@ class ApiConfig(AppConfig):
                     old = sender.objects.get(pk=instance.pk)
                     instance._pre_save_result_status = old.result_status
                     instance._pre_save_publish_cert = old.publish_participation_certificate
+                    instance._pre_save_publish_admit_card = old.publish_admit_card
                 except sender.DoesNotExist:
                     instance._pre_save_result_status = None
                     instance._pre_save_publish_cert = False
+                    instance._pre_save_publish_admit_card = False
             else:
                 instance._pre_save_result_status = None
                 instance._pre_save_publish_cert = False
+                instance._pre_save_publish_admit_card = False
 
         pre_save.connect(_snapshot_result_status, sender=ExamRegistration, weak=False)
 

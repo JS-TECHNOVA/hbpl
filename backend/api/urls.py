@@ -26,7 +26,6 @@ urlpatterns = [
     path("exam/sample-papers/", views.ExamSamplePaperListView.as_view(), name="exam-sample-papers"),
     path("exam/centers/", views.ExamCenterDetailListView.as_view(), name="exam-centers"),
     path("exam/faqs/", views.ExamFaqListView.as_view(), name="exam-faqs"),
-    path("exam/toppers/", views.ExamTopperListView.as_view(), name="exam-toppers"),
     path("exam/complaints/", views.ComplaintCreateAPIView.as_view(), name="exam-complaint-create"),
     path("exam/complaints/status/", views.ExamComplaintStatusView.as_view(), name="exam-complaint-status"),
 
@@ -65,8 +64,6 @@ urlpatterns += [
     path("admin/exam/centers/<int:pk>/", views.AdminExamCenterDetailDetailView.as_view(), name="admin-exam-center-detail"),
     path("admin/exam/faqs/", views.AdminExamFaqListCreateView.as_view(), name="admin-exam-faq-list"),
     path("admin/exam/faqs/<int:pk>/", views.AdminExamFaqDetailView.as_view(), name="admin-exam-faq-detail"),
-    path("admin/exam/toppers/", views.AdminExamTopperListCreateView.as_view(), name="admin-exam-topper-list"),
-    path("admin/exam/toppers/<int:pk>/", views.AdminExamTopperDetailView.as_view(), name="admin-exam-topper-detail"),
 ]
 
 

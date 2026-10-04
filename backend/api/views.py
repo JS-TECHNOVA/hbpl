@@ -36,7 +36,6 @@ from .models import (
     ExamSamplePaper,
     ExamCenterDetail,
     ExamFaq,
-    ExamTopper,
     ExamSettings,
     Complaint,
     NewsTicker,
@@ -70,7 +69,6 @@ from .serializers import (
     ExamSamplePaperSerializer,
     ExamCenterDetailSerializer,
     ExamFaqSerializer,
-    ExamTopperSerializer,
 )
 from .serializers import (
     AdminVolunteerSerializer,
@@ -85,7 +83,6 @@ from .serializers import (
     AdminExamSamplePaperSerializer,
     AdminExamCenterDetailSerializer,
     AdminExamFaqSerializer,
-    AdminExamTopperSerializer,
     ComplaintSerializer,
     ComplaintCreateSerializer,
     AdminComplaintSerializer,
@@ -659,8 +656,10 @@ class ExamSyllabusItemListView(generics.ListAPIView):
 
 
 class ExamSamplePaperListView(generics.ListAPIView):
-    queryset = ExamSamplePaper.objects.all()
     serializer_class = ExamSamplePaperSerializer
+
+    def get_queryset(self):
+        return ExamSamplePaper.objects.filter(exam__isnull=True)
 
 
 class ExamCenterDetailListView(generics.ListAPIView):
@@ -673,11 +672,6 @@ class ExamFaqListView(generics.ListAPIView):
     serializer_class = ExamFaqSerializer
 
 
-class ExamTopperListView(generics.ListAPIView):
-    queryset = ExamTopper.objects.select_related("student")
-    serializer_class = ExamTopperSerializer
-
-
 class ExamPortalContentView(APIView):
     def get(self, request, *args, **kwargs):
         context = {"request": request}
@@ -687,10 +681,9 @@ class ExamPortalContentView(APIView):
             "important_dates": ExamImportantDateSerializer(ExamImportantDate.objects.all(), many=True, context=context).data,
             "support_schools": ExamSupportSchoolSerializer(ExamSupportSchool.objects.all(), many=True, context=context).data,
             "syllabus_items": ExamSyllabusItemSerializer(ExamSyllabusItem.objects.all(), many=True, context=context).data,
-            "sample_papers": ExamSamplePaperSerializer(ExamSamplePaper.objects.all(), many=True, context=context).data,
+            "sample_papers": ExamSamplePaperSerializer(ExamSamplePaper.objects.filter(exam__isnull=True), many=True, context=context).data,
             "center_details": ExamCenterDetailSerializer(ExamCenterDetail.objects.all(), many=True, context=context).data,
             "faqs": ExamFaqSerializer(ExamFaq.objects.all(), many=True, context=context).data,
-            "toppers": ExamTopperSerializer(ExamTopper.objects.select_related("student"), many=True, context=context).data,
         })
 
 
@@ -979,20 +972,6 @@ class AdminExamFaqDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = ExamFaq.objects.all()
 
 
-class AdminExamTopperListCreateView(generics.ListCreateAPIView):
-    authentication_classes = [TokenAuthentication]
-    permission_classes = [StaffWithModelPermissions]
-    serializer_class = AdminExamTopperSerializer
-    queryset = ExamTopper.objects.select_related("student")
-
-
-class AdminExamTopperDetailView(generics.RetrieveUpdateDestroyAPIView):
-    authentication_classes = [TokenAuthentication]
-    permission_classes = [StaffWithModelPermissions]
-    serializer_class = AdminExamTopperSerializer
-    queryset = ExamTopper.objects.select_related("student")
-
-
 class AdminGenerateExamDocumentsView(APIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsStaffUser]
@@ -1005,12 +984,18 @@ class AdminGenerateExamDocumentsView(APIView):
             )
         registration = generics.get_object_or_404(ExamRegistration, pk=pk)
         doc_type = str(request.data.get("type", "both")).lower()
+        exam = None
+        exam_id = request.data.get("exam_id")
+        if exam_id:
+            from exams.models import Exam
+            exam = generics.get_object_or_404(Exam, pk=exam_id)
 
         if doc_type in {"admit", "both"}:
             from .admit_card import generate_admit_card
 
             try:
-                pdf_bytes = generate_admit_card(registration)
+                template_path = exam.admit_card_template.path if exam and exam.admit_card_template else None
+                pdf_bytes = generate_admit_card(registration, template_path=template_path, exam=exam)
                 registration.admit_card_file.save(
                     f"admit_{registration.roll_number}.pdf",
                     ContentFile(pdf_bytes),
@@ -1030,7 +1015,8 @@ class AdminGenerateExamDocumentsView(APIView):
         if doc_type in {"certificate", "both"}:
             from .certificate import generate_participation_certificate
             try:
-                pdf_bytes = generate_participation_certificate(registration)
+                template_path = exam.certificate_template.path if exam and exam.certificate_template else None
+                pdf_bytes = generate_participation_certificate(registration, template_path=template_path, exam=exam)
                 registration.participation_certificate_file.save(
                     f"certificate_{registration.roll_number}.pdf",
                     ContentFile(pdf_bytes),

@@ -92,6 +92,15 @@ else:
         }
     }
 
+CELERY_BROKER_URL = os.environ.get(
+    "CELERY_BROKER_URL",
+    _REDIS_URL or "redis://127.0.0.1:6379/1",
+)
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_TASK_ACKS_LATE = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_TASK_DEFAULT_RETRY_DELAY = 60
+
 # ── Database ─────────────────────────────────────────────────────────────────
 # In production set DATABASE_URL=postgres://user:pass@host:5432/dbname
 # Falls back to SQLite for local development.
@@ -203,6 +212,11 @@ else:
 
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "HBPL <noreply@hbpl.in>")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
+EXAM_PORTAL_URL = os.environ.get("EXAM_PORTAL_URL", "https://myhbpl.org").rstrip("/")
+CASHFREE_APP_ID = os.environ.get("CASHFREE_APP_ID", "").strip()
+CASHFREE_SECRET_KEY = os.environ.get("CASHFREE_SECRET_KEY", "").strip()
+CASHFREE_ENV = os.environ.get("CASHFREE_ENV", "sandbox").strip().lower()
+PASSWORD_RESET_TIMEOUT = 3600
 
 # ── Django REST Framework ─────────────────────────────────────────────────────
 REST_FRAMEWORK = {
@@ -217,6 +231,10 @@ REST_FRAMEWORK = {
         "rest_framework.parsers.MultiPartParser",
         "rest_framework.parsers.FormParser",
     ],
+    "DEFAULT_THROTTLE_RATES": {
+        "student_password_reset": "5/hour",
+        "student_password_reset_confirm": "10/hour",
+    },
 }
 
 # ── SimpleJWT ─────────────────────────────────────────────────────────────────

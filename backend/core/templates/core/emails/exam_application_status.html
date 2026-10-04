@@ -1,0 +1,18 @@
+{% extends "core/emails/base.html" %}
+{% block email_title %}{{ status_label }} · {{ exam_name }}{% endblock %}
+{% block preheader %}There is an update to your {{ exam_name }} application.{% endblock %}
+{% block eyebrow %}Application update{% endblock %}
+{% block heading %}{{ status_label }}, {{ student_name }}.{% endblock %}
+{% block content %}
+<p style="margin:0 0 18px;">The examination team has updated your application{% if session_name %} for the {{ session_name }} session{% endif %}.</p>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #e7e5de;border-radius:10px;background-color:#fafaf8;">
+<tr><td style="padding:15px 17px;border-bottom:1px solid #e7e5de;color:#788394;font-size:10px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">EXAMINATION</td></tr>
+<tr><td style="padding:0 17px 14px;color:#172438;font-size:15px;font-weight:bold;">{{ exam_name }}</td></tr>
+<tr><td style="padding:12px 17px;border-top:1px solid #e7e5de;color:#788394;font-size:10px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">APPLICATION NUMBER</td></tr>
+<tr><td style="padding:0 17px 14px;color:#8c5b10;font-size:16px;font-weight:bold;">{{ application_number }}</td></tr>
+{% if centre_name %}<tr><td style="padding:12px 17px;border-top:1px solid #e7e5de;color:#788394;font-size:10px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">ASSIGNED EXAM CENTRE</td></tr><tr><td style="padding:0 17px 14px;color:#344258;font-size:13px;">{{ centre_name }}</td></tr>{% endif %}
+</table>
+{% if status == "correction_required" %}<p style="margin:18px 0 0;">Please review the staff note below, update your application from the dashboard, and submit it again.</p>{% elif status == "approved" %}<p style="margin:18px 0 0;">Your application has been approved. Your admit card will be available in your dashboard when it is issued.</p>{% else %}<p style="margin:18px 0 0;">Please open your dashboard to review the staff note or contact the examination team if you need assistance.</p>{% endif %}
+{% if review_note %}<div style="margin-top:18px;padding:15px 17px;border-left:3px solid #a36d17;background:#fafaf8;color:#344258;"><strong>Note from the examination team</strong><br>{{ review_note|linebreaksbr }}</div>{% endif %}
+{% endblock %}
+{% block action %}<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-top:24px;"><tr><td align="center" style="border-radius:8px;background-color:#a36d17;"><a href="{{ dashboard_url }}" style="display:inline-block;padding:13px 21px;color:#ffffff;font-size:12px;font-weight:bold;text-decoration:none;">Open my dashboard</a></td></tr></table>{% endblock %}

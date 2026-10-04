@@ -1,5 +1,69 @@
-from django.db import models
+import base64
+import base64
+import hashlib
+
+from cryptography.fernet import Fernet, InvalidToken
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.db import models, transaction
 from django.contrib.auth.models import User
+
+
+class EmailServiceConfiguration(models.Model):
+    name = models.CharField(max_length=120, default="Primary email service")
+    host = models.CharField(max_length=255)
+    port = models.PositiveIntegerField(default=587)
+    username = models.CharField(max_length=255, blank=True)
+    encrypted_password = models.TextField(blank=True, editable=False)
+    use_tls = models.BooleanField(default=True)
+    use_ssl = models.BooleanField(default=False)
+    from_email = models.EmailField(blank=True)
+    from_name = models.CharField(max_length=150, blank=True)
+    timeout_seconds = models.PositiveSmallIntegerField(default=20)
+    is_active = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "core_email_service_configuration"
+        ordering = ["name"]
+        verbose_name = "Email service configuration"
+        verbose_name_plural = "Email service configurations"
+
+    def __str__(self):
+        return f"{self.name} ({'active' if self.is_active else 'inactive'})"
+
+    def clean(self):
+        super().clean()
+        if self.use_tls and self.use_ssl:
+            raise ValidationError("Choose either STARTTLS or SSL; both cannot be enabled.")
+        if not 1 <= self.port <= 65535:
+            raise ValidationError({"port": "Enter a valid TCP port."})
+
+    @staticmethod
+    def _fernet():
+        key_material = hashlib.sha256(
+            (settings.SECRET_KEY + ":hbpl-email-service-password").encode("utf-8")
+        ).digest()
+        return Fernet(base64.urlsafe_b64encode(key_material))
+
+    def set_smtp_password(self, password):
+        self.encrypted_password = self._fernet().encrypt(password.encode("utf-8")).decode("ascii") if password else ""
+
+    def get_smtp_password(self):
+        if not self.encrypted_password:
+            return ""
+        try:
+            return self._fernet().decrypt(self.encrypted_password.encode("ascii")).decode("utf-8")
+        except (InvalidToken, ValueError) as exc:
+            raise ValidationError("Could not decrypt the SMTP password. Check the Django SECRET_KEY.") from exc
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        with transaction.atomic():
+            if self.is_active:
+                type(self).objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
+            super().save(*args, **kwargs)
 
 
 class MediaFolder(models.Model):

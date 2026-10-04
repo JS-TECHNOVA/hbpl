@@ -1,0 +1,6 @@
+{% extends "core/emails/base.html" %}
+{% block email_title %}{{ subject }}{% endblock %}
+{% block preheader %}{{ subject }}{% endblock %}
+{% block heading %}{{ subject }}{% endblock %}
+{% block eyebrow %}HBPL student portal{% endblock %}
+{% block content %}<p style="margin:0;white-space:normal;">{{ body|linebreaksbr }}</p>{% endblock %}

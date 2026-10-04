@@ -1,0 +1,16 @@
+{% extends "core/emails/base.html" %}
+
+{% block email_title %}Verify your HBPL student account{% endblock %}
+{% block preheader %}Your HBPL email verification code is {{ code }}.{% endblock %}
+{% block eyebrow %}HBPL student portal{% endblock %}
+{% block heading %}Verify your HBPL student account{% endblock %}
+{% block content %}
+<p style="margin:0 0 14px;">Enter this verification code to confirm your email address:</p>
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:8px 0 18px;width:100%;">
+  <tr><td align="center" style="border:1px solid #e8e4d9;border-radius:12px;background-color:#faf9f6;padding:18px 12px;">
+    <span style="display:block;color:#172438;font-family:Arial,Helvetica,sans-serif;font-size:36px;line-height:1.2;font-weight:bold;letter-spacing:10px;">{{ code }}</span>
+  </td></tr>
+</table>
+<p style="margin:0 0 14px;color:#536174;">This code expires in <strong>15 minutes</strong>.</p>
+<p style="margin:0;">If you did not create this account, you can ignore this email.</p>
+{% endblock %}

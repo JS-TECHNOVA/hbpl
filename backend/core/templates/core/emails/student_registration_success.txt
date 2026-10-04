@@ -1,0 +1,14 @@
+HBPL STUDENT EXAMINATION PORTAL
+
+REGISTRATION COMPLETE
+
+Welcome to HBPL, {{ student_name }}.
+
+Your email has been verified and your student account is ready. You can now sign in to view examinations available for your class, submit applications, and keep track of your exam history and results from your student dashboard.
+
+Visit the HBPL student portal: {{ portal_url }}
+
+Regards,
+HBPL Examination Team
+
+This is an automated message. Please do not reply.

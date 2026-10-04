@@ -3,8 +3,8 @@ from import_export.widgets import ForeignKeyWidget, DecimalWidget, BooleanWidget
 from import_export.results import RowResult
 from api.models import ExamRegistration, ExamCenterDetail
 from .models import (
-    ExamCategory, Exam, ExamTimeline, ExamResult, ScoreBreakdown,
-    ResultPublication, RankHolder, AdmitCard, Certificate,
+    ExaminationSession, ExamCategory, Exam, ExamTimeline, ExamResult, ScoreBreakdown,
+    ResultPublication, LegacyAdmitCard, Certificate,
 )
 
 # ---------------------------------------------------------------------------
@@ -16,8 +16,9 @@ _EXAM_MAP = {
     "exam name": "name",
     "exam title": "name",
     "short name": "short_name",
-    "year": "academic_year",
-    "academic year": "academic_year",
+    "year": "session",
+    "academic year": "session",
+    "session": "session",
     "exam status": "status",
     "exam date": "exam_date",
     "result date": "result_date",
@@ -84,17 +85,6 @@ _ADMIT_CARD_MAP = {
     "reporting time": "reporting_time",
 }
 
-_RANK_HOLDER_MAP = {
-    "rank": "rank",
-    "position": "rank",
-    "reg no": "registration__roll_number",
-    "registration number": "registration__roll_number",
-    "roll no": "registration__roll_number",
-    "achievement": "achievement",
-    "featured": "is_featured",
-}
-
-
 def _remap(row, alias_map):
     """Normalise incoming row keys using alias_map."""
     return {alias_map.get(k.lower().strip(), k): v for k, v in row.items()}
@@ -116,6 +106,11 @@ class ExamCategoryResource(resources.ModelResource):
 # ---------------------------------------------------------------------------
 
 class ExamResource(resources.ModelResource):
+    session = fields.Field(
+        column_name="session",
+        attribute="session",
+        widget=ForeignKeyWidget(ExaminationSession, field="code"),
+    )
     category = fields.Field(
         column_name="category",
         attribute="category",
@@ -125,12 +120,12 @@ class ExamResource(resources.ModelResource):
     class Meta:
         model = Exam
         fields = (
-            "id", "name", "short_name", "slug", "academic_year", "status",
+            "id", "name", "short_name", "slug", "session", "status",
             "category", "fee", "exam_date", "result_date",
             "registration_start", "registration_end", "max_registrations",
         )
         export_order = (
-            "id", "name", "short_name", "academic_year", "status", "category",
+            "id", "name", "short_name", "slug", "session", "status", "category",
             "fee", "exam_date", "result_date", "registration_start", "registration_end",
         )
         import_id_fields = ("slug",)
@@ -214,7 +209,7 @@ class ExamRegistrationResource(resources.ModelResource):
 # AdmitCard
 # ---------------------------------------------------------------------------
 
-class AdmitCardResource(resources.ModelResource):
+class LegacyAdmitCardResource(resources.ModelResource):
     registration = fields.Field(
         column_name="reg_number",
         attribute="registration",
@@ -232,7 +227,7 @@ class AdmitCardResource(resources.ModelResource):
     )
 
     class Meta:
-        model = AdmitCard
+        model = LegacyAdmitCard
         fields = (
             "id", "exam", "registration", "roll_number", "hall_ticket_number",
             "exam_center", "exam_date", "reporting_time", "status",
@@ -241,31 +236,6 @@ class AdmitCardResource(resources.ModelResource):
 
     def before_import_row(self, row, row_number=None, **kwargs):
         row.update(_remap(row, _ADMIT_CARD_MAP))
-
-
-# ---------------------------------------------------------------------------
-# RankHolder
-# ---------------------------------------------------------------------------
-
-class RankHolderResource(resources.ModelResource):
-    exam = fields.Field(
-        column_name="exam_slug",
-        attribute="exam",
-        widget=ForeignKeyWidget(Exam, field="slug"),
-    )
-    registration = fields.Field(
-        column_name="reg_number",
-        attribute="registration",
-        widget=ForeignKeyWidget(ExamRegistration, field="roll_number"),
-    )
-
-    class Meta:
-        model = RankHolder
-        fields = ("id", "exam", "registration", "rank", "achievement", "is_featured")
-        import_id_fields = ("exam", "rank")
-
-    def before_import_row(self, row, row_number=None, **kwargs):
-        row.update(_remap(row, _RANK_HOLDER_MAP))
 
 
 # ---------------------------------------------------------------------------

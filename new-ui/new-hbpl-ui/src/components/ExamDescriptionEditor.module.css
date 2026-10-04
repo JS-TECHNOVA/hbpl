@@ -1,0 +1,39 @@
+.wrapper :global(.codex-editor) {
+  color: #334155;
+  font-family: inherit;
+  padding-inline: 2rem;
+}
+
+.wrapper :global(.codex-editor__redactor) {
+  padding-bottom: 2rem !important;
+}
+
+.wrapper :global(.ce-block__content),
+.wrapper :global(.ce-toolbar__content) {
+  max-width: 100%;
+}
+
+.wrapper :global(.ce-toolbar) {
+  left: 2rem;
+}
+
+.wrapper :global(.ce-paragraph) {
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+.wrapper :global(.ce-header) {
+  color: #123456;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.wrapper :global(.ce-toolbar__plus),
+.wrapper :global(.ce-toolbar__settings-btn) {
+  color: #334155;
+}
+
+.wrapper :global(.ce-popover),
+.wrapper :global(.ce-inline-toolbar) {
+  z-index: 20;
+}

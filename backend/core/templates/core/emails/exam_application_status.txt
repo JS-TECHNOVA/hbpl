@@ -1,0 +1,19 @@
+HBPL STUDENT EXAMINATION PORTAL
+
+APPLICATION UPDATE: {{ status_label }}
+
+Dear {{ student_name }},
+
+The examination team updated your application for {{ exam_name }}{% if session_name %} ({{ session_name }}){% endif %}.
+Application number: {{ application_number }}
+{% if centre_name %}Exam centre: {{ centre_name }}
+{% endif %}{% if review_note %}
+Note from the examination team:
+{{ review_note }}
+{% endif %}
+{% if status == "correction_required" %}Please update your application and submit it again from your dashboard.{% elif status == "approved" %}Your application has been approved. Your admit card will appear in your dashboard when it is issued.{% else %}Please open your dashboard to review this update or contact the examination team.{% endif %}
+
+Dashboard: {{ dashboard_url }}
+
+Regards,
+HBPL Examination Team

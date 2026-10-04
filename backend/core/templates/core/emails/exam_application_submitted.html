@@ -1,0 +1,21 @@
+{% extends "core/emails/base.html" %}
+{% block email_title %}Application received · {{ exam_name }}{% endblock %}
+{% block preheader %}Your application for {{ exam_name }} has been received.{% endblock %}
+{% block eyebrow %}Application received{% endblock %}
+{% block heading %}You’re enrolled, {{ student_name }}.{% endblock %}
+{% block content %}
+<p style="margin:0 0 18px;">We’ve received your application. Keep this email as confirmation of your exam enrollment.</p>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #e7e5de;border-radius:10px;background-color:#fafaf8;">
+  <tr><td style="padding:15px 17px;border-bottom:1px solid #e7e5de;color:#788394;font-size:10px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">EXAMINATION</td></tr>
+  <tr><td style="padding:0 17px 14px;color:#172438;font-size:15px;font-weight:bold;">{{ exam_name }}{% if session_name %}<span style="color:#788394;font-size:12px;font-weight:normal;"> · {{ session_name }}</span>{% endif %}</td></tr>
+  <tr><td style="padding:12px 17px;border-top:1px solid #e7e5de;color:#788394;font-size:10px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">APPLICATION NUMBER</td></tr>
+  <tr><td style="padding:0 17px 14px;color:#8c5b10;font-size:17px;font-weight:bold;">{{ application_number }}</td></tr>
+  <tr><td style="padding:12px 17px;border-top:1px solid #e7e5de;color:#788394;font-size:10px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">SUBMITTED</td></tr>
+  <tr><td style="padding:0 17px 15px;color:#344258;font-size:13px;">{{ submitted_at }}</td></tr>
+</table>
+{% if exam_date %}<p style="margin:18px 0 0;"><strong style="color:#344258;">Examination date:</strong> {{ exam_date }}</p>{% endif %}
+<p style="margin:18px 0 0;">Your application is now awaiting review by the examination team. We’ll notify you when its status changes. You can follow the application and download exam documents from your student dashboard.</p>
+{% endblock %}
+{% block action %}
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-top:24px;"><tr><td align="center" style="border-radius:8px;background-color:#a36d17;"><a href="{{ dashboard_url }}" style="display:inline-block;padding:13px 21px;color:#ffffff;font-size:12px;font-weight:bold;text-decoration:none;">Open my dashboard</a></td></tr></table>
+{% endblock %}

@@ -5,3 +5,6 @@ class ExamsConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "exams"
     verbose_name = "Exams"
+
+    def ready(self):
+        import exams.signals  # noqa: F401

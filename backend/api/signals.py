@@ -1,9 +1,13 @@
-from django.conf import settings
-from django.core.mail import send_mail
+import logging
+
+from django.db import transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from core.emailing import send_configured_email
 from .models import ExamRegistration, TeamRegistration
+
+logger = logging.getLogger(__name__)
 
 
 # ── Exam: registration confirmation ──────────────────────────────────────────
@@ -31,13 +35,33 @@ def send_exam_registration_confirmation(sender, instance, created, **kwargs):
         "https://hbpl.in"
     )
 
-    send_mail(
+    send_configured_email(
         subject=subject,
-        message=message,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[instance.email],
+        body=message,
+        recipients=[instance.email],
         fail_silently=True,
     )
+
+
+def _enqueue_legacy_admit_card_email(registration_id):
+    try:
+        from exams.tasks import send_legacy_admit_card_email
+
+        send_legacy_admit_card_email.delay(registration_id)
+    except Exception:
+        logger.exception("Could not queue admit-card email for registration id=%s", registration_id)
+        ExamRegistration.objects.filter(pk=registration_id).update(
+            admit_card_email_last_error="Email could not be queued. Check the Celery broker/worker and republish the card."
+        )
+
+
+@receiver(post_save, sender=ExamRegistration)
+def queue_admit_card_email_when_published(sender, instance, created, **kwargs):
+    if created or not instance.publish_admit_card or not instance.email:
+        return
+    if getattr(instance, "_pre_save_publish_admit_card", False):
+        return
+    transaction.on_commit(lambda registration_id=instance.pk: _enqueue_legacy_admit_card_email(registration_id))
 
 
 # ── Exam: result published notification ──────────────────────────────────────
@@ -87,11 +111,10 @@ def send_result_published_notification(sender, instance, created, **kwargs):
         "https://hbpl.in"
     )
 
-    send_mail(
+    send_configured_email(
         subject=subject,
-        message=message,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[instance.email],
+        body=message,
+        recipients=[instance.email],
         fail_silently=True,
     )
 
@@ -120,11 +143,10 @@ def send_team_registration_confirmation(sender, instance, created, **kwargs):
         "https://hbpl.in"
     )
 
-    send_mail(
+    send_configured_email(
         subject=subject,
-        message=message,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[instance.email],
+        body=message,
+        recipients=[instance.email],
         fail_silently=True,
     )
 

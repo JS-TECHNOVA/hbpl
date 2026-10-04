@@ -1,0 +1,25 @@
+{% extends "core/emails/base.html" %}
+{% block email_title %}Payment received · {{ exam_name }}{% endblock %}
+{% block preheader %}Your exam fee payment has been confirmed.{% endblock %}
+{% block eyebrow %}Payment confirmed{% endblock %}
+{% block heading %}Thank you, {{ student_name }}.{% endblock %}
+{% block content %}
+<p style="margin:0 0 18px;">Your payment has been successfully received. Keep this email as your payment receipt for the examination below.</p>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #e7e5de;border-radius:10px;background-color:#fafaf8;">
+  <tr><td style="padding:15px 17px;border-bottom:1px solid #e7e5de;color:#788394;font-size:10px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">EXAMINATION</td></tr>
+  <tr><td style="padding:0 17px 14px;color:#172438;font-size:15px;font-weight:bold;">{{ exam_name }}{% if session_name %}<span style="color:#788394;font-size:12px;font-weight:normal;"> · {{ session_name }}</span>{% endif %}</td></tr>
+  <tr><td style="padding:12px 17px;border-top:1px solid #e7e5de;color:#788394;font-size:10px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">AMOUNT PAID</td></tr>
+  <tr><td style="padding:0 17px 14px;color:#8c5b10;font-size:19px;font-weight:bold;">{{ amount }}</td></tr>
+  <tr><td style="padding:12px 17px;border-top:1px solid #e7e5de;color:#788394;font-size:10px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">APPLICATION NUMBER</td></tr>
+  <tr><td style="padding:0 17px 14px;color:#344258;font-size:13px;">{{ application_number }}</td></tr>
+  <tr><td style="padding:12px 17px;border-top:1px solid #e7e5de;color:#788394;font-size:10px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">PAYMENT REFERENCE</td></tr>
+  <tr><td style="padding:0 17px 14px;color:#344258;font-size:12px;word-break:break-all;">{{ payment_reference }}</td></tr>
+  <tr><td style="padding:12px 17px;border-top:1px solid #e7e5de;color:#788394;font-size:10px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">PAYMENT DATE</td></tr>
+  <tr><td style="padding:0 17px 15px;color:#344258;font-size:13px;">{{ paid_at }}</td></tr>
+</table>
+{% if payment_method == "Manual" %}<p style="margin:16px 0 0;">This payment was recorded by the examination team.</p>{% endif %}
+<p style="margin:18px 0 0;">Your exam enrollment is now available in your student dashboard. The examination team will review your application and share further updates by email.</p>
+{% endblock %}
+{% block action %}
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-top:24px;"><tr><td align="center" style="border-radius:8px;background-color:#a36d17;"><a href="{{ dashboard_url }}" style="display:inline-block;padding:13px 21px;color:#ffffff;font-size:12px;font-weight:bold;text-decoration:none;">Open my dashboard</a></td></tr></table>
+{% endblock %}

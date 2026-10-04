@@ -170,19 +170,6 @@ export interface ExamFaq {
   order: number;
 }
 
-export interface ExamTopper {
-  id: number;
-  student: number;
-  student_name: string;
-  school_name: string;
-  class_name: string;
-  marks_obtained: string | null;
-  rank: number;
-  highlight_text: string;
-  student_image_url: string | null;
-  order: number;
-}
-
 export interface ExamPortalContent {
   registration_closed: boolean;
   important_dates: ExamImportantDate[];
@@ -191,7 +178,6 @@ export interface ExamPortalContent {
   sample_papers: ExamSamplePaper[];
   center_details: ExamCenterDetail[];
   faqs: ExamFaq[];
-  toppers: ExamTopper[];
 }
 
 export interface ComplaintData {

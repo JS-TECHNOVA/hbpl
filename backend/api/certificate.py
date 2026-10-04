@@ -5,10 +5,13 @@ Overlays student-specific data (name, class, rank) onto HBPL
 certificate templates using reportlab + pypdf.
 """
 import io
+import base64
+import mimetypes
 import os
 import re
 
 from django.conf import settings
+from django.template import Context, Template
 from reportlab.lib.colors import HexColor
 from reportlab.pdfgen import canvas
 
@@ -122,7 +125,71 @@ def _build_overlay(full_name: str, class_name: str, rank, include_rank: bool) ->
     return buf.read()
 
 
-def generate_participation_certificate(registration) -> bytes:
+def _format_rank(rank):
+    if rank is None:
+        return ""
+    value, suffix = _split_ordinal(rank)
+    return f"{value}{suffix}"
+
+
+def _file_data_uri(upload):
+    if not upload:
+        return ""
+    try:
+        if hasattr(upload, "open"):
+            upload.open("rb")
+            data = upload.read()
+            upload.close()
+        else:
+            with open(os.fspath(upload), "rb") as source:
+                data = source.read()
+    except (OSError, ValueError):
+        return ""
+    media_type = mimetypes.guess_type(getattr(upload, "name", ""))[0] or "application/octet-stream"
+    return f"data:{media_type};base64,{base64.b64encode(data).decode('ascii')}"
+
+
+def _render_html_certificate(registration, template_path, exam=None, result=None, certificate_number=""):
+    try:
+        from weasyprint import HTML
+        from weasyprint.urls import URLFetcher
+    except (ImportError, OSError) as exc:
+        raise RuntimeError(
+            "HTML certificates require WeasyPrint and its native Pango libraries. "
+            "Follow the setup notes in DEPLOY.md."
+        ) from exc
+
+    exam = exam or getattr(registration, "exam", None)
+    result = result or getattr(registration, "result", None)
+    rank = getattr(result, "rank", None) if result else getattr(registration, "rank", None)
+    issued_at = getattr(registration, "certificate_issued_at", None)
+    context = {
+        "student_name": getattr(registration, "full_name", ""),
+        "student_class": getattr(registration, "class_name", "") or "",
+        "position_rank": _format_rank(rank),
+        "rank": _format_rank(rank),
+        "exam_name": getattr(exam, "name", "") if exam else "",
+        "exam_session": getattr(getattr(exam, "session", None), "name", "") if exam else "",
+        "certificate_number": certificate_number or getattr(registration, "certificate_number", "") or "",
+        "issue_date": issued_at.strftime("%d %B %Y") if hasattr(issued_at, "strftime") else "",
+        "school_name": getattr(registration, "school_name", "") or "",
+        "student_photo_data_uri": _file_data_uri(getattr(registration, "student_photo", None)),
+    }
+    with open(template_path, "r", encoding="utf-8-sig") as source:
+        html = Template(source.read()).render(Context(context))
+
+    # A certificate may embed artwork and student photos, but should not load
+    # arbitrary local files or remote URLs while rendering a student document.
+    fetcher = URLFetcher(allowed_protocols={"data"})
+    try:
+        return HTML(string=html, url_fetcher=fetcher).write_pdf()
+    except Exception as exc:
+        raise RuntimeError(f"Could not render the HTML certificate template: {exc}") from exc
+
+
+def generate_participation_certificate(
+    registration, template_path=None, exam=None, result=None, certificate_number="",
+) -> bytes:
     """
     Generate a certificate PDF for *registration*.
 
@@ -132,25 +199,29 @@ def generate_participation_certificate(registration) -> bytes:
     Returns the resulting PDF as raw bytes, or raises RuntimeError if the
     template file is missing or pypdf is unavailable.
     """
+    rank = getattr(result, "rank", None) if result else getattr(registration, "rank", None)
+    template_path = template_path or (RANK_TEMPLATE_PATH if rank is not None else PARTICIPATION_TEMPLATE_PATH)
+    if not os.path.exists(template_path):
+        raise RuntimeError(f"Certificate template not found at: {template_path}")
+
+    if os.path.splitext(template_path)[1].lower() in {".html", ".htm"}:
+        return _render_html_certificate(
+            registration, template_path, exam=exam, result=result,
+            certificate_number=certificate_number,
+        )
+
     if not _PYPDF_AVAILABLE:
         raise RuntimeError(
             "pypdf is required for certificate generation. "
             "Add pypdf to requirements.txt and install it."
         )
 
-    include_rank = registration.rank is not None
-    template_path = RANK_TEMPLATE_PATH if include_rank else PARTICIPATION_TEMPLATE_PATH
-
-    if not os.path.exists(template_path):
-        raise RuntimeError(
-            f"Certificate template not found at: {template_path}"
-        )
-
+    include_rank = rank is not None
     # Build the overlay page with the student's data
     overlay_bytes = _build_overlay(
         full_name=registration.full_name,
         class_name=registration.class_name or "",
-        rank=registration.rank,
+        rank=rank,
         include_rank=include_rank,
     )
 

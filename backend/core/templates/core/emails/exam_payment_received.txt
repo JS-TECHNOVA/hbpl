@@ -1,0 +1,21 @@
+HBPL STUDENT EXAMINATION PORTAL
+
+PAYMENT CONFIRMED
+
+Dear {{ student_name }},
+
+Your payment has been successfully received for {{ exam_name }}{% if session_name %} ({{ session_name }}){% endif %}.
+
+Amount paid: {{ amount }}
+Application number: {{ application_number }}
+Payment reference: {{ payment_reference }}
+Payment date: {{ paid_at }}
+Payment method: {{ payment_method }}
+
+Your exam enrollment is available in your student dashboard. The examination team will review your application and share further updates by email:
+{{ dashboard_url }}
+
+Regards,
+HBPL Examination Team
+
+This is an automated message. Please do not reply.

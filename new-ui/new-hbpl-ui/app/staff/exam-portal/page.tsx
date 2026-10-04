@@ -1,31 +1,27 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { token } from "../layout";
 import { mediaUrl } from "@/src/lib/api";
+import StaffSamplePapers from "@/src/components/StaffSamplePapers";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "https://myhbpl.org";
 
-type Tab = "dates" | "schools" | "syllabus" | "papers" | "centers" | "faqs" | "toppers";
+type Tab = "papers" | "faqs";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "dates", label: "Important Dates" },
-  { id: "schools", label: "Support Schools" },
-  { id: "syllabus", label: "Syllabus" },
   { id: "papers", label: "Sample Papers" },
-  { id: "centers", label: "Exam Centers" },
   { id: "faqs", label: "FAQs" },
-  { id: "toppers", label: "Toppers" },
 ];
 
 export default function ExamPortalPage() {
-  const [tab, setTab] = useState<Tab>("dates");
+  const [tab, setTab] = useState<Tab>("papers");
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="font-heading font-extrabold text-[26px] text-primary">Exam Portal Content</h1>
-        <p className="text-text-muted text-[13px]">Manage all exam portal sections</p>
+        <p className="text-text-muted text-[13px]">Manage sample papers and FAQs</p>
       </div>
 
       {/* Tabs */}
@@ -43,13 +39,8 @@ export default function ExamPortalPage() {
         ))}
       </div>
 
-      {tab === "dates" && <DatesSection />}
-      {tab === "schools" && <SchoolsSection />}
-      {tab === "syllabus" && <SyllabusSection />}
-      {tab === "papers" && <PapersSection />}
-      {tab === "centers" && <CentersSection />}
+      {tab === "papers" && <StaffSamplePapers />}
       {tab === "faqs" && <FaqsSection />}
-      {tab === "toppers" && <ToppersSection />}
     </div>
   );
 }
@@ -221,7 +212,7 @@ function SyllabusSection() {
 
 interface Paper { id: number; class_name: string; title: string; file_url: string; external_url: string; order: number }
 
-function PapersSection() {
+export function LegacyPapersSection() {
   const [items, setItems] = useState<Paper[]>([]);
   const [editing, setEditing] = useState<Partial<Paper> | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -362,53 +353,6 @@ function FaqsSection() {
             <F label="Order"><input type="number" value={editing.order ?? 0} onChange={e => setEditing(p => ({ ...p, order: Number(e.target.value) }))} className={inp} /></F>
             <SaveCancel onSave={save} onCancel={() => setEditing(null)} />
           </div>
-        </Modal>
-      )}
-    </CrudSection>
-  );
-}
-
-// ── Toppers ───────────────────────────────────────────────────────────────────
-
-interface Topper { id: number; student_name: string; roll_number: string; class_name: string; marks: string; rank: number; highlight_text: string }
-
-function ToppersSection() {
-  const [items, setItems] = useState<Topper[]>([]);
-  const [editing, setEditing] = useState<Partial<Topper> | null>(null);
-  const h = { Authorization: `Token ${token()}`, "Content-Type": "application/json" };
-  const load = () => fetch(`${API}/api/admin/exam/toppers/`, { headers: h }).then(r => r.json()).then(d => setItems(Array.isArray(d) ? d : d.results ?? []));
-  useEffect(() => { load(); }, []);
-  async function save() {
-    const url = editing?.id ? `${API}/api/admin/exam/toppers/${editing.id}/` : `${API}/api/admin/exam/toppers/`;
-    await fetch(url, { method: editing?.id ? "PATCH" : "POST", headers: h, body: JSON.stringify(editing) });
-    setEditing(null); load();
-  }
-  async function del(id: number) {
-    if (!confirm("Delete?")) return;
-    await fetch(`${API}/api/admin/exam/toppers/${id}/`, { method: "DELETE", headers: h });
-    load();
-  }
-  return (
-    <CrudSection
-      title="Toppers"
-      onAdd={() => setEditing({ student_name: "", roll_number: "", class_name: "", marks: "", rank: 1, highlight_text: "" })}
-      items={items}
-      renderRow={item => <><td className="px-5 py-3 text-center font-heading font-extrabold text-primary">{item.rank}</td><td className="px-5 py-3 font-semibold text-text-primary">{item.student_name}</td><td className="px-5 py-3 text-text-muted">{item.roll_number}</td><td className="px-5 py-3 text-text-muted">Class {item.class_name}</td><td className="px-5 py-3 text-text-body">{item.marks}</td></>}
-      cols={["Rank", "Student", "Roll No.", "Class", "Marks"]}
-      onEdit={item => setEditing({ ...item })}
-      onDelete={item => del(item.id)}
-    >
-      {editing && (
-        <Modal title={editing.id ? "Edit Topper" : "Add Topper"} onClose={() => setEditing(null)}>
-          <div className="grid grid-cols-2 gap-3">
-            <F label="Rank"><input type="number" value={editing.rank ?? 1} onChange={e => setEditing(p => ({ ...p, rank: Number(e.target.value) }))} className={inp} /></F>
-            <F label="Student Name"><input value={editing.student_name ?? ""} onChange={e => setEditing(p => ({ ...p, student_name: e.target.value }))} className={inp} /></F>
-            <F label="Roll Number"><input value={editing.roll_number ?? ""} onChange={e => setEditing(p => ({ ...p, roll_number: e.target.value }))} className={inp} /></F>
-            <F label="Class"><input value={editing.class_name ?? ""} onChange={e => setEditing(p => ({ ...p, class_name: e.target.value }))} className={inp} /></F>
-            <F label="Marks"><input value={editing.marks ?? ""} onChange={e => setEditing(p => ({ ...p, marks: e.target.value }))} className={inp} /></F>
-            <F label="Highlight Text"><input value={editing.highlight_text ?? ""} onChange={e => setEditing(p => ({ ...p, highlight_text: e.target.value }))} className={inp} placeholder="e.g. District Topper" /></F>
-          </div>
-          <div className="mt-4"><SaveCancel onSave={save} onCancel={() => setEditing(null)} /></div>
         </Modal>
       )}
     </CrudSection>

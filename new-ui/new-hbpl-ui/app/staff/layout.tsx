@@ -28,7 +28,11 @@ const NAV: NavSection[] = [
   {
     section: "Exam",
     items: [
-      { href: "/staff/exam-students", label: "Students" },
+      { href: "/staff/exams", label: "Exams" },
+      { href: "/staff/exam-centres", label: "Exam Centres" },
+      { href: "/staff/applications", label: "Applications" },
+      { href: "/staff/payments", label: "Payments" },
+      { href: "/staff/results", label: "Exam Results" },
       { href: "/staff/exam-portal", label: "Portal Content" },
     ],
   },

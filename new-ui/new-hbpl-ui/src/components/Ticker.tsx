@@ -46,15 +46,35 @@ export default function Ticker() {
 
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      const [m, items] = await Promise.all([fetchLiveMatch(), fetchTickerItems()]);
+    let livePollTimer: ReturnType<typeof setTimeout> | undefined;
+
+    async function loadLiveMatch() {
+      const m = await fetchLiveMatch();
       if (cancelled) return;
+
       setLiveMatch(m);
-      setTickerItems(items);
+
+      // Keep live-score polling active only while a match is actually live.
+      // When there is no live match, stop hitting the innings endpoints.
+      if (m) {
+        livePollTimer = setTimeout(loadLiveMatch, 30_000);
+      }
     }
-    load();
-    const timer = setInterval(load, 30_000);
-    return () => { cancelled = true; clearInterval(timer); };
+
+    async function loadTicker() {
+      const items = await fetchTickerItems();
+      if (!cancelled) setTickerItems(items);
+    }
+
+    void loadLiveMatch();
+    void loadTicker();
+    const tickerTimer = setInterval(loadTicker, 30_000);
+
+    return () => {
+      cancelled = true;
+      if (livePollTimer) clearTimeout(livePollTimer);
+      clearInterval(tickerTimer);
+    };
   }, []);
 
   // Build ticker text segments

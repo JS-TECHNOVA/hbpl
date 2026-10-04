@@ -1,0 +1,19 @@
+HBPL STUDENT EXAMINATION PORTAL
+
+APPLICATION RECEIVED
+
+Dear {{ student_name }},
+
+We’ve received your application for {{ exam_name }}{% if session_name %} ({{ session_name }}){% endif %}.
+
+Application number: {{ application_number }}
+Submitted: {{ submitted_at }}
+{% if exam_date %}Examination date: {{ exam_date }}
+{% endif %}
+Your application is now awaiting review by the examination team. We’ll notify you when its status changes. You can follow the application and download exam documents from your student dashboard:
+{{ dashboard_url }}
+
+Regards,
+HBPL Examination Team
+
+This is an automated message. Please do not reply.

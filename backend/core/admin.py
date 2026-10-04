@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django import forms
 from import_export.admin import ImportExportModelAdmin, ExportMixin
 from .models import (
     MediaFolder, MediaAsset, AdminRole, AdminPermission,
@@ -10,6 +11,46 @@ from .resources import (
     AdminProfileResource, AuditLogResource, SystemConfigResource,
     NotificationTemplateResource,
 )
+from .models import EmailServiceConfiguration
+
+
+class EmailServiceConfigurationForm(forms.ModelForm):
+    smtp_password = forms.CharField(
+        required=False,
+        strip=False,
+        widget=forms.PasswordInput(render_value=False),
+        help_text="Leave blank to keep the current password. The value is encrypted before storage.",
+    )
+    clear_smtp_password = forms.BooleanField(required=False, label="Remove saved SMTP password")
+
+    class Meta:
+        model = EmailServiceConfiguration
+        exclude = ["encrypted_password"]
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if self.cleaned_data.get("clear_smtp_password"):
+            instance.set_smtp_password("")
+        elif self.cleaned_data.get("smtp_password"):
+            instance.set_smtp_password(self.cleaned_data["smtp_password"])
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance
+
+
+@admin.register(EmailServiceConfiguration)
+class EmailServiceConfigurationAdmin(admin.ModelAdmin):
+    form = EmailServiceConfigurationForm
+    list_display = ["name", "host", "port", "username", "is_active", "updated_at"]
+    list_filter = ["is_active", "use_tls", "use_ssl"]
+    search_fields = ["name", "host", "username", "from_email"]
+    readonly_fields = ["created_at", "updated_at"]
+    fieldsets = (
+        ("SMTP server", {"fields": ("name", "host", "port", "username", "smtp_password", "clear_smtp_password", "use_tls", "use_ssl", "timeout_seconds")}),
+        ("Sender", {"fields": ("from_name", "from_email", "is_active")}),
+        ("Timestamps", {"fields": ("created_at", "updated_at")}),
+    )
 
 
 @admin.register(MediaFolder)

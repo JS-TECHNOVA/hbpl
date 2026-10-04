@@ -1,15 +1,18 @@
-import re
 """
 Admit card generation utilities.
 
-Overlays student-specific data (name, DOB, roll number, class, center, address)
-onto the HBPL admit card PDF template using reportlab + pypdf.
+Renders staff-authored HTML templates with student/exam data, or overlays data
+onto existing PDF templates using reportlab + pypdf.
 """
+import re
+import base64
+import mimetypes
 import io
 import os
 from datetime import date
 
 from django.conf import settings
+from django.template import Context, Template
 from reportlab.lib.colors import HexColor
 from reportlab.pdfgen import canvas
 
@@ -127,24 +130,108 @@ def _build_overlay(
     return buf.read()
 
 
-def generate_admit_card(registration) -> bytes:
+def _format_date(value, empty=""):
+    return value.strftime("%d %B %Y") if hasattr(value, "strftime") else (str(value) if value else empty)
+
+
+def _format_time(value):
+    return value.strftime("%I:%M %p").lstrip("0") if hasattr(value, "strftime") else (str(value) if value else "")
+
+
+def _file_data_uri(upload):
+    if not upload:
+        return ""
+    name = getattr(upload, "name", "")
+    try:
+        if hasattr(upload, "open"):
+            upload.open("rb")
+            data = upload.read()
+            upload.close()
+        else:
+            with open(os.fspath(upload), "rb") as source:
+                data = source.read()
+    except (OSError, ValueError):
+        return ""
+    content_type = mimetypes.guess_type(name)[0] or "application/octet-stream"
+    return f"data:{content_type};base64,{base64.b64encode(data).decode('ascii')}"
+
+
+def _render_html_admit_card(registration, template_path, exam=None) -> bytes:
+    try:
+        from weasyprint import HTML
+        from weasyprint.urls import URLFetcher
+    except (ImportError, OSError) as exc:
+        raise RuntimeError(
+            "HTML admit cards require WeasyPrint and its native Pango libraries. "
+            "Follow the setup notes in DEPLOY.md."
+        ) from exc
+
+    exam = exam or getattr(registration, "exam", None)
+    start_time = getattr(exam, "exam_start_time", None) if exam else None
+    end_time = getattr(exam, "exam_end_time", None) if exam else None
+    exam_time = " - ".join(filter(None, (_format_time(start_time), _format_time(end_time))))
+    duration = ""
+    if start_time and end_time and hasattr(start_time, "hour") and hasattr(end_time, "hour"):
+        minutes = (end_time.hour * 60 + end_time.minute - start_time.hour * 60 - start_time.minute) % (24 * 60)
+        duration = f"{minutes // 60} Hour{'' if minutes // 60 == 1 else 's'} {minutes % 60} Minutes" if minutes else ""
+
+    centre = getattr(registration, "examination_center", "") or getattr(registration, "centre_name", "")
+    centre_address = getattr(registration, "center_address", "") or getattr(registration, "centre_address", "")
+    application_number = getattr(registration, "roll_number", "") or getattr(registration, "application_number", "")
+    exam_date = getattr(exam, "exam_date", None) if exam else None
+    context = {
+        "exam_name": getattr(exam, "name", "") if exam else getattr(registration, "exam_name", ""),
+        "exam_session": getattr(getattr(exam, "session", None), "name", "") if exam else "",
+        "exam_date": _format_date(exam_date, "To be announced"),
+        "exam_weekday": exam_date.strftime("%A") if exam_date else "",
+        "reporting_time": _format_time(getattr(exam, "reporting_time", None)) if exam else "",
+        "exam_time": exam_time,
+        "exam_duration": duration,
+        "student_name": getattr(registration, "full_name", ""),
+        "application_number": application_number,
+        "student_class": getattr(registration, "class_name", "") or "",
+        "student_dob": _format_date(getattr(registration, "date_of_birth", None)),
+        "school_name": getattr(registration, "school_name", "") or "",
+        "centre_name": centre,
+        "centre_address": centre_address,
+        "student_photo_data_uri": _file_data_uri(
+            getattr(registration, "student_photo", None) or getattr(registration, "student_image", None)
+        ),
+        "student_signature_data_uri": _file_data_uri(
+            getattr(registration, "student_signature", None) or getattr(registration, "signature_image", None)
+        ),
+    }
+
+    with open(template_path, "r", encoding="utf-8-sig") as source:
+        html = Template(source.read()).render(Context(context))
+
+    # Embedded data images are permitted; local-file and network URLs are blocked.
+    fetcher = URLFetcher(allowed_protocols={"data"})
+    try:
+        return HTML(string=html, url_fetcher=fetcher).write_pdf()
+    except Exception as exc:
+        raise RuntimeError(f"Could not render the HTML admit-card template: {exc}") from exc
+
+
+def generate_admit_card(registration, template_path=None, exam=None) -> bytes:
     """
     Generate an admit card PDF for *registration* by overlaying the student's
     data onto the HBPL admit card template.
 
-    Returns the resulting PDF as raw bytes, or raises RuntimeError if the
-    template file is missing or pypdf is unavailable.
+    Supports staff-authored Django HTML templates and existing PDF templates.
+    Returns the resulting PDF as raw bytes.
     """
-    if not _PYPDF_AVAILABLE:
+    template_path = template_path or TEMPLATE_PATH
+    if not os.path.exists(template_path):
         raise RuntimeError(
-            "pypdf is required for admit card generation. "
-            "Add pypdf to requirements.txt and install it."
+            f"Admit card template not found at: {template_path}"
         )
 
-    if not os.path.exists(TEMPLATE_PATH):
-        raise RuntimeError(
-            f"Admit card template not found at: {TEMPLATE_PATH}"
-        )
+    if os.path.splitext(template_path)[1].lower() in {".html", ".htm"}:
+        return _render_html_admit_card(registration, template_path, exam=exam)
+
+    if not _PYPDF_AVAILABLE:
+        raise RuntimeError("pypdf is required to use a PDF admit-card template.")
 
     # Build the overlay page with the student's data
     overlay_bytes = _build_overlay(
@@ -157,7 +244,7 @@ def generate_admit_card(registration) -> bytes:
     )
 
     # Merge overlay onto the template
-    template_reader = PdfReader(TEMPLATE_PATH)
+    template_reader = PdfReader(template_path)
     overlay_reader = PdfReader(io.BytesIO(overlay_bytes))
 
     template_page = template_reader.pages[0]

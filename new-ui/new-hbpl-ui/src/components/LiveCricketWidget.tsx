@@ -47,13 +47,27 @@ export default function LiveCricketWidget() {
 
   useEffect(() => {
     let cancelled = false;
+    let livePollTimer: ReturnType<typeof setTimeout> | undefined;
+
     async function load() {
       const m = await fetchLiveMatch();
-      if (!cancelled) { setMatch(m); setLoading(false); }
+      if (cancelled) return;
+
+      setMatch(m);
+      setLoading(false);
+
+      // There is no reason to keep querying the innings endpoints when no
+      // match is live. A fresh page load will perform the next discovery.
+      if (m) {
+        livePollTimer = setTimeout(load, 30_000);
+      }
     }
-    load();
-    const timer = setInterval(load, 30_000);
-    return () => { cancelled = true; clearInterval(timer); };
+
+    void load();
+    return () => {
+      cancelled = true;
+      if (livePollTimer) clearTimeout(livePollTimer);
+    };
   }, []);
 
   if (loading || !match || dismissed) return null;

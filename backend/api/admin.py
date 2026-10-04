@@ -80,42 +80,6 @@ class TeamRegistrationAdmin(admin.ModelAdmin):
     readonly_fields = ["created_at"]
 
 
-@admin.action(description="Publish admit cards for selected students")
-def publish_admit_card(modeladmin, request, queryset):
-    count = queryset.update(publish_admit_card=True)
-    modeladmin.message_user(request, f"Admit cards published for {count} student(s).")
-
-
-@admin.action(description="Unpublish admit cards for selected students")
-def unpublish_admit_card(modeladmin, request, queryset):
-    count = queryset.update(publish_admit_card=False)
-    modeladmin.message_user(request, f"Admit cards unpublished for {count} student(s).")
-
-
-@admin.action(description="Publish results for selected students")
-def publish_results(modeladmin, request, queryset):
-    count = queryset.filter(result_status="pending").update(result_status="published")
-    modeladmin.message_user(request, f"Results published for {count} student(s).")
-
-
-@admin.action(description="Unpublish results for selected students")
-def unpublish_results(modeladmin, request, queryset):
-    count = queryset.filter(result_status="published").update(result_status="pending")
-    modeladmin.message_user(request, f"Results unpublished for {count} student(s).")
-
-
-@admin.action(description="Publish participation certificates for selected students")
-def publish_certificates(modeladmin, request, queryset):
-    count = queryset.update(publish_participation_certificate=True)
-    modeladmin.message_user(request, f"Participation certificates published for {count} student(s).")
-
-
-@admin.action(description="Unpublish participation certificates for selected students")
-def unpublish_certificates(modeladmin, request, queryset):
-    count = queryset.update(publish_participation_certificate=False)
-    modeladmin.message_user(request, f"Participation certificates unpublished for {count} student(s).")
-
-
 @admin.register(ExamRegistration)
 class ExamRegistrationAdmin(ImportExportModelAdmin):
     resource_classes = [ExamRegistrationResource]
@@ -129,10 +93,9 @@ class ExamRegistrationAdmin(ImportExportModelAdmin):
         "rank",
         "created_at",
     ]
-    actions = (publish_admit_card, unpublish_admit_card, publish_results, unpublish_results, publish_certificates, unpublish_certificates)
     list_filter = ["result_status", "created_at"]
     search_fields = ["roll_number", "full_name", "phone", "email", "school_name"]
-    readonly_fields = ["created_at", "updated_at"]
+    readonly_fields = ["created_at", "updated_at", "admit_card_email_sent_at", "admit_card_email_last_error"]
     fieldsets = (
         (
             "Student Details",
@@ -158,7 +121,6 @@ class ExamRegistrationAdmin(ImportExportModelAdmin):
             "Result Publishing",
             {
                 "fields": (
-                    "publish_admit_card",
                     "result_status",
                     "marks_obtained",
                     "total_marks",

@@ -22,12 +22,14 @@ sudo apt install -y \
   python3 python3-pip python3-venv \
   nodejs npm \
   postgresql postgresql-contrib \
+  redis-server \
   nginx \
   git \
   certbot python3-certbot-nginx \
   curl
 
 sudo npm install -g pm2
+sudo systemctl enable --now redis-server
 ```
 
 ---
@@ -79,9 +81,13 @@ cd /var/www/hbpl/backend
 python3 -m venv .venv
 source .venv/bin/activate
 
+sudo apt-get update
+sudo apt-get install -y libpango-1.0-0 libharfbuzz0b libpangoft2-1.0-0 libharfbuzz-subset0
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
+
+HTML admit-card and certificate PDFs are rendered with WeasyPrint. On Windows development machines, install MSYS2 and run `pacman -S mingw-w64-ucrt-x86_64-pango` in its UCRT64 shell, then add `C:\msys64\ucrt64\bin` to `PATH` before starting Django.
 
 ---
 
@@ -118,6 +124,7 @@ EMAIL_USE_TLS=True
 EMAIL_HOST_USER=yourname@gmail.com
 EMAIL_HOST_PASSWORD=xxxx xxxx xxxx xxxx
 DEFAULT_FROM_EMAIL=HBPL <yourname@gmail.com>
+CELERY_BROKER_URL=redis://127.0.0.1:6379/1
 ```
 
 Save and exit: `Ctrl+O` → `Enter` → `Ctrl+X`
@@ -201,9 +208,46 @@ sudo systemctl start hbpl-backend
 sudo systemctl status hbpl-backend
 ```
 
+## 11. Celery worker (email delivery)
+
+Admit-card email jobs are queued in Redis. Configure the active SMTP account in Django admin under **Core → Email service configurations**, then run a Celery worker continuously:
+
+```bash
+sudo nano /etc/systemd/system/hbpl-celery.service
+```
+
+```ini
+[Unit]
+Description=HBPL Celery email worker
+After=network.target redis-server.service postgresql.service
+Requires=redis-server.service
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/var/www/hbpl/backend
+EnvironmentFile=/var/www/hbpl/backend/.env
+ExecStart=/var/www/hbpl/backend/.venv/bin/celery -A hbpl_project worker --loglevel=INFO --concurrency=2
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start it:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now hbpl-celery
+sudo systemctl status hbpl-celery
+```
+
+When staff changes an exam to **Admit Card Out**, approved applications are queued for generated, stored admit-card PDFs and email. Assign a configured exam centre to each application first when the exam has centres configured; the selected centre and address appear on the card. When staff changes an exam to **Result Out**, students with approved applications and entered results are queued for generated, stored certificate PDFs and email. Students can download issued documents from their dashboard. Delivery timestamps and final errors are visible on the application/registration in Django admin.
+
 ---
 
-## 11. Frontend — build
+## 12. Frontend — build
 
 ```bash
 cd /var/www/hbpl/frontend/hbpl
@@ -226,7 +270,7 @@ npm run build
 
 ---
 
-## 12. Frontend — run with PM2
+## 13. Frontend — run with PM2
 
 ```bash
 cd /var/www/hbpl/frontend/hbpl
@@ -247,7 +291,7 @@ pm2 logs hbpl-frontend --lines 20
 
 ---
 
-## 13. Nginx — configuration
+## 14. Nginx — configuration
 
 Remove the default site and create the HBPL config:
 
@@ -332,7 +376,7 @@ At this point your app is live at `http://80.225.229.50`.
 
 ---
 
-## 14. SSL with Certbot (after pointing your domain)
+## 15. SSL with Certbot (after pointing your domain)
 
 > Only run this after your domain DNS is pointing to `80.225.229.50`.
 
@@ -377,7 +421,7 @@ sudo systemctl restart hbpl-backend
 
 ---
 
-## 15. OCI firewall — open ports
+## 16. OCI firewall — open ports
 
 In your OCI console → Networking → VCN → Security List, add **Ingress Rules**:
 
@@ -397,7 +441,7 @@ sudo netfilter-persistent save
 
 ---
 
-## 16. Useful management commands
+## 17. Useful management commands
 
 ```bash
 # View backend logs
@@ -416,7 +460,9 @@ source .venv/bin/activate
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py collectstatic --no-input
+python manage.py check_exam_delivery
 sudo systemctl restart hbpl-backend
+sudo systemctl restart hbpl-celery
 
 # Frontend update
 cd /var/www/hbpl/frontend/hbpl
@@ -426,6 +472,7 @@ pm2 restart hbpl-frontend
 
 # Check all services
 sudo systemctl status hbpl-backend
+sudo systemctl status hbpl-celery
 sudo systemctl status nginx
 pm2 status
 sudo systemctl status postgresql
@@ -439,5 +486,15 @@ sudo systemctl status postgresql
 |---------------|---------------|------------|
 | Nginx         | 80 / 443      | systemd    |
 | Django/Gunicorn | 8000 (internal) | systemd |
+| Celery worker | background | systemd |
+| Redis broker | 6379 (localhost) | systemd |
 | Next.js       | 3000 (internal) | PM2      |
 | PostgreSQL    | 5432 (internal) | systemd  |
+
+## Exam-portal email readiness
+
+Exam enrollment confirmations, application review decisions, password-reset links, admit cards, and certificates are queued by Celery. Production must have a reachable Redis broker, a running `hbpl-celery` worker, an active `EmailServiceConfiguration` in Django admin or working SMTP environment settings, and `EXAM_PORTAL_URL` set to the public HTTPS Next.js origin. Run migrations before restarting the API and worker. To check SMTP and broker connectivity without sending a message, run `python manage.py check_exam_delivery` from the activated backend environment. This checks connectivity only; after deployment, perform an end-to-end email test using a controlled student account and inspect the worker logs.
+
+For environment SMTP, set `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, and `DEFAULT_FROM_EMAIL`. Alternatively configure SMTP in Django admin; the active email configuration takes precedence. Store credentials in the server environment/admin secrets, never in source control. Reset links expire after one hour. Ensure the production cache used by DRF throttling is shared across API workers for effective rate limits.
+
+For paid exam enrollments, configure `CASHFREE_APP_ID`, `CASHFREE_SECRET_KEY`, and `CASHFREE_ENV` on the API server. Keep `CASHFREE_ENV=sandbox` while testing; use approved production credentials and `CASHFREE_ENV=production` only for live collection. Set `EXAM_PORTAL_URL` to the public HTTPS frontend origin so Cashfree returns students to the payment-verification page. The API supplies its webhook URL when creating each order; that endpoint verifies Cashfree's signature and confirms the order directly with Cashfree before submitting the enrollment.

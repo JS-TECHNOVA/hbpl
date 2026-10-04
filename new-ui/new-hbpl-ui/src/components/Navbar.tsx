@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { NavMobileMenu } from "./NavMobileMenu";
+import { NavProfileMenu } from "./NavProfileMenu";
 
 const navLinks = [
   { label: "About", href: "/about" },
@@ -7,6 +8,7 @@ const navLinks = [
   { label: "Management", href: "/management" },
   { label: "Community Volunteer", href: "/community" },
   { label: "Cricket Portal", href: "/cricket" },
+  { label: "Examinations", href: "/exams" },
   { label: "Gallery", href: "/gallery" },
 ];
 
@@ -36,18 +38,11 @@ export default function Navbar() {
           ))}
         </ul>
 
-        {/* Desktop right: CTAs */}
-        <div className="hidden md:flex items-center gap-3 shrink-0">
-          <Link
-            href="/exams"
-            className="relative inline-flex items-center gap-2 px-5 py-2 rounded-xl text-[13px] font-semibold text-white bg-primary hover:bg-primary-dark transition-colors shadow-sm"
-          >
-            Exam Portal
-          </Link>
+        {/* Account actions */}
+        <div className="flex shrink-0 items-center gap-2">
+          <NavProfileMenu />
+          <NavMobileMenu />
         </div>
-
-        {/* Mobile menu */}
-        <NavMobileMenu />
       </nav>
     </header>
   );

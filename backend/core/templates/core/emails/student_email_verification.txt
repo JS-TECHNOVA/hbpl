@@ -1,0 +1,11 @@
+HBPL STUDENT PORTAL
+
+Verify your HBPL student account
+
+Enter this verification code to confirm your email address:
+
+{{ code }}
+
+This code expires in 15 minutes.
+
+If you did not create this account, you can ignore this email.

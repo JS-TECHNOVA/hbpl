@@ -42,13 +42,6 @@ export function NavMobileMenu() {
               {link.label}
             </Link>
           ))}
-          <Link
-            href="/exams"
-            className="mt-3 bg-linear-to-r from-ds-purple to-ds-purple-500 text-white text-[14px] font-semibold text-center px-6 py-3 rounded-xl shadow-[0_0_20px_rgba(109,40,217,0.3)]"
-            onClick={() => setOpen(false)}
-          >
-            Exam Portal
-          </Link>
         </div>
       )}
     </>
