@@ -32,6 +32,7 @@ const NAV: NavSection[] = [
       { href: "/staff/exam-centres", label: "Exam Centres" },
       { href: "/staff/applications", label: "Applications" },
       { href: "/staff/payments", label: "Payments" },
+      { href: "/staff/email-test", label: "SMTP Test" },
       { href: "/staff/results", label: "Exam Results" },
       { href: "/staff/exam-portal", label: "Portal Content" },
     ],

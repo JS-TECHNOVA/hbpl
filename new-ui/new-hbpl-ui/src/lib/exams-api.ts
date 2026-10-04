@@ -289,6 +289,13 @@ export async function fetchStaffSessions(adminToken: string): Promise<Examinatio
   return listPayload(data);
 }
 
+export async function sendStaffEmailTest(adminToken: string, email: string): Promise<{ success: boolean; detail: string }> {
+  return request(adminToken, "/api/v1/staff/email-test/", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
 export async function createStaffSession(adminToken: string, data: Partial<ExaminationSession>): Promise<ExaminationSession> {
   return request<ExaminationSession>(adminToken, "/api/v1/staff/exam-sessions/", { method: "POST", body: JSON.stringify(data) });
 }

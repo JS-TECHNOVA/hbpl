@@ -28,6 +28,7 @@ urlpatterns = [
     path("applications/quick-apply/", api.QuickApplyView.as_view(), name="quick-apply"),
     path("applications/<int:pk>/documents/", api.MyApplicationDocumentView.as_view(), name="application-document"),
     path("staff/exam-sessions/", api.StaffSessionListCreateView.as_view(), name="staff-exam-sessions"),
+    path("staff/email-test/", api.StaffEmailTestView.as_view(), name="staff-email-test"),
     path("staff/exam-sessions/<int:pk>/", api.StaffSessionDetailView.as_view(), name="staff-exam-session-detail"),
     path("staff/exams/", api.StaffExamListCreateView.as_view(), name="staff-exams"),
     path("staff/exams/<int:pk>/", api.StaffExamDetailView.as_view(), name="staff-exam-detail"),

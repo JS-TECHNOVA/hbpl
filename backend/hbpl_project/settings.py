@@ -234,6 +234,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "student_password_reset": "5/hour",
         "student_password_reset_confirm": "10/hour",
+        "staff_email_test": "5/hour",
     },
 }
 

@@ -58,6 +58,24 @@ class ExaminationWorkflowTests(APITestCase):
             application_prefix="HBPL26",
         )
 
+    def test_staff_email_test_reports_smtp_success_and_failure(self):
+        self.client.force_authenticate(user=self.staff)
+        with patch("exams.api.send_configured_email", return_value=1) as send_email:
+            response = self.client.post(
+                "/api/v1/staff/email-test/", {"email": "check@example.com"}, format="json",
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["success"])
+        self.assertEqual(send_email.call_args.args[2], ["check@example.com"])
+
+        with patch("exams.api.send_configured_email", side_effect=OSError("SMTP connection refused")):
+            response = self.client.post(
+                "/api/v1/staff/email-test/", {"email": "check@example.com"}, format="json",
+            )
+        self.assertEqual(response.status_code, 502)
+        self.assertFalse(response.data["success"])
+        self.assertIn("SMTP connection refused", response.data["detail"])
+
     def test_staff_can_upload_list_and_delete_exam_sample_papers(self):
         token, _ = Token.objects.get_or_create(user=self.staff)
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")

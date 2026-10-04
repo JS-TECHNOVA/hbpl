@@ -53,7 +53,7 @@ from .models import (
     StudentEmailVerification,
     StudentProfile,
 )
-from core.emailing import send_templated_email
+from core.emailing import send_configured_email, send_templated_email
 from api.models import ExamRegistration
 
 
@@ -1562,6 +1562,38 @@ class StaffSessionListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsStaffUser]
     serializer_class = SessionSerializer
     queryset = ExaminationSession.objects.all()
+
+
+class StaffEmailTestView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "staff_email_test"
+
+    def post(self, request):
+        email = serializers.EmailField().run_validation(request.data.get("email"))
+        try:
+            sent = send_configured_email(
+                "HBPL email delivery test",
+                "This test message confirms that the configured HBPL email service can send email.",
+                [email],
+                html_body=(
+                    "<p>This test message confirms that the configured HBPL email service "
+                    "can send email.</p>"
+                ),
+                fail_silently=False,
+            )
+        except Exception as exc:
+            return Response(
+                {"success": False, "detail": f"Email send failed: {str(exc)[:500]}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        if not sent:
+            return Response(
+                {"success": False, "detail": "The email backend did not accept the test message."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        return Response({"success": True, "detail": f"Test email accepted for delivery to {email}."})
 
 
 class StaffSessionDetailView(generics.RetrieveUpdateDestroyAPIView):
