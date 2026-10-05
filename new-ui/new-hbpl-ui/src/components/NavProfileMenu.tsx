@@ -51,6 +51,25 @@ export function NavProfileMenu() {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    function dismissMenu(event: PointerEvent) {
+      if (event.target instanceof Node && !menuRef.current?.contains(event.target)) {
+        menuRef.current?.removeAttribute("open");
+      }
+    }
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape" && menuRef.current?.open) {
+        menuRef.current.open = false;
+      }
+    }
+    document.addEventListener("pointerdown", dismissMenu);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", dismissMenu);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, []);
+
   function logout() {
     localStorage.removeItem("student_token");
     localStorage.removeItem("admin_token");
