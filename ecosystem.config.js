@@ -53,7 +53,7 @@ module.exports = {
     {
       name: "hbpl-django",
       script: `${root}/.venv/bin/gunicorn`,
-      args: "hbpl_project.asgi:application -k uvicorn.workers.UvicornWorker --bind 127.0.0.1:8002 --workers 3 --timeout 120",
+      args: "hbpl_project.asgi:application -k uvicorn.workers.UvicornWorker --bind 127.0.0.1:8002 --workers 2 --timeout 120",
       cwd: `${root}/backend`,
       interpreter: "none",
       env,
@@ -64,7 +64,7 @@ module.exports = {
     {
       name: "hbpl-celery",
       script: `${root}/.venv/bin/celery`,
-      args: "-A hbpl_project worker --loglevel=INFO --concurrency=3",
+      args: "-A hbpl_project worker --loglevel=INFO --concurrency=1",
       cwd: `${root}/backend`,
       interpreter: "none",
       env,
