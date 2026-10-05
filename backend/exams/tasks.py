@@ -218,7 +218,7 @@ def send_exam_application_admit_card_email(self, application_id):
     from .models import Exam, ExamApplication
 
     application = ExamApplication.objects.select_related("exam", "student__user").get(pk=application_id)
-    if application.status != ExamApplication.Status.APPROVED or application.exam.status != Exam.Status.ADMIT_CARD_OUT:
+    if application.status != ExamApplication.Status.APPROVED or not application.admit_card_published:
         return "not-published-or-approved"
     if application.admit_card_email_sent_at:
         return "already-sent"
@@ -274,11 +274,10 @@ def queue_exam_admit_card_emails(exam_id):
     from .models import Exam, ExamApplication
 
     exam = Exam.objects.get(pk=exam_id)
-    if exam.status != Exam.Status.ADMIT_CARD_OUT:
-        return 0
     application_ids = ExamApplication.objects.filter(
         exam=exam,
         status=ExamApplication.Status.APPROVED,
+        admit_card_published=True,
         admit_card_email_sent_at__isnull=True,
     ).exclude(email="").values_list("id", flat=True)
     queued = 0
@@ -294,7 +293,7 @@ def issue_exam_application_certificate(self, application_id):
 
     application = ExamApplication.objects.select_related("exam").get(pk=application_id)
     result = ExamResult.objects.filter(application=application).first()
-    if application.status != ExamApplication.Status.APPROVED or application.exam.status != Exam.Status.RESULT_OUT or not result:
+    if application.status != ExamApplication.Status.APPROVED or not application.results_published or not result:
         return "not-ready"
     if application.certificate_email_sent_at:
         return "already-sent"
@@ -346,12 +345,11 @@ def queue_exam_certificate_emails(exam_id):
     from .models import Exam, ExamApplication, ExamResult
 
     exam = Exam.objects.get(pk=exam_id)
-    if exam.status != Exam.Status.RESULT_OUT:
-        return 0
     application_ids = ExamApplication.objects.filter(
         exam=exam,
         status=ExamApplication.Status.APPROVED,
         result__isnull=False,
+        results_published=True,
         certificate_email_sent_at__isnull=True,
     ).exclude(email="").values_list("id", flat=True)
     queued = 0

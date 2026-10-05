@@ -1,64 +1,49 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { token } from "../layout";
-import {
-  assignStaffApplicationCentre, autoAssignStaffApplicationCentres, ExamCentre, fetchStaffApplications,
-  fetchStaffExamCentres, fetchStaffExams, ManagedExam, StudentApplication, transitionStaffApplication,
-} from "@/src/lib/exams-api";
+import { assignStaffApplicationCentre, autoAssignStaffApplicationCentres, ExamCentre, fetchStaffApplications, fetchStaffExamCentres, fetchStaffExams, ManagedExam, publishStaffApplications, StudentApplication, transitionStaffApplication } from "@/src/lib/exams-api";
 
 const transitions = [
-  { status: "under_review", label: "Start review" },
-  { status: "correction_required", label: "Request correction" },
-  { status: "approved", label: "Approve" },
-  { status: "rejected", label: "Reject" },
+  { status: "under_review", label: "Start review" }, { status: "correction_required", label: "Request correction" },
+  { status: "approved", label: "Approve" }, { status: "rejected", label: "Reject" },
 ];
 
 export default function StaffApplicationsPage() {
   const [applications, setApplications] = useState<StudentApplication[]>([]);
   const [centres, setCentres] = useState<ExamCentre[]>([]);
   const [exams, setExams] = useState<ManagedExam[]>([]);
-  const [centreExamId, setCentreExamId] = useState("");
+  const [examId, setExamId] = useState("");
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [busy, setBusy] = useState<number | null>(null);
-  const [bulkBusy, setBulkBusy] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
-  const reviewable = applications.filter((application) => application.status === "under_review");
-  const readyForReview = applications.filter((application) => ["submitted", "resubmitted", "correction_required"].includes(application.status));
-
-  const load = useCallback(async () => {
+  async function load() {
     setLoading(true);
     try {
       const query = new URLSearchParams();
+      if (examId) query.set("exam", examId);
       if (status) query.set("status", status);
       if (search) query.set("search", search);
-      const items = await fetchStaffApplications(token(), query.toString() ? `?${query}` : "");
-      setError("");
-      setApplications(items);
+      setApplications(await fetchStaffApplications(token(), query.size ? `?${query}` : ""));
+      setSelected(new Set()); setError("");
     } catch (err) { setError(err instanceof Error ? err.message : "Unable to load applications."); }
     finally { setLoading(false); }
-  }, [status, search]);
+  }
 
-  useEffect(() => {
-    let active = true;
-    const query = new URLSearchParams();
-    if (status) query.set("status", status);
-    if (search) query.set("search", search);
-    fetchStaffApplications(token(), query.toString() ? `?${query}` : "")
-      .then((items) => { if (active) { setApplications(items); setError(""); } })
-      .catch((err) => { if (active) setError(err instanceof Error ? err.message : "Unable to load applications."); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [status, search]);
-  useEffect(() => { fetchStaffExamCentres(token()).then(setCentres).catch(() => setCentres([])); }, []);
-  useEffect(() => { fetchStaffExams(token()).then(setExams).catch(() => setExams([])); }, []);
+  useEffect(() => { void load(); }, []);
+  useEffect(() => { void Promise.all([fetchStaffExamCentres(token()), fetchStaffExams(token())]).then(([items, availableExams]) => { setCentres(items); setExams(availableExams); }).catch(() => setError("Unable to load exam setup.")); }, []);
+
+  const approved = applications.filter((item) => item.status === "approved");
+  const selectedApplications = approved.filter((item) => selected.has(item.id));
+  const toggle = (id: number) => setSelected((current) => { const next = new Set(current); next.has(id) ? next.delete(id) : next.add(id); return next; });
 
   async function transition(application: StudentApplication, nextStatus: string) {
-    if (bulkBusy) return;
     const note = window.prompt(nextStatus === "correction_required" ? "Tell the student what to correct:" : "Optional review note:", "");
     if (note === null) return;
     setBusy(application.id); setError("");
@@ -66,90 +51,36 @@ export default function StaffApplicationsPage() {
     catch (err) { setError(err instanceof Error ? err.message : "Unable to update application."); }
     finally { setBusy(null); }
   }
-
   async function assignCentre(application: StudentApplication, centreId: string) {
-    if (bulkBusy) return;
     setBusy(application.id); setError("");
-    try {
-      const updated = await assignStaffApplicationCentre(token(), application.id, centreId ? Number(centreId) : null);
-      setApplications((items) => items.map((item) => item.id === updated.id ? updated : item));
-    } catch (err) { setError(err instanceof Error ? err.message : "Unable to assign centre."); }
+    try { const updated = await assignStaffApplicationCentre(token(), application.id, centreId ? Number(centreId) : null); setApplications((items) => items.map((item) => item.id === updated.id ? updated : item)); }
+    catch (err) { setError(err instanceof Error ? err.message : "Unable to assign centre."); }
     finally { setBusy(null); }
   }
-
-  async function bulkTransition(items: StudentApplication[], nextStatus: string, label: string) {
-    if (!items.length || bulkBusy) return;
-    if (!window.confirm(`${label} ${items.length} application${items.length === 1 ? "" : "s"}?`)) return;
-    setBulkBusy(true); setError(""); setNotice("");
-    let succeeded = 0;
-    let failed = 0;
-    for (const application of items) {
-      try { await transitionStaffApplication(token(), application.id, nextStatus); succeeded += 1; }
-      catch { failed += 1; }
-    }
-    await load();
-    setBulkBusy(false);
-    if (failed) setError(`${succeeded} updated; ${failed} could not be updated. Check the remaining application statuses and try again.`);
-    else setNotice(`${succeeded} application${succeeded === 1 ? "" : "s"} ${nextStatus === "approved" ? "approved" : "moved to review"}.`);
-  }
-
-  async function autoAssignCentres() {
-    const examId = Number(centreExamId);
-    const exam = exams.find((item) => item.id === examId);
-    if (!examId || !exam || bulkBusy) return;
-    if (!window.confirm(`Auto-assign approved, unassigned students for ${exam.name}? Only this exam’s active centres will be used; capacity will be respected and current assignments will stay unchanged.`)) return;
-    setBulkBusy(true); setError(""); setNotice("");
+  async function publish(document: "admit_card" | "results", applicationIds?: number[]) {
+    if (!applicationIds?.length && !examId) { setError("Select an exam before publishing for all students."); return; }
+    const target = applicationIds?.length ? `${applicationIds.length} selected student(s)` : "all eligible students for this exam";
+    if (!window.confirm(`Publish ${document.replace("_", " ")} for ${target}?`)) return;
+    setPublishing(true); setError(""); setNotice("");
     try {
-      const result = await autoAssignStaffApplicationCentres(token(), examId);
-      setNotice(`${result.assigned} student${result.assigned === 1 ? "" : "s"} assigned to a centre.${result.unassigned ? ` ${result.unassigned} remain unassigned because centre capacity is full.` : ""}`);
-      await load();
-    } catch (err) { setError(err instanceof Error ? err.message : "Unable to auto-assign centres."); }
-    finally { setBulkBusy(false); }
+      const result = await publishStaffApplications(token(), { document, ...(applicationIds?.length ? { application_ids: applicationIds } : { exam_id: Number(examId) }) });
+      setNotice(`${result.published} ${document.replace("_", " ")}${result.published === 1 ? "" : "s"} published.${result.skipped ? ` ${result.skipped} skipped (missing centre or result).` : ""}`); await load();
+    } catch (err) { setError(err instanceof Error ? err.message : "Unable to publish."); }
+    finally { setPublishing(false); }
   }
-
-  function exportCsv() {
-    const columns = ["Application number", "Student", "Email", "Exam", "Session", "School", "Class", "Centre", "Status"];
-    const rows = applications.map((application) => [
-      application.application_number ?? `Draft #${application.id}`, application.full_name, application.email,
-      application.exam.name, application.exam.session?.name ?? "", application.school_name,
-      application.class_name, application.centre?.name ?? "", application.status.replaceAll("_", " "),
-    ]);
-    const csv = [columns, ...rows].map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(",")).join("\r\n");
-    const url = URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }));
-    const link = document.createElement("a");
-    link.href = url; link.download = "hbpl-exam-applications.csv"; link.click();
-    URL.revokeObjectURL(url);
+  async function autoAssign() {
+    if (!examId) { setError("Select an exam before auto-assigning centres."); return; }
+    setPublishing(true); setError("");
+    try { const result = await autoAssignStaffApplicationCentres(token(), Number(examId)); setNotice(`${result.assigned} assigned. ${result.unassigned} remain unassigned.`); await load(); }
+    catch (err) { setError(err instanceof Error ? err.message : "Unable to auto-assign centres."); }
+    finally { setPublishing(false); }
   }
 
   return <div className="mx-auto max-w-7xl">
-    <div className="mb-8 flex items-start justify-between gap-4"><div><h1 className="font-heading text-[26px] font-extrabold text-primary">Applications</h1><p className="mt-1 text-[13px] text-text-muted">Review documents and student details, request corrections, approve, and allocate exam centres.</p></div><button onClick={() => void load()} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[13px] text-slate-700">Refresh</button></div>
-    <div className="mb-5 flex flex-wrap gap-3 rounded-2xl border border-slate-200 bg-white p-4"><input value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void load(); }} placeholder="Search application, name, email, school" className="min-w-[240px] flex-1 rounded-lg border border-slate-200 px-3 py-2 text-[12px]" /><select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-[12px]"><option value="">All statuses</option><option value="submitted">Submitted</option><option value="under_review">Under review</option><option value="correction_required">Correction required</option><option value="resubmitted">Resubmitted</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select><button onClick={() => void load()} className="rounded-lg bg-slate-900 px-4 py-2 text-[12px] font-semibold text-white">Search</button></div>
-    <div className="mb-5 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white p-3">
-      <button disabled={bulkBusy || !reviewable.length} onClick={() => void bulkTransition(reviewable, "approved", "Approve all applications currently under review")}
-        className="rounded-lg bg-emerald-700 px-3.5 py-2.5 text-[11px] font-bold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-45">
-        {bulkBusy ? "Updating…" : `Approve all under review (${reviewable.length})`}
-      </button>
-      <button disabled={bulkBusy || !readyForReview.length} onClick={() => void bulkTransition(readyForReview, "under_review", "Start review for all pending applications")}
-        className="rounded-lg border border-slate-200 px-3.5 py-2.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45">
-        Start review all ({readyForReview.length})
-      </button>
-      <button disabled={!applications.length} onClick={exportCsv}
-        className="rounded-lg border border-slate-200 px-3.5 py-2.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45">
-        Export current list
-      </button>
-      <span className="hidden h-8 border-l border-slate-200 sm:block" />
-      <select aria-label="Select exam for centre auto-assignment" value={centreExamId} onChange={(event) => setCentreExamId(event.target.value)} className="min-w-48 rounded-lg border border-slate-200 px-3 py-2.5 text-[11px]">
-        <option value="">Select exam for auto-assign</option>
-        {exams.map((exam) => <option key={exam.id} value={exam.id}>{exam.name} · {exam.session?.name ?? "No session"}</option>)}
-      </select>
-      <button disabled={bulkBusy || !centreExamId} onClick={() => void autoAssignCentres()}
-        className="rounded-lg bg-primary px-3.5 py-2.5 text-[11px] font-bold text-white transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-45">
-        {bulkBusy ? "Working…" : "Auto-assign centres"}
-      </button>
-      <span className="ml-auto text-[10px] text-slate-400">Bulk review actions apply to the current search/status results.</span>
-    </div>
-    {notice && <div role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[12px] text-emerald-800">{notice}</div>}
-    {error && <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">{error}</div>}
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">{loading ? <div className="p-10 text-center text-[13px] text-slate-400">Loading applications…</div> : applications.length === 0 ? <div className="p-10 text-center text-[13px] text-slate-400">No applications found.</div> : <div className="overflow-x-auto"><table className="w-full min-w-[1180px] text-left"><thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-400"><tr><th className="px-4 py-3">Enrollment</th><th className="px-4 py-3">Candidate / documents</th><th className="px-4 py-3">Exam</th><th className="px-4 py-3">Assigned centre</th><th className="px-4 py-3">Exam documents</th><th className="px-4 py-3">Status / review</th></tr></thead><tbody className="divide-y divide-slate-100">{applications.map((application) => { const availableActions = application.status === "under_review" ? transitions.slice(1) : ["submitted", "resubmitted", "correction_required"].includes(application.status) ? transitions.filter((action) => action.status === "under_review" || action.status === "rejected") : []; return <tr key={application.id} className="align-top"><td className="px-4 py-4 text-[12px] font-semibold text-slate-900">{application.application_number ?? `Draft #${application.id}`}<span className="mt-1 block text-[10px] font-normal text-slate-400">{application.email}</span></td><td className="px-4 py-4 text-[12px] text-slate-700">{application.full_name}<span className="mt-1 block text-[10px] text-slate-400">{application.school_name || "No school"} · Class {application.class_name || "—"}</span>{application.documents.length > 0 && <div className="mt-2 flex flex-wrap gap-1.5">{application.documents.map((document) => <a key={document.id} href={document.file_url} target="_blank" rel="noreferrer" className="rounded-md border border-slate-200 px-2 py-1 text-[10px] text-blue-700">View {document.document_type.replaceAll("_", " ")}</a>)}</div>}</td><td className="px-4 py-4 text-[12px] text-slate-700">{application.exam.name}<span className="mt-1 block text-[10px] text-slate-400">{application.exam.session?.name ?? "Unassigned session"}</span></td><td className="px-4 py-4"><select aria-label={`Exam centre for ${application.full_name} · ${application.exam.name}`} disabled={busy === application.id} value={application.centre?.id ?? ""} onChange={(event) => void assignCentre(application, event.target.value)} className="max-w-48 rounded-lg border border-slate-200 px-2 py-2 text-[11px]"><option value="">Unassigned</option>{centres.filter((centre) => centre.is_active || centre.id === application.centre?.id).filter((centre) => application.exam.centre_ids?.includes(centre.id)).map((centre) => <option key={centre.id} value={centre.id}>{centre.name} · {centre.capacity || "—"}</option>)}</select>{application.centre && <span className="mt-1 block max-w-48 text-[10px] text-slate-400">Saved to this exam enrollment</span>}</td><td className="px-4 py-4 text-[11px]">{application.admit_card_url ? <a href={application.admit_card_url} target="_blank" rel="noreferrer" className="font-semibold text-blue-700">View admit card</a> : <span className="text-slate-400">{application.exam.status === "admit_card_out" ? "Being prepared" : "Not issued"}</span>}{application.admit_card_issued_at && <span className="mt-1 block text-[10px] text-slate-400">Issued {new Date(application.admit_card_issued_at).toLocaleDateString()}</span>}</td><td className="px-4 py-4"><span className="rounded-full bg-blue-50 px-2.5 py-1 text-[10px] text-blue-700">{application.status.replaceAll("_", " ")}</span>{application.review_notes && <span className="mt-2 block max-w-[180px] text-[10px] text-slate-500">{application.review_notes}</span>}<div className="mt-2 flex max-w-[180px] flex-wrap gap-1.5">{availableActions.map((action) => <button key={action.status} disabled={busy === application.id} onClick={() => void transition(application, action.status)} className="rounded-lg border border-slate-200 px-2 py-1 text-[10px] text-slate-600 hover:border-primary hover:text-primary disabled:opacity-50">{action.label}</button>)}</div></td></tr>; })}</tbody></table></div>}</section>
+    <div className="mb-6"><h1 className="font-heading text-[26px] font-extrabold text-primary">Applications</h1><p className="mt-1 text-[13px] text-text-muted">Approve students, assign centres, then publish documents per enrollment.</p></div>
+    {(error || notice) && <div className={`mb-4 rounded-xl px-4 py-3 text-[12px] ${error ? "border border-red-200 bg-red-50 text-red-700" : "border border-emerald-200 bg-emerald-50 text-emerald-800"}`}>{error || notice}</div>}
+    <div className="mb-4 flex flex-wrap gap-3 rounded-2xl border border-slate-200 bg-white p-4"><select value={examId} onChange={(event) => setExamId(event.target.value)} className="min-w-52 rounded-lg border border-slate-200 px-3 py-2 text-[12px]"><option value="">All exams</option>{exams.map((exam) => <option key={exam.id} value={exam.id}>{exam.name}</option>)}</select><select value={status} onChange={(event) => setStatus(event.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-[12px]"><option value="">All statuses</option>{["submitted", "under_review", "correction_required", "resubmitted", "approved", "rejected"].map((value) => <option key={value} value={value}>{value.replaceAll("_", " ")}</option>)}</select><input value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => event.key === "Enter" && void load()} placeholder="Search student, enrollment, email" className="min-w-56 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-[12px]"/><button onClick={() => void load()} className="rounded-lg bg-slate-900 px-4 py-2 text-[12px] font-semibold text-white">Search</button></div>
+    <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white p-3"><button disabled={publishing || !examId} onClick={() => void publish("admit_card")} className="rounded-lg bg-primary px-3 py-2 text-[11px] font-bold text-white disabled:opacity-40">Publish all admit cards</button><button disabled={publishing || !examId} onClick={() => void publish("results")} className="rounded-lg bg-emerald-700 px-3 py-2 text-[11px] font-bold text-white disabled:opacity-40">Publish all results</button><button disabled={publishing || !selectedApplications.length} onClick={() => void publish("admit_card", selectedApplications.map((item) => item.id))} className="rounded-lg border border-slate-200 px-3 py-2 text-[11px] font-semibold disabled:opacity-40">Publish selected cards ({selectedApplications.length})</button><button disabled={publishing || !selectedApplications.length} onClick={() => void publish("results", selectedApplications.map((item) => item.id))} className="rounded-lg border border-slate-200 px-3 py-2 text-[11px] font-semibold disabled:opacity-40">Publish selected results</button><button disabled={publishing || !examId} onClick={() => void autoAssign()} className="ml-auto rounded-lg border border-slate-200 px-3 py-2 text-[11px] font-semibold disabled:opacity-40">Auto-assign centres</button></div>
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">{loading ? <div className="p-10 text-center text-[13px] text-slate-400">Loading applications…</div> : !applications.length ? <div className="p-10 text-center text-[13px] text-slate-400">No applications found.</div> : <div className="overflow-x-auto"><table className="w-full min-w-[1100px] text-left text-[11px]"><thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-400"><tr><th className="px-3 py-3"><input type="checkbox" aria-label="Select all approved applications" checked={approved.length > 0 && selectedApplications.length === approved.length} onChange={() => setSelected(selectedApplications.length === approved.length ? new Set() : new Set(approved.map((item) => item.id)))}/></th><th className="px-3 py-3">Enrollment / student</th><th className="px-3 py-3">Exam</th><th className="px-3 py-3">Centre</th><th className="px-3 py-3">Publication</th><th className="px-3 py-3">Review</th></tr></thead><tbody className="divide-y divide-slate-100">{applications.map((application) => { const actions = application.status === "under_review" ? transitions.slice(1) : ["submitted", "resubmitted", "correction_required"].includes(application.status) ? transitions.filter((item) => item.status === "under_review" || item.status === "rejected") : []; return <tr key={application.id} className="align-top"><td className="px-3 py-4"><input type="checkbox" aria-label={`Select ${application.full_name}`} disabled={application.status !== "approved"} checked={selected.has(application.id)} onChange={() => toggle(application.id)}/></td><td className="px-3 py-4"><strong>{application.full_name}</strong><span className="mt-1 block text-slate-400">{application.application_number ?? `Draft #${application.id}`} · {application.email}</span></td><td className="px-3 py-4">{application.exam.name}<span className="mt-1 block text-slate-400">{application.exam.session?.name ?? "No session"}</span></td><td className="px-3 py-4"><select disabled={busy === application.id} value={application.centre?.id ?? ""} onChange={(event) => void assignCentre(application, event.target.value)} className="max-w-48 rounded-lg border border-slate-200 px-2 py-2"><option value="">Unassigned</option>{centres.filter((centre) => centre.is_active || centre.id === application.centre?.id).filter((centre) => application.exam.centre_ids.includes(centre.id)).map((centre) => <option key={centre.id} value={centre.id}>{centre.name}</option>)}</select></td><td className="px-3 py-4"><span className={`rounded-full px-2 py-1 ${application.admit_card_published ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-500"}`}>Card {application.admit_card_published ? "published" : "hidden"}</span><span className={`ml-1 rounded-full px-2 py-1 ${application.results_published ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>Result {application.results_published ? "published" : "hidden"}</span></td><td className="px-3 py-4"><span className="rounded-full bg-blue-50 px-2 py-1 text-blue-700">{application.status.replaceAll("_", " ")}</span><div className="mt-2 flex flex-wrap gap-1">{actions.map((action) => <button key={action.status} disabled={busy === application.id} onClick={() => void transition(application, action.status)} className="rounded border border-slate-200 px-2 py-1 text-[10px] text-slate-600 disabled:opacity-50">{action.label}</button>)}</div></td></tr>; })}</tbody></table></div>}</section>
   </div>;
 }

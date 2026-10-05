@@ -20,7 +20,7 @@ import {
   updateStaffSession,
 } from "@/src/lib/exams-api";
 
-const statuses = ["upcoming", "registration_open", "registration_closed", "admit_card_out", "ongoing", "result_pending", "result_out", "completed"];
+const statuses = ["upcoming", "registration_open", "registration_closed", "ongoing", "completed"];
 const classOptions = Array.from({ length: 12 }, (_, index) => String(index + 1));
 const fieldClass = "mt-1.5 w-full rounded-xl border border-[#d7d9d8] bg-white px-3.5 py-3 text-[13px] text-[#213147] outline-none transition placeholder:text-[#9aa2ac] focus:border-[#a36d17] focus:ring-2 focus:ring-[#a36d17]/15";
 const labelClass = "block text-[11px] font-semibold text-[#586679]";

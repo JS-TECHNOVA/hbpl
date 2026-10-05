@@ -325,7 +325,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExamApplication
         fields = [
-            "id", "exam", "exam_id", "application_number", "status", "full_name", "father_name",
+            "id", "exam", "exam_id", "application_number", "status", "admit_card_published", "results_published", "full_name", "father_name",
             "mother_name", "date_of_birth", "phone", "email", "school_name", "class_name", "address",
             "notes", "submitted_at", "reviewed_at", "review_notes", "documents", "events", "result",
             "centre", "admit_card_url", "admit_card_available", "admit_card_issued_at", "certificate_url", "certificate_available", "certificate_number", "certificate_issued_at",
@@ -334,7 +334,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
         ]
 
         read_only_fields = [
-            "id", "exam", "application_number", "status", "submitted_at", "reviewed_at",
+            "id", "exam", "application_number", "status", "admit_card_published", "results_published", "submitted_at", "reviewed_at",
             "review_notes", "documents", "events", "created_at", "updated_at",
             "centre", "admit_card_url", "admit_card_issued_at", "certificate_url", "certificate_number", "certificate_issued_at",
             "admit_card_email_sent_at", "admit_card_email_last_error", "certificate_email_sent_at", "certificate_email_last_error",
@@ -387,7 +387,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
 
     def get_result(self, obj):
         result = ExamResult.objects.filter(application=obj).first()
-        if not result or obj.exam.status != Exam.Status.RESULT_OUT:
+        if not result or not obj.results_published:
             return None
         return {
             "id": result.id,
@@ -420,26 +420,26 @@ class ApplicationSerializer(serializers.ModelSerializer):
         return request.build_absolute_uri(stored.url) if request else stored.url
 
     def get_admit_card_url(self, obj):
-        if obj.exam.status != Exam.Status.ADMIT_CARD_OUT:
+        if not obj.admit_card_published:
             return None
         return self._file_url(obj, "admit_card_file")
 
     def get_admit_card_available(self, obj):
         return bool(
             obj.status == ExamApplication.Status.APPROVED
-            and obj.exam.status == Exam.Status.ADMIT_CARD_OUT
+            and obj.admit_card_published
             and (not obj.exam.centres.exists() or obj.centre_id)
         )
 
     def get_certificate_url(self, obj):
-        if obj.exam.status != Exam.Status.RESULT_OUT:
+        if not obj.results_published:
             return None
         return self._file_url(obj, "certificate_file")
 
     def get_certificate_available(self, obj):
         return bool(
             obj.status == ExamApplication.Status.APPROVED
-            and obj.exam.status == Exam.Status.RESULT_OUT
+            and obj.results_published
             and ExamResult.objects.filter(application=obj).exists()
         )
 
@@ -957,7 +957,7 @@ class MyResultListView(APIView):
         profile, _ = StudentProfile.objects.get_or_create(user=request.user)
         results = ExamResult.objects.filter(
             application__student=profile,
-            exam__status=Exam.Status.RESULT_OUT,
+            application__results_published=True,
         ).select_related("exam", "exam__session", "application")
         session_id = request.query_params.get("session")
         if session_id:
@@ -1213,7 +1213,7 @@ class MyApplicationAdmitCardView(APIView):
         )
         if application.status != ExamApplication.Status.APPROVED:
             return Response({"detail": "Your enrollment must be approved before its admit card can be downloaded."}, status=status.HTTP_400_BAD_REQUEST)
-        if application.exam.status != Exam.Status.ADMIT_CARD_OUT:
+        if not application.admit_card_published:
             return Response({"detail": "This admit card has not been released yet."}, status=status.HTTP_400_BAD_REQUEST)
         if application.exam.centres.exists() and not application.centre_id:
             return Response({"detail": "Your examination centre has not been assigned yet."}, status=status.HTTP_400_BAD_REQUEST)
@@ -1264,7 +1264,7 @@ class MyApplicationCertificateView(APIView):
             student=profile,
         )
         result = ExamResult.objects.filter(application=application).first()
-        if application.status != ExamApplication.Status.APPROVED or application.exam.status != Exam.Status.RESULT_OUT or not result:
+        if application.status != ExamApplication.Status.APPROVED or not application.results_published or not result:
             return Response({"detail": "This certificate has not been released yet."}, status=status.HTTP_400_BAD_REQUEST)
 
         certificate_number = application.certificate_number or f"{(application.exam.code or 'HBPL').upper()}-CERT-{application.application_number or application.pk}"
@@ -1615,14 +1615,7 @@ class SubmitApplicationView(APIView):
                 return Response({"detail": "This exam is not accepting applications."}, status=status.HTTP_400_BAD_REQUEST)
             if not is_student_eligible(exam, profile):
                 return Response({"detail": "This examination is not available for your class."}, status=status.HTTP_400_BAD_REQUEST)
-            if exam.status in {
-                Exam.Status.REGISTRATION_CLOSED,
-                Exam.Status.ADMIT_CARD_OUT,
-                Exam.Status.ONGOING,
-                Exam.Status.RESULT_PENDING,
-                Exam.Status.RESULT_OUT,
-                Exam.Status.COMPLETED,
-            }:
+            if exam.status != Exam.Status.REGISTRATION_OPEN:
                 return Response({"detail": "Registration is closed for this examination."}, status=status.HTTP_400_BAD_REQUEST)
             if exam.registration_start and now < exam.registration_start:
                 return Response({"detail": "Registration has not opened yet."}, status=status.HTTP_400_BAD_REQUEST)
@@ -2052,6 +2045,66 @@ class StaffAutoAssignCentresView(APIView):
             ).count()
 
         return Response({"assigned": assigned, "unassigned": unassigned})
+
+
+class StaffApplicationPublicationView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+
+    def post(self, request):
+        document = str(request.data.get("document", "")).strip()
+        field = {"admit_card": "admit_card_published", "results": "results_published"}.get(document)
+        if not field:
+            return Response({"detail": "Choose admit_card or results to publish."}, status=status.HTTP_400_BAD_REQUEST)
+        application_ids = request.data.get("application_ids") or []
+        if not isinstance(application_ids, list):
+            return Response({"detail": "application_ids must be a list."}, status=status.HTTP_400_BAD_REQUEST)
+        queryset = ExamApplication.objects.filter(status=ExamApplication.Status.APPROVED)
+        if application_ids:
+            queryset = queryset.filter(pk__in=application_ids)
+        else:
+            try:
+                exam_id = int(request.data.get("exam_id"))
+            except (TypeError, ValueError):
+                return Response({"detail": "Select an exam to publish for all students."}, status=status.HTTP_400_BAD_REQUEST)
+            queryset = queryset.filter(exam_id=exam_id)
+        if document == "results":
+            queryset = queryset.filter(result__isnull=False)
+
+        published = 0
+        skipped = 0
+        published_ids = []
+        for application in queryset.select_related("exam", "centre"):
+            if document == "admit_card" and application.exam.centres.exists() and not application.centre_id:
+                skipped += 1
+                continue
+            if not getattr(application, field):
+                setattr(application, field, True)
+                application.save(update_fields=[field, "updated_at"])
+                ApplicationEvent.objects.create(
+                    application=application,
+                    event_type=f"{document}_published",
+                    note=f"{document.replace('_', ' ').title()} published by staff.",
+                    actor=request.user,
+                )
+                published += 1
+                published_ids.append(application.pk)
+
+        def queue_emails():
+            try:
+                if document == "admit_card":
+                    from .tasks import send_exam_application_admit_card_email
+                    for application_id in published_ids:
+                        send_exam_application_admit_card_email.delay(application_id)
+                else:
+                    from .tasks import issue_exam_application_certificate
+                    for application_id in published_ids:
+                        issue_exam_application_certificate.delay(application_id)
+            except Exception:
+                logger.exception("Could not queue %s publication emails", document)
+
+        transaction.on_commit(queue_emails)
+        return Response({"published": published, "skipped": skipped})
 
 
 class StaffExamResultListCreateView(generics.ListCreateAPIView):

@@ -97,6 +97,8 @@ export interface StudentApplication {
   exam: ManagedExam;
   application_number: string | null;
   status: string;
+  admit_card_published: boolean;
+  results_published: boolean;
   payment_status?: "not_required" | "unpaid" | "pending" | "paid" | "failed" | "user_dropped" | "expired";
   payment_order_id?: string | null;
   full_name: string;
@@ -615,6 +617,12 @@ export async function acceptStaffExamPayment(adminToken: string, id: number, ref
 
 export async function transitionStaffApplication(adminToken: string, id: number, status: string, note = ""): Promise<StudentApplication> {
   return request<StudentApplication>(adminToken, `/api/v1/staff/applications/${id}/transition/`, { method: "POST", body: JSON.stringify({ status, note }) });
+}
+
+export async function publishStaffApplications(adminToken: string, data: { document: "admit_card" | "results"; exam_id?: number; application_ids?: number[] }): Promise<{ published: number; skipped: number }> {
+  return request<{ published: number; skipped: number }>(adminToken, "/api/v1/staff/applications/publish/", {
+    method: "POST", body: JSON.stringify(data),
+  });
 }
 
 export async function autoAssignStaffApplicationCentres(adminToken: string, examId: number): Promise<{ assigned: number; unassigned: number }> {

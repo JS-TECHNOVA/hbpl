@@ -89,10 +89,7 @@ class Exam(models.Model):
         UPCOMING = "upcoming", "Upcoming"
         REGISTRATION_OPEN = "registration_open", "Registration Open"
         REGISTRATION_CLOSED = "registration_closed", "Registration Closed"
-        ADMIT_CARD_OUT = "admit_card_out", "Admit Card Out"
         ONGOING = "ongoing", "Ongoing"
-        RESULT_PENDING = "result_pending", "Result Pending"
-        RESULT_OUT = "result_out", "Result Out"
         COMPLETED = "completed", "Completed"
 
     session = models.ForeignKey(
@@ -242,6 +239,8 @@ class ExamApplication(models.Model):
     centre = models.ForeignKey(ExamCentre, null=True, blank=True, on_delete=models.SET_NULL, related_name="applications")
     application_number = models.CharField(max_length=80, unique=True, null=True, blank=True)
     status = models.CharField(max_length=30, choices=Status.choices, default=Status.DRAFT)
+    admit_card_published = models.BooleanField(default=False)
+    results_published = models.BooleanField(default=False)
     full_name = models.CharField(max_length=200)
     father_name = models.CharField(max_length=200, blank=True)
     mother_name = models.CharField(max_length=200, blank=True)

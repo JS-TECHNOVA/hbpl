@@ -42,6 +42,7 @@ urlpatterns = [
     path("staff/payments/", api.StaffCashfreeExamPaymentListView.as_view(), name="staff-exam-payments"),
     path("staff/payments/<int:pk>/accept/", api.StaffAcceptExamPaymentView.as_view(), name="staff-accept-exam-payment"),
     path("staff/applications/auto-assign-centres/", api.StaffAutoAssignCentresView.as_view(), name="staff-auto-assign-centres"),
+    path("staff/applications/publish/", api.StaffApplicationPublicationView.as_view(), name="staff-application-publication"),
     path("staff/applications/<int:pk>/", api.StaffApplicationDetailView.as_view(), name="staff-application-detail"),
     path("staff/applications/<int:pk>/transition/", api.StaffApplicationTransitionView.as_view(), name="staff-application-transition"),
     path("staff/exam-results/", api.StaffExamResultListCreateView.as_view(), name="staff-exam-results"),

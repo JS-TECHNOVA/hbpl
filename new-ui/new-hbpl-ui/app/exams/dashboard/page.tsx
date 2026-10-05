@@ -143,7 +143,7 @@ export default function StudentDashboardPage() {
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">{[
             { label: "Exam enrollments", value: enrollments.length + oldRecords.length, detail: "Across your exam history" },
             { label: "Awaiting review", value: awaitingReview, detail: "Applications in progress" },
-            { label: "Admit cards", value: enrollments.filter((item) => item.admit_card_available).length, detail: "Ready to download" },
+            { label: "Admit cards", value: enrollments.filter((item) => item.admit_card_published).length, detail: "Ready to download" },
             { label: "Published results", value: visibleResults.length, detail: "Results released" },
           ].map((stat, index) => <article key={stat.label} className="rounded-2xl border border-[#e3e2dc] bg-white p-4 sm:p-5"><div className="flex items-start justify-between"><p className="max-w-28 text-[10px] font-bold uppercase leading-4 tracking-[.1em] text-[#778293]">{stat.label}</p><span className={`h-2 w-2 rounded-full ${index === 1 ? "bg-[#dfb75f]" : index === 2 ? "bg-[#709a79]" : "bg-[#9aa7b5]"}`}/></div><p className="mt-3 font-heading text-[27px] font-extrabold">{stat.value}</p><p className="mt-1 text-[9px] text-[#9098a2]">{stat.detail}</p></article>)}</div>
           <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(300px,.85fr)]">

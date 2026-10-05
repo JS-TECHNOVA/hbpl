@@ -174,11 +174,12 @@ class ExaminationWorkflowTests(APITestCase):
             student=profile,
             application_number="HBPL26-00009",
             status=ExamApplication.Status.APPROVED,
+            admit_card_published=True,
             full_name="Asha Kumar",
             email=student.email,
             class_name="10",
         )
-        self.exam.status = Exam.Status.ADMIT_CARD_OUT
+        self.exam.status = Exam.Status.REGISTRATION_CLOSED
         self.exam.save(update_fields=["status"])
         self.client.force_authenticate(user=student)
 
@@ -200,6 +201,7 @@ class ExaminationWorkflowTests(APITestCase):
             student=profile,
             application_number="HBPL26-00010",
             status=ExamApplication.Status.APPROVED,
+            results_published=True,
             full_name="Asha Kumar",
             email=student.email,
             class_name="10",
@@ -207,7 +209,7 @@ class ExaminationWorkflowTests(APITestCase):
         ExamResult.objects.create(
             exam=self.exam, application=application, total_marks=100, obtained_marks=88,
         )
-        self.exam.status = Exam.Status.RESULT_OUT
+        self.exam.status = Exam.Status.REGISTRATION_CLOSED
         self.exam.save(update_fields=["status"])
         self.client.force_authenticate(user=student)
 
@@ -223,6 +225,38 @@ class ExaminationWorkflowTests(APITestCase):
         self.assertIsNotNone(application.certificate_issued_at)
         self.assertFalse(application.certificate_file)
 
+    def test_staff_can_publish_selected_documents_and_queue_email_delivery(self):
+        student = User.objects.create_user("publish@example.com", email="publish@example.com")
+        application = ExamApplication.objects.create(
+            exam=self.exam,
+            student=StudentProfile.objects.create(user=student),
+            application_number="HBPL26-00011",
+            status=ExamApplication.Status.APPROVED,
+            full_name="Published Student",
+            email=student.email,
+        )
+        ExamResult.objects.create(exam=self.exam, application=application, total_marks=100, obtained_marks=92)
+        self.client.force_authenticate(user=self.staff)
+
+        with patch("exams.tasks.send_exam_application_admit_card_email.delay") as send_card, self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post("/api/v1/staff/applications/publish/", {
+                "document": "admit_card", "application_ids": [application.pk],
+            }, format="json")
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["published"], 1)
+        self.assertTrue(send_card.called)
+
+        with patch("exams.tasks.issue_exam_application_certificate.delay") as send_certificate, self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post("/api/v1/staff/applications/publish/", {
+                "document": "results", "application_ids": [application.pk],
+            }, format="json")
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["published"], 1)
+        self.assertTrue(send_certificate.called)
+        application.refresh_from_db()
+        self.assertTrue(application.admit_card_published)
+        self.assertTrue(application.results_published)
+
     def test_student_can_have_results_for_multiple_exam_enrollments(self):
         student_user = User.objects.create_user(
             "multi-exam@example.com", email="multi-exam@example.com", password="ValidPass123!",
@@ -233,9 +267,9 @@ class ExaminationWorkflowTests(APITestCase):
             code="science-2026",
             slug="science-2026",
             name="Science Examination 2026",
-            status=Exam.Status.RESULT_OUT,
+            status=Exam.Status.REGISTRATION_CLOSED,
         )
-        self.exam.status = Exam.Status.RESULT_OUT
+        self.exam.status = Exam.Status.REGISTRATION_CLOSED
         self.exam.save(update_fields=["status"])
         applications = [
             ExamApplication.objects.create(
@@ -243,6 +277,7 @@ class ExaminationWorkflowTests(APITestCase):
                 student=profile,
                 application_number=number,
                 status=ExamApplication.Status.APPROVED,
+                results_published=True,
                 full_name="Asha Kumar",
                 email=student_user.email,
             )
@@ -858,7 +893,7 @@ class ExaminationWorkflowTests(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {login.data['token']}")
 
         self.exam.allowed_classes = ["10"]
-        self.exam.status = Exam.Status.RESULT_OUT
+        self.exam.status = Exam.Status.REGISTRATION_OPEN
         self.exam.save(update_fields=["allowed_classes", "status"])
         ineligible = Exam.objects.create(
             session=self.session, code="class-9-only", slug="class-9-only", name="Class 9 Only",
@@ -877,6 +912,7 @@ class ExaminationWorkflowTests(APITestCase):
             date_of_birth="2010-01-01",
             class_name="Class 10",
             email="eligible@example.com",
+            results_published=True,
         )
         ExamResult.objects.create(
             exam=self.exam, application=application, obtained_marks=80, total_marks=100,
