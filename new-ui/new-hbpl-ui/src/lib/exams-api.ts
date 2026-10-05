@@ -114,8 +114,10 @@ export interface StudentApplication {
   documents: Array<{ id: number; document_type: string; file_url: string; uploaded_at: string }>;
   centre: { id: number; name: string; address: string; city: string; district: string; state: string; postal_code: string } | null;
   admit_card_url: string | null;
+  admit_card_available: boolean;
   admit_card_issued_at: string | null;
   certificate_url: string | null;
+  certificate_available: boolean;
   certificate_number: string | null;
   certificate_issued_at: string | null;
   result?: StudentResult | null;
@@ -246,6 +248,13 @@ export interface SchoolSuggestion {
   name: string;
 }
 
+export class ApiRequestError extends Error {
+  constructor(message: string, public readonly status: number) {
+    super(message);
+    this.name = "ApiRequestError";
+  }
+}
+
 function authHeaders(adminToken: string): Record<string, string> {
   return { Authorization: `Token ${adminToken}` };
 }
@@ -285,7 +294,7 @@ async function request<T>(adminToken: string, path: string, init?: RequestInit):
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(apiErrorMessage(body, response.status));
+    throw new ApiRequestError(apiErrorMessage(body, response.status), response.status);
   }
   return body as T;
 }
@@ -298,7 +307,7 @@ async function publicRequest<T>(path: string, init?: RequestInit): Promise<T> {
     cache: "no-store",
   });
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(apiErrorMessage(body, response.status));
+  if (!response.ok) throw new ApiRequestError(apiErrorMessage(body, response.status), response.status);
   return body as T;
 }
 
@@ -551,6 +560,30 @@ export async function downloadStudentApplicationForm(studentToken: string, id: n
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     throw new Error(typeof body?.detail === "string" ? body.detail : "Unable to download the enrollment form.");
+  }
+  return response.blob();
+}
+
+export async function downloadStudentAdmitCard(studentToken: string, id: number): Promise<Blob> {
+  const response = await fetch(`${API}/api/v1/applications/${id}/admit-card/`, {
+    headers: authHeaders(studentToken),
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(typeof body?.detail === "string" ? body.detail : "Unable to generate the admit card.");
+  }
+  return response.blob();
+}
+
+export async function downloadStudentCertificate(studentToken: string, id: number): Promise<Blob> {
+  const response = await fetch(`${API}/api/v1/applications/${id}/certificate/`, {
+    headers: authHeaders(studentToken),
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(typeof body?.detail === "string" ? body.detail : "Unable to generate the certificate.");
   }
   return response.blob();
 }

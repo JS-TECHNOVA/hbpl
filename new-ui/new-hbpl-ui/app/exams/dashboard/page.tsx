@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import {
   ExaminationSession, fetchApplicationHistory, fetchExamSessions, fetchEligibleExams,
-  createCashfreePaymentOrder, downloadStudentApplicationForm, fetchMyResults, fetchSchoolSuggestions, fetchStudentProfile, LegacyApplication,
+  createCashfreePaymentOrder, downloadStudentAdmitCard, downloadStudentApplicationForm, downloadStudentCertificate, fetchMyResults, fetchSchoolSuggestions, fetchStudentProfile, LegacyApplication,
   ManagedExam, SchoolSuggestion, StudentAccount, StudentApplication, StudentResult,
   updateStudentProfile,
 } from "@/src/lib/exams-api";
@@ -143,7 +143,7 @@ export default function StudentDashboardPage() {
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">{[
             { label: "Exam enrollments", value: enrollments.length + oldRecords.length, detail: "Across your exam history" },
             { label: "Awaiting review", value: awaitingReview, detail: "Applications in progress" },
-            { label: "Admit cards", value: enrollments.filter((item) => Boolean(item.admit_card_url)).length, detail: "Ready to download" },
+            { label: "Admit cards", value: enrollments.filter((item) => item.admit_card_available).length, detail: "Ready to download" },
             { label: "Published results", value: visibleResults.length, detail: "Results released" },
           ].map((stat, index) => <article key={stat.label} className="rounded-2xl border border-[#e3e2dc] bg-white p-4 sm:p-5"><div className="flex items-start justify-between"><p className="max-w-28 text-[10px] font-bold uppercase leading-4 tracking-[.1em] text-[#778293]">{stat.label}</p><span className={`h-2 w-2 rounded-full ${index === 1 ? "bg-[#dfb75f]" : index === 2 ? "bg-[#709a79]" : "bg-[#9aa7b5]"}`}/></div><p className="mt-3 font-heading text-[27px] font-extrabold">{stat.value}</p><p className="mt-1 text-[9px] text-[#9098a2]">{stat.detail}</p></article>)}</div>
           <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(300px,.85fr)]">
@@ -224,6 +224,8 @@ function LegacyRow({ item }: { item: LegacyApplication }) {
 function ApplicationCard({ application }: { application: StudentApplication }) {
   const paymentStatus = application.payment_status ?? (Number(application.exam.fee) > 0 ? "unpaid" : "not_required");
   const [downloadingForm, setDownloadingForm] = useState(false);
+  const [downloadingAdmitCard, setDownloadingAdmitCard] = useState(false);
+  const [downloadingCertificate, setDownloadingCertificate] = useState(false);
   const [downloadError, setDownloadError] = useState("");
   const [startingPayment, setStartingPayment] = useState(false);
   const centreAddress = application.centre && [application.centre.address, application.centre.city, application.centre.district, application.centre.state, application.centre.postal_code].filter(Boolean).join(", ");
@@ -249,6 +251,48 @@ function ApplicationCard({ application }: { application: StudentApplication }) {
       setDownloadingForm(false);
     }
   }
+  async function downloadAdmitCard() {
+    const token = localStorage.getItem("student_token");
+    if (!token) return;
+    setDownloadingAdmitCard(true);
+    setDownloadError("");
+    try {
+      const blob = await downloadStudentAdmitCard(token, application.id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `HBPL-${application.application_number ?? application.id}-admit-card.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      setDownloadError(error instanceof Error ? error.message : "Unable to generate the admit card.");
+    } finally {
+      setDownloadingAdmitCard(false);
+    }
+  }
+  async function downloadCertificate() {
+    const token = localStorage.getItem("student_token");
+    if (!token) return;
+    setDownloadingCertificate(true);
+    setDownloadError("");
+    try {
+      const blob = await downloadStudentCertificate(token, application.id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `HBPL-${application.certificate_number ?? application.id}-certificate.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      setDownloadError(error instanceof Error ? error.message : "Unable to generate the certificate.");
+    } finally {
+      setDownloadingCertificate(false);
+    }
+  }
   async function payExamFee() {
     const token = localStorage.getItem("student_token") ?? "";
     if (!token) return;
@@ -271,6 +315,6 @@ function ApplicationCard({ application }: { application: StudentApplication }) {
     <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[9px] font-bold uppercase tracking-[.14em] text-[#9b6d20]">{application.exam.session?.name ?? "Session not set"}</p><h3 className="mt-1 font-heading text-[16px] font-extrabold">{application.exam.name}</h3><p className="mt-1 text-[10px] text-[#778293]">Enrollment no. {application.application_number ?? "Draft"}</p>{paymentStatus !== "not_required" && <p className="mt-1 text-[10px] font-semibold capitalize text-[#8c5b10]">Fee payment: {paymentStatus.replaceAll("_", " ")}</p>}</div><StatusPill status={application.status}/></div>
     <div className="mt-4 grid gap-3 border-y border-[#efefeb] py-4 sm:grid-cols-2"><div><p className="text-[9px] font-bold uppercase tracking-wide text-[#8791a0]">Exam centre</p><p className="mt-1 text-[11px] font-semibold">{application.centre?.name ?? "Not assigned yet"}</p>{application.centre && <p className="mt-1 text-[10px] leading-4 text-[#778293]">{centreAddress}</p>}</div><div><p className="text-[9px] font-bold uppercase tracking-wide text-[#8791a0]">Result</p><p className="mt-1 text-[11px] font-semibold">{application.result ? `${application.result.obtained_marks ?? "—"} / ${application.result.total_marks ?? "—"}${application.result.rank ? ` · Rank ${application.result.rank}` : ""}` : "Not published"}</p></div></div>
     {application.review_notes && <p className="mt-3 rounded-lg bg-[#fbf4e7] p-3 text-[10px] leading-4 text-[#77500e]">Staff note: {application.review_notes}</p>}
-    <div className="mt-4 flex flex-wrap gap-2">{application.status === "draft" && Number(application.exam.fee) > 0 && paymentStatus !== "paid" && <button type="button" onClick={payExamFee} disabled={startingPayment} className="rounded-lg bg-[#a36d17] px-3.5 py-2.5 text-[10px] font-bold text-white disabled:opacity-60">{startingPayment ? "Opening secure checkout..." : paymentStatus === "unpaid" ? `Pay ₹${Number(application.exam.fee).toLocaleString("en-IN")}` : "Continue payment"}</button>}{application.status === "draft" && paymentStatus === "paid" && application.payment_order_id && <Link href={`/exams/payment/return?order_id=${encodeURIComponent(application.payment_order_id)}`} className="rounded-lg bg-emerald-700 px-3.5 py-2.5 text-[10px] font-bold text-white">Confirm enrollment</Link>}{application.application_number && <button type="button" onClick={downloadForm} disabled={downloadingForm} className="rounded-lg border border-[#d7e1ec] bg-[#f7fafc] px-3.5 py-2.5 text-[10px] font-bold text-[#315b82] disabled:opacity-60">{downloadingForm ? "Preparing form..." : "Download enrollment form"}</button>}{canContinue && paymentStatus !== "paid" && <Link href={`/exams/register?exam=${application.exam.id}&application=${application.id}`} className="rounded-lg bg-[#172438] px-3.5 py-2.5 text-[10px] font-bold text-white">{application.status === "draft" ? "Edit enrollment" : "Correct application"}</Link>}{application.admit_card_url && <a href={application.admit_card_url} target="_blank" rel="noreferrer" className="rounded-lg border border-[#d7e1ec] bg-[#f7fafc] px-3.5 py-2.5 text-[10px] font-bold text-[#315b82]">Download this exam’s admit card</a>}{application.certificate_url && <a href={application.certificate_url} target="_blank" rel="noreferrer" className="rounded-lg border border-[#d6e8dc] bg-[#f6fbf7] px-3.5 py-2.5 text-[10px] font-bold text-[#287047]">Download certificate</a>}</div>{downloadError && <p role="alert" className="mt-2 text-[10px] text-red-700">{downloadError}</p>}
+    <div className="mt-4 flex flex-wrap gap-2">{application.status === "draft" && Number(application.exam.fee) > 0 && paymentStatus !== "paid" && <button type="button" onClick={payExamFee} disabled={startingPayment} className="rounded-lg bg-[#a36d17] px-3.5 py-2.5 text-[10px] font-bold text-white disabled:opacity-60">{startingPayment ? "Opening secure checkout..." : paymentStatus === "unpaid" ? `Pay ₹${Number(application.exam.fee).toLocaleString("en-IN")}` : "Continue payment"}</button>}{application.status === "draft" && paymentStatus === "paid" && application.payment_order_id && <Link href={`/exams/payment/return?order_id=${encodeURIComponent(application.payment_order_id)}`} className="rounded-lg bg-emerald-700 px-3.5 py-2.5 text-[10px] font-bold text-white">Confirm enrollment</Link>}{application.application_number && <button type="button" onClick={downloadForm} disabled={downloadingForm} className="rounded-lg border border-[#d7e1ec] bg-[#f7fafc] px-3.5 py-2.5 text-[10px] font-bold text-[#315b82] disabled:opacity-60">{downloadingForm ? "Preparing form..." : "Download enrollment form"}</button>}{canContinue && paymentStatus !== "paid" && <Link href={`/exams/register?exam=${application.exam.id}&application=${application.id}`} className="rounded-lg bg-[#172438] px-3.5 py-2.5 text-[10px] font-bold text-white">{application.status === "draft" ? "Edit enrollment" : "Correct application"}</Link>}{application.admit_card_available && <button type="button" onClick={downloadAdmitCard} disabled={downloadingAdmitCard} className="rounded-lg border border-[#d7e1ec] bg-[#f7fafc] px-3.5 py-2.5 text-[10px] font-bold text-[#315b82] disabled:opacity-60">{downloadingAdmitCard ? "Generating admit card..." : "Download this exam’s admit card"}</button>}{application.certificate_available && <button type="button" onClick={downloadCertificate} disabled={downloadingCertificate} className="rounded-lg border border-[#d6e8dc] bg-[#f6fbf7] px-3.5 py-2.5 text-[10px] font-bold text-[#287047] disabled:opacity-60">{downloadingCertificate ? "Generating certificate..." : "Download certificate"}</button>}</div>{downloadError && <p role="alert" className="mt-2 text-[10px] text-red-700">{downloadError}</p>}
   </article>;
 }

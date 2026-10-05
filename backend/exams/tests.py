@@ -166,6 +166,63 @@ class ExaminationWorkflowTests(APITestCase):
             self.assertEqual(ExamApplication.objects.filter(exam=self.exam, student=profile).count(), 1)
             self.assertEqual(application.cashfree_payments.count(), 1)
 
+    def test_admit_card_is_rendered_on_demand_without_saving_a_file(self):
+        student = User.objects.create_user("admit@example.com", email="admit@example.com")
+        profile = StudentProfile.objects.create(user=student)
+        application = ExamApplication.objects.create(
+            exam=self.exam,
+            student=profile,
+            application_number="HBPL26-00009",
+            status=ExamApplication.Status.APPROVED,
+            full_name="Asha Kumar",
+            email=student.email,
+            class_name="10",
+        )
+        self.exam.status = Exam.Status.ADMIT_CARD_OUT
+        self.exam.save(update_fields=["status"])
+        self.client.force_authenticate(user=student)
+
+        with patch("exams.api.generate_admit_card", return_value=b"%PDF-1.4 on-demand") as render:
+            response = self.client.get(f"/api/v1/applications/{application.pk}/admit-card/")
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertEqual(response.content, b"%PDF-1.4 on-demand")
+        self.assertTrue(render.called)
+        application.refresh_from_db()
+        self.assertFalse(application.admit_card_file)
+
+    def test_certificate_is_rendered_on_demand_without_saving_a_file(self):
+        student = User.objects.create_user("certificate@example.com", email="certificate@example.com")
+        profile = StudentProfile.objects.create(user=student)
+        application = ExamApplication.objects.create(
+            exam=self.exam,
+            student=profile,
+            application_number="HBPL26-00010",
+            status=ExamApplication.Status.APPROVED,
+            full_name="Asha Kumar",
+            email=student.email,
+            class_name="10",
+        )
+        ExamResult.objects.create(
+            exam=self.exam, application=application, total_marks=100, obtained_marks=88,
+        )
+        self.exam.status = Exam.Status.RESULT_OUT
+        self.exam.save(update_fields=["status"])
+        self.client.force_authenticate(user=student)
+
+        with patch("exams.api.generate_participation_certificate", return_value=b"%PDF-1.4 on-demand") as render:
+            response = self.client.get(f"/api/v1/applications/{application.pk}/certificate/")
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertEqual(response.content, b"%PDF-1.4 on-demand")
+        self.assertTrue(render.called)
+        application.refresh_from_db()
+        self.assertTrue(application.certificate_number)
+        self.assertIsNotNone(application.certificate_issued_at)
+        self.assertFalse(application.certificate_file)
+
     def test_student_can_have_results_for_multiple_exam_enrollments(self):
         student_user = User.objects.create_user(
             "multi-exam@example.com", email="multi-exam@example.com", password="ValidPass123!",

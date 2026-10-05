@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { fetchStudentProfile, StudentAccount } from "@/src/lib/exams-api";
+import { ApiRequestError, fetchStudentProfile, StudentAccount } from "@/src/lib/exams-api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "https://myhbpl.org";
 
@@ -25,19 +25,19 @@ export function NavProfileMenu() {
 
     Promise.all([
       studentToken
-        ? fetchStudentProfile(studentToken).then((student) => ({ student, error: false })).catch(() => ({ student: null, error: true }))
-        : Promise.resolve({ student: null, error: false }),
+        ? fetchStudentProfile(studentToken).then((student) => ({ student, unauthorized: false })).catch((error) => ({ student: null, unauthorized: error instanceof ApiRequestError && [401, 403].includes(error.status) }))
+        : Promise.resolve({ student: null, unauthorized: false }),
       adminToken
         ? fetch(`${API}/api/admin/me/`, { headers: { Authorization: `Token ${adminToken}` } })
-            .then((response) => response.ok ? response.json() : Promise.reject())
-            .then((staff) => ({ staff, error: false }))
-            .catch(() => ({ staff: null, error: true }))
-        : Promise.resolve({ staff: null, error: false }),
+            .then((response) => response.ok ? response.json() : Promise.reject(response.status))
+            .then((staff) => ({ staff, unauthorized: false }))
+            .catch((status: unknown) => ({ staff: null, unauthorized: status === 401 || status === 403 }))
+        : Promise.resolve({ staff: null, unauthorized: false }),
     ]).then(([studentResult, staffResult]) => {
       if (!active) return;
-      if (studentResult.error) localStorage.removeItem("student_token");
-      if (staffResult.error) localStorage.removeItem("admin_token");
-      if (staffResult.staff && adminToken && !studentResult.student) {
+      if (studentResult.unauthorized) localStorage.removeItem("student_token");
+      if (staffResult.unauthorized) localStorage.removeItem("admin_token");
+      if (staffResult.staff && adminToken && !studentResult.student && (!studentToken || studentResult.unauthorized)) {
         // Both portals use the same DRF user/token; let staff use their student profile too.
         localStorage.setItem("student_token", adminToken);
         fetchStudentProfile(adminToken)

@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
 from pathlib import Path
 from io import BytesIO
+from types import SimpleNamespace
 import json
 import logging
 import secrets
@@ -55,6 +56,8 @@ from .models import (
 )
 from core.emailing import send_configured_email, send_templated_email
 from api.models import ExamRegistration
+from api.admit_card import generate_admit_card
+from api.certificate import generate_participation_certificate
 
 
 logger = logging.getLogger(__name__)
@@ -314,6 +317,8 @@ class ApplicationSerializer(serializers.ModelSerializer):
     centre = AssignedExamCentreSerializer(read_only=True)
     admit_card_url = serializers.SerializerMethodField()
     certificate_url = serializers.SerializerMethodField()
+    admit_card_available = serializers.SerializerMethodField()
+    certificate_available = serializers.SerializerMethodField()
     payment_status = serializers.SerializerMethodField()
     payment_order_id = serializers.SerializerMethodField()
 
@@ -323,7 +328,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
             "id", "exam", "exam_id", "application_number", "status", "full_name", "father_name",
             "mother_name", "date_of_birth", "phone", "email", "school_name", "class_name", "address",
             "notes", "submitted_at", "reviewed_at", "review_notes", "documents", "events", "result",
-            "centre", "admit_card_url", "admit_card_issued_at", "certificate_url", "certificate_number", "certificate_issued_at",
+            "centre", "admit_card_url", "admit_card_available", "admit_card_issued_at", "certificate_url", "certificate_available", "certificate_number", "certificate_issued_at",
             "admit_card_email_sent_at", "admit_card_email_last_error", "certificate_email_sent_at", "certificate_email_last_error",
             "payment_status", "payment_order_id", "created_at", "updated_at",
         ]
@@ -419,10 +424,24 @@ class ApplicationSerializer(serializers.ModelSerializer):
             return None
         return self._file_url(obj, "admit_card_file")
 
+    def get_admit_card_available(self, obj):
+        return bool(
+            obj.status == ExamApplication.Status.APPROVED
+            and obj.exam.status == Exam.Status.ADMIT_CARD_OUT
+            and (not obj.exam.centres.exists() or obj.centre_id)
+        )
+
     def get_certificate_url(self, obj):
         if obj.exam.status != Exam.Status.RESULT_OUT:
             return None
         return self._file_url(obj, "certificate_file")
+
+    def get_certificate_available(self, obj):
+        return bool(
+            obj.status == ExamApplication.Status.APPROVED
+            and obj.exam.status == Exam.Status.RESULT_OUT
+            and ExamResult.objects.filter(application=obj).exists()
+        )
 
     def get_events(self, obj):
         return [
@@ -1174,6 +1193,106 @@ class MyApplicationFormDownloadView(APIView):
 
         response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="HBPL-{application.application_number}-application-form.pdf"'
+        response["Cache-Control"] = "private, no-store"
+        return response
+
+
+class MyApplicationAdmitCardView(APIView):
+    """Render the current exam template directly into the download response."""
+
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        profile, _ = StudentProfile.objects.get_or_create(user=request.user)
+        application = get_object_or_404(
+            ExamApplication.objects.select_related("exam", "exam__session", "student", "centre")
+            .prefetch_related("documents"),
+            pk=pk,
+            student=profile,
+        )
+        if application.status != ExamApplication.Status.APPROVED:
+            return Response({"detail": "Your enrollment must be approved before its admit card can be downloaded."}, status=status.HTTP_400_BAD_REQUEST)
+        if application.exam.status != Exam.Status.ADMIT_CARD_OUT:
+            return Response({"detail": "This admit card has not been released yet."}, status=status.HTTP_400_BAD_REQUEST)
+        if application.exam.centres.exists() and not application.centre_id:
+            return Response({"detail": "Your examination centre has not been assigned yet."}, status=status.HTTP_400_BAD_REQUEST)
+
+        documents = {document.document_type: document.file for document in application.documents.all() if document.file}
+        centre = application.centre
+        centre_address = ", ".join(filter(None, [
+            getattr(centre, "address", ""), getattr(centre, "city", ""), getattr(centre, "district", ""),
+            getattr(centre, "state", ""), getattr(centre, "postal_code", ""),
+        ]))
+        try:
+            pdf = generate_admit_card(
+                SimpleNamespace(
+                    full_name=application.full_name,
+                    date_of_birth=application.date_of_birth,
+                    roll_number=application.application_number or f"APP-{application.pk}",
+                    class_name=application.class_name,
+                    school_name=application.school_name,
+                    examination_center=centre.name if centre else "",
+                    center_address=centre_address,
+                    student_photo=documents.get(ApplicationDocument.DocumentType.PHOTO) or application.student.photo,
+                    student_signature=documents.get(ApplicationDocument.DocumentType.SIGNATURE) or application.student.signature,
+                ),
+                template_path=application.exam.admit_card_template.path if application.exam.admit_card_template else None,
+                exam=application.exam,
+            )
+        except Exception:
+            logger.exception("Could not render admit card for application id=%s", application.pk)
+            return Response({"detail": "We could not generate your admit card right now. Please try again shortly."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        response = HttpResponse(pdf, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="HBPL-{application.application_number or application.pk}-admit-card.pdf"'
+        response["Cache-Control"] = "private, no-store"
+        return response
+
+
+class MyApplicationCertificateView(APIView):
+    """Render the current certificate template directly into the download response."""
+
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        profile, _ = StudentProfile.objects.get_or_create(user=request.user)
+        application = get_object_or_404(
+            ExamApplication.objects.select_related("exam", "exam__session", "student"),
+            pk=pk,
+            student=profile,
+        )
+        result = ExamResult.objects.filter(application=application).first()
+        if application.status != ExamApplication.Status.APPROVED or application.exam.status != Exam.Status.RESULT_OUT or not result:
+            return Response({"detail": "This certificate has not been released yet."}, status=status.HTTP_400_BAD_REQUEST)
+
+        certificate_number = application.certificate_number or f"{(application.exam.code or 'HBPL').upper()}-CERT-{application.application_number or application.pk}"
+        issued_at = application.certificate_issued_at or timezone.now()
+        try:
+            pdf = generate_participation_certificate(
+                SimpleNamespace(
+                    full_name=application.full_name,
+                    class_name=application.class_name,
+                    school_name=application.school_name,
+                    student_photo=application.student.photo,
+                    certificate_issued_at=issued_at,
+                ),
+                template_path=application.exam.certificate_template.path if application.exam.certificate_template else None,
+                exam=application.exam,
+                result=result,
+                certificate_number=certificate_number,
+            )
+        except Exception:
+            logger.exception("Could not render certificate for application id=%s", application.pk)
+            return Response({"detail": "We could not generate your certificate right now. Please try again shortly."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        if not application.certificate_number:
+            application.certificate_number = certificate_number
+            application.certificate_issued_at = issued_at
+            application.save(update_fields=["certificate_number", "certificate_issued_at", "updated_at"])
+        response = HttpResponse(pdf, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="HBPL-{certificate_number}.pdf"'
         response["Cache-Control"] = "private, no-store"
         return response
 

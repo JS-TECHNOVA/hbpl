@@ -232,32 +232,25 @@ def send_exam_application_admit_card_email(self, application_id):
         return "centre-not-assigned"
 
     try:
-        if application.admit_card_file:
-            application.admit_card_file.open("rb")
-            pdf = application.admit_card_file.read()
-            application.admit_card_file.close()
-        else:
-            centre = application.centre
-            documents = {
-                item.document_type: item.file
-                for item in application.documents.filter(document_type__in=["photo", "signature"])
-            }
-            profile = application.student
-            pdf = _build_admit_card_pdf(SimpleNamespace(
-                full_name=application.full_name,
-                date_of_birth=application.date_of_birth or date.today(),
-                roll_number=application.application_number or f"APP-{application.pk}",
-                class_name=application.class_name,
-                school_name=application.school_name,
-                examination_center=centre.name if centre else "",
-                center_address=centre.address if centre else "",
-                student_photo=documents.get("photo") or profile.photo,
-                student_signature=documents.get("signature") or profile.signature,
-            ), application.exam)
-            filename = f"admit-card-{application.application_number or application.pk}.pdf"
-            application.admit_card_file.save(filename, ContentFile(pdf), save=False)
-            application.admit_card_issued_at = timezone.now()
-            application.save(update_fields=["admit_card_file", "admit_card_issued_at", "updated_at"])
+        centre = application.centre
+        documents = {
+            item.document_type: item.file
+            for item in application.documents.filter(document_type__in=["photo", "signature"])
+        }
+        profile = application.student
+        # Admit cards are deliberately transient: render the active template to
+        # bytes for the email attachment, never into application media storage.
+        pdf = _build_admit_card_pdf(SimpleNamespace(
+            full_name=application.full_name,
+            date_of_birth=application.date_of_birth or date.today(),
+            roll_number=application.application_number or f"APP-{application.pk}",
+            class_name=application.class_name,
+            school_name=application.school_name,
+            examination_center=centre.name if centre else "",
+            center_address=centre.address if centre else "",
+            student_photo=documents.get("photo") or profile.photo,
+            student_signature=documents.get("signature") or profile.signature,
+        ), application.exam)
         _email_admit_card(
             recipient=application.email,
             full_name=application.full_name,
@@ -311,30 +304,25 @@ def issue_exam_application_certificate(self, application_id):
         return "missing-email"
 
     try:
-        if application.certificate_file:
-            application.certificate_file.open("rb")
-            pdf = application.certificate_file.read()
-            application.certificate_file.close()
-        else:
-            from api.certificate import generate_participation_certificate
+        from api.certificate import generate_participation_certificate
 
-            template_path = application.exam.certificate_template.path if application.exam.certificate_template else None
-            certificate_number = f"{(application.exam.code or 'HBPL').upper()}-CERT-{application.application_number or application.pk}"
+        certificate_number = application.certificate_number or f"{(application.exam.code or 'HBPL').upper()}-CERT-{application.application_number or application.pk}"
+        issued_at = application.certificate_issued_at or timezone.now()
+        # Certificates are rendered into the email attachment only; no PDF is
+        # written to media storage.
+        pdf = generate_participation_certificate(SimpleNamespace(
+            full_name=application.full_name,
+            class_name=application.class_name or "",
+            school_name=application.school_name,
+            student_photo=application.student.photo,
+            rank=result.rank,
+            certificate_issued_at=issued_at,
+        ), template_path=application.exam.certificate_template.path if application.exam.certificate_template else None,
+            exam=application.exam, result=result, certificate_number=certificate_number)
+        if not application.certificate_number:
             application.certificate_number = certificate_number
-            application.certificate_issued_at = timezone.now()
-            pdf = generate_participation_certificate(SimpleNamespace(
-                full_name=application.full_name,
-                class_name=application.class_name or "",
-                school_name=application.school_name,
-                student_photo=application.student.photo,
-                rank=result.rank,
-                certificate_issued_at=application.certificate_issued_at,
-            ), template_path=template_path, exam=application.exam, result=result,
-                certificate_number=certificate_number)
-            application.certificate_file.save(
-                f"certificate-{certificate_number}.pdf", ContentFile(pdf), save=False,
-            )
-            application.save(update_fields=["certificate_number", "certificate_issued_at", "certificate_file", "updated_at"])
+            application.certificate_issued_at = issued_at
+            application.save(update_fields=["certificate_number", "certificate_issued_at", "updated_at"])
         _email_certificate(
             recipient=application.email,
             full_name=application.full_name,
