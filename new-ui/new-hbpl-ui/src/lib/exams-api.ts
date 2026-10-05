@@ -98,6 +98,7 @@ export interface StudentApplication {
   application_number: string | null;
   status: string;
   payment_status?: "not_required" | "unpaid" | "pending" | "paid" | "failed" | "user_dropped" | "expired";
+  payment_order_id?: string | null;
   full_name: string;
   father_name: string;
   mother_name: string;
@@ -118,6 +119,22 @@ export interface StudentApplication {
   certificate_number: string | null;
   certificate_issued_at: string | null;
   result?: StudentResult | null;
+}
+
+/** The only candidate fields an exam enrollment may snapshot from the profile. */
+export interface StudentApplicationInput {
+  full_name: string;
+  father_name: string;
+  mother_name: string;
+  date_of_birth: string;
+  phone: string;
+  school_name: string;
+  class_name: string;
+  address: string;
+}
+
+export interface StudentApplicationCreateInput extends StudentApplicationInput {
+  exam_id: number;
 }
 
 export interface CashfreePaymentOrder {
@@ -268,7 +285,7 @@ async function request<T>(adminToken: string, path: string, init?: RequestInit):
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(typeof body?.detail === "string" ? body.detail : JSON.stringify(body) || `Request failed (${response.status})`);
+    throw new Error(apiErrorMessage(body, response.status));
   }
   return body as T;
 }
@@ -281,8 +298,37 @@ async function publicRequest<T>(path: string, init?: RequestInit): Promise<T> {
     cache: "no-store",
   });
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(typeof body?.detail === "string" ? body.detail : JSON.stringify(body) || `Request failed (${response.status})`);
+  if (!response.ok) throw new Error(apiErrorMessage(body, response.status));
   return body as T;
+}
+
+/** Turn Django/DRF field errors into a message a student can act on. */
+function apiErrorMessage(body: unknown, status: number): string {
+  if (!body || typeof body !== "object") return `Request failed (${status}). Please try again.`;
+  const data = body as Record<string, unknown>;
+  if (typeof data.detail === "string") return data.detail;
+  const messages = Object.entries(data).flatMap(([field, value]) => {
+    const label = field === "non_field_errors" ? "" : `${field.replaceAll("_", " ")}: `;
+    const values = Array.isArray(value) ? value : [value];
+    return values.filter((item): item is string => typeof item === "string").map((item) => `${label}${item}`);
+  });
+  return messages.join(" ") || `Request failed (${status}). Please try again.`;
+}
+
+export function validateStudentApplicationInput(data: StudentApplicationInput): string[] {
+  const errors: string[] = [];
+  const required: Array<[keyof StudentApplicationInput, string]> = [
+    ["full_name", "student name"], ["date_of_birth", "date of birth"], ["phone", "mobile number"],
+    ["father_name", "father's name"], ["school_name", "school name"], ["class_name", "class"], ["address", "address"],
+  ];
+  for (const [field, label] of required) {
+    if (!data[field].trim()) errors.push(`Enter your ${label}.`);
+  }
+  const phoneDigits = data.phone.replace(/\D/g, "");
+  if (data.phone.trim() && (phoneDigits.length < 10 || phoneDigits.length > 15)) errors.push("Enter a valid mobile number.");
+  if (data.class_name && !/^(?:[1-9]|1[0-2])$/.test(data.class_name)) errors.push("Select a class from Class 1 to Class 12.");
+  if (data.date_of_birth && new Date(`${data.date_of_birth}T00:00:00`).getTime() > Date.now()) errors.push("Date of birth cannot be in the future.");
+  return errors;
 }
 
 export async function fetchStaffSessions(adminToken: string): Promise<ExaminationSession[]> {
@@ -472,17 +518,12 @@ export async function resendStudentVerification(email: string): Promise<{ detail
   return publicRequest("/api/v1/auth/resend-verification/", { method: "POST", body: JSON.stringify({ email }) });
 }
 
-export async function createStudentApplication(studentToken: string, data: Record<string, unknown>): Promise<StudentApplication> {
+export async function createStudentApplication(studentToken: string, data: StudentApplicationCreateInput): Promise<StudentApplication> {
   return request<StudentApplication>(studentToken, "/api/v1/applications/", { method: "POST", body: JSON.stringify(data) });
 }
 
-export async function updateStudentApplication(studentToken: string, id: number, data: Record<string, unknown>): Promise<StudentApplication> {
+export async function updateStudentApplication(studentToken: string, id: number, data: StudentApplicationInput): Promise<StudentApplication> {
   return request<StudentApplication>(studentToken, `/api/v1/applications/${id}/`, { method: "PATCH", body: JSON.stringify(data) });
-}
-
-export async function uploadStudentApplicationDocument(studentToken: string, id: number, type: string, file: File): Promise<{ file_url: string }> {
-  const body = new FormData(); body.append("document_type", type); body.append("file", file);
-  return request(studentToken, `/api/v1/applications/${id}/documents/`, { method: "POST", body });
 }
 
 export async function submitStudentApplication(studentToken: string, id: number): Promise<StudentApplication> {

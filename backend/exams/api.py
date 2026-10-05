@@ -3,12 +3,12 @@ from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError
-from django.core.files.base import ContentFile
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
 from pathlib import Path
 from io import BytesIO
 import json
+import logging
 import secrets
 import base64
 import hashlib
@@ -55,6 +55,9 @@ from .models import (
 )
 from core.emailing import send_configured_email, send_templated_email
 from api.models import ExamRegistration
+
+
+logger = logging.getLogger(__name__)
 
 
 class IsStaffUser(BasePermission):
@@ -312,6 +315,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
     admit_card_url = serializers.SerializerMethodField()
     certificate_url = serializers.SerializerMethodField()
     payment_status = serializers.SerializerMethodField()
+    payment_order_id = serializers.SerializerMethodField()
 
     class Meta:
         model = ExamApplication
@@ -321,7 +325,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
             "notes", "submitted_at", "reviewed_at", "review_notes", "documents", "events", "result",
             "centre", "admit_card_url", "admit_card_issued_at", "certificate_url", "certificate_number", "certificate_issued_at",
             "admit_card_email_sent_at", "admit_card_email_last_error", "certificate_email_sent_at", "certificate_email_last_error",
-            "payment_status", "created_at", "updated_at",
+            "payment_status", "payment_order_id", "created_at", "updated_at",
         ]
 
         read_only_fields = [
@@ -331,6 +335,50 @@ class ApplicationSerializer(serializers.ModelSerializer):
             "admit_card_email_sent_at", "admit_card_email_last_error", "certificate_email_sent_at", "certificate_email_last_error",
             "email",
         ]
+
+    def validate(self, attrs):
+        """Keep an application snapshot complete before a payment can start."""
+        snapshot_fields = {"full_name", "father_name", "date_of_birth", "phone", "school_name", "class_name", "address"}
+        # Staff may update an assigned centre or review metadata without rewriting a
+        # historical student's personal snapshot.
+        if self.instance and not snapshot_fields.intersection(attrs):
+            return attrs
+        request = self.context.get("request")
+        profile = getattr(getattr(request, "user", None), "student_profile", None)
+        profile_values = {
+            "full_name": request.user.get_full_name() if request and profile else "",
+            "father_name": getattr(profile, "father_name", ""),
+            "date_of_birth": getattr(profile, "date_of_birth", None),
+            "phone": getattr(profile, "phone", ""),
+            "school_name": getattr(profile, "school_name", ""),
+            "class_name": getattr(profile, "class_name", ""),
+            "address": getattr(profile, "address", ""),
+        }
+        values = {
+            field: attrs.get(field, getattr(self.instance, field, profile_values[field]))
+            for field in ["full_name", "father_name", "date_of_birth", "phone", "school_name", "class_name", "address"]
+        }
+        errors = {}
+        labels = {
+            "full_name": "Student name", "father_name": "Father's name", "date_of_birth": "Date of birth",
+            "phone": "Mobile number", "school_name": "School name", "class_name": "Class", "address": "Address",
+        }
+        for field, value in values.items():
+            if value in (None, "") or (isinstance(value, str) and not value.strip()):
+                errors[field] = f"{labels[field]} is required."
+        phone = str(values.get("phone") or "")
+        phone_digits = "".join(character for character in phone if character.isdigit())
+        if phone and not 10 <= len(phone_digits) <= 15:
+            errors["phone"] = "Enter a valid mobile number."
+        class_name = str(values.get("class_name") or "").strip()
+        if class_name and class_name not in {str(number) for number in range(1, 13)}:
+            errors["class_name"] = "Select a class from Class 1 to Class 12."
+        date_of_birth = values.get("date_of_birth")
+        if date_of_birth and date_of_birth > timezone.localdate():
+            errors["date_of_birth"] = "Date of birth cannot be in the future."
+        if errors:
+            raise serializers.ValidationError(errors)
+        return attrs
 
     def get_result(self, obj):
         result = ExamResult.objects.filter(application=obj).first()
@@ -354,6 +402,10 @@ class ApplicationSerializer(serializers.ModelSerializer):
         if obj.exam.fee <= 0:
             return "not_required"
         return "unpaid"
+
+    def get_payment_order_id(self, obj):
+        payment = obj.cashfree_payments.first()
+        return payment.order_id if payment and payment.payment_method == CashfreeExamPayment.Method.CASHFREE else None
 
     def _file_url(self, obj, field):
         stored = getattr(obj, field)
@@ -1167,16 +1219,16 @@ def _cashfree_request(method, path, payload=None):
 def _create_cashfree_payment_order(application, request):
     if application.exam.fee <= 0:
         raise ValueError("No payment is due for this examination.")
+    existing = application.cashfree_payments.filter(status=CashfreeExamPayment.Status.PAID).first()
+    if existing:
+        _finalize_paid_application(application, application.student.user)
+        return {"already_paid": True, "application_id": application.pk}
     if application.status not in {
         ExamApplication.Status.DRAFT,
         ExamApplication.Status.CORRECTION_REQUIRED,
         ExamApplication.Status.RESUBMITTED,
     }:
         raise ValueError("Only an incomplete enrollment can start a payment.")
-    existing = application.cashfree_payments.filter(status=CashfreeExamPayment.Status.PAID).first()
-    if existing:
-        _finalize_paid_application(application, application.student.user)
-        return {"already_paid": True, "application_id": application.pk}
     recent_pending = application.cashfree_payments.filter(
         status=CashfreeExamPayment.Status.PENDING,
         created_at__gte=timezone.now() - timedelta(minutes=25),
@@ -1202,7 +1254,7 @@ def _create_cashfree_payment_order(application, request):
         },
         "order_meta": {
             "return_url": f"{portal_url}/exams/payment/return?application_id={application.pk}&order_id={order_id}",
-            "notify_url": request.build_absolute_uri("/api/v1/cashfree/webhook/"),
+            "notify_url": f"{portal_url}/api/v1/cashfree/webhook/",
         },
         "order_note": f"Exam enrollment {application.pk}",
     })
@@ -1223,8 +1275,13 @@ def _create_cashfree_payment_order(application, request):
 
 
 def _finalize_paid_application(application, user):
+    """Turn a paid draft into a submitted enrollment exactly once.
+
+    Payment has already been accepted at this point, so a later registration-window
+    or capacity change must not strand a paid student's enrollment in Draft.
+    """
     with transaction.atomic():
-        application = ExamApplication.objects.select_for_update().select_related("exam", "exam__session").get(pk=application.pk)
+        application = ExamApplication.objects.select_for_update().select_related("exam", "exam__session", "student").get(pk=application.pk)
         if application.status not in {
             ExamApplication.Status.DRAFT,
             ExamApplication.Status.CORRECTION_REQUIRED,
@@ -1233,20 +1290,13 @@ def _finalize_paid_application(application, user):
             return application
         if not application.cashfree_payments.filter(status=CashfreeExamPayment.Status.PAID).exists():
             raise ValueError("There is no completed payment record for this enrollment yet.")
-        exam = application.exam
-        now = timezone.now()
-        if not exam.is_published or not exam.session or not exam.session.is_active or exam.status != Exam.Status.REGISTRATION_OPEN:
-            raise ValueError("Payment is confirmed, but this exam is no longer accepting enrollments. Contact the examination team.")
-        if not is_student_eligible(exam, application.student):
-            raise ValueError("This examination is not available for the student's class.")
         if not application.full_name or not application.date_of_birth:
             raise ValueError("Full name and date of birth are required before enrollment.")
-        if exam.max_registrations is not None and exam.applications.exclude(status=ExamApplication.Status.DRAFT).count() >= exam.max_registrations:
-            raise ValueError("This exam has reached its application limit. Contact the examination team about your payment.")
+        exam = application.exam
         previous = application.status
         application.application_number = application.application_number or _issue_application_number(exam)
         application.status = ExamApplication.Status.SUBMITTED
-        application.submitted_at = now
+        application.submitted_at = timezone.now()
         application.save(update_fields=["application_number", "status", "submitted_at", "updated_at"])
         ApplicationEvent.objects.create(
             application=application,
@@ -1277,19 +1327,30 @@ def _ensure_no_charge_payment(application):
 
 
 def _confirm_cashfree_order(payment):
+    """Fetch and validate the authoritative Cashfree order state without mutating ours."""
     order = _cashfree_request("GET", f"/orders/{payment.order_id}")
     if order.get("order_id") != payment.order_id:
         raise ValueError("Cashfree order reference did not match.")
     if order.get("order_currency") != payment.currency or Decimal(str(order.get("order_amount", "0"))) != payment.amount:
         raise ValueError("Cashfree order amount did not match the enrollment fee.")
-    if order.get("order_status") == "PAID":
+    return order if order.get("order_status") == "PAID" else None
+
+
+def _record_paid_cashfree_order(payment, user, cf_payment_id=""):
+    """Persist the gateway payment and submitted enrollment as one atomic operation."""
+    with transaction.atomic():
+        payment = CashfreeExamPayment.objects.select_for_update().select_related(
+            "application__student__user", "application__exam__session",
+        ).get(pk=payment.pk)
         payment.status = CashfreeExamPayment.Status.PAID
         payment.paid_at = payment.paid_at or timezone.now()
-        payment.save(update_fields=["status", "paid_at", "updated_at"])
+        if cf_payment_id:
+            payment.cf_payment_id = str(cf_payment_id)
+        payment.save(update_fields=["status", "paid_at", "cf_payment_id", "updated_at"])
+        application = _finalize_paid_application(payment.application, user)
         if not payment.payment_confirmation_email_sent_at:
             transaction.on_commit(lambda payment_id=payment.pk: _queue_payment_confirmation_email(payment_id))
-        return True
-    return False
+        return payment, application
 
 
 def _queue_payment_confirmation_email(payment_id):
@@ -1340,18 +1401,26 @@ class CashfreePaymentVerifyView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        order_id = request.data.get("order_id", "")
+        order_id = str(request.data.get("order_id", "")).strip()
+        if not order_id:
+            return Response({"detail": "A payment order ID is required."}, status=status.HTTP_400_BAD_REQUEST)
         profile, _ = StudentProfile.objects.get_or_create(user=request.user)
         payment = get_object_or_404(CashfreeExamPayment.objects.select_related("application"), order_id=order_id, application__student=profile)
         try:
-            paid = _confirm_cashfree_order(payment)
+            order = _confirm_cashfree_order(payment)
+            paid = bool(order)
             if paid:
-                _finalize_paid_application(payment.application, request.user)
+                payment, application = _record_paid_cashfree_order(payment, request.user)
+            else:
+                application = payment.application
         except RuntimeError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
-        application = ExamApplication.objects.select_related("exam", "exam__session", "student").get(pk=payment.application_id)
+        except Exception:
+            logger.exception("Cashfree verification failed for order %s", order_id)
+            return Response({"detail": "Payment is received but enrollment confirmation is temporarily unavailable. Please check again shortly; do not pay again."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        application = ExamApplication.objects.select_related("exam", "exam__session", "student").get(pk=application.pk)
         return Response({
             "paid": paid,
             "application": ApplicationSerializer(application, context={"request": request}).data,
@@ -1365,10 +1434,14 @@ class CashfreeWebhookView(APIView):
     def post(self, request):
         signature = request.headers.get("x-webhook-signature", "")
         timestamp = request.headers.get("x-webhook-timestamp", "")
-        secret = settings.CASHFREE_SECRET_KEY.encode("utf-8")
+        secret_value = settings.CASHFREE_SECRET_KEY
+        if not secret_value:
+            logger.error("Cashfree webhook received but CASHFREE_SECRET_KEY is not configured")
+            return Response({"detail": "Cashfree webhook is not configured."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        secret = secret_value.encode("utf-8")
         raw_body = request._request.body
         expected = base64.b64encode(hmac.new(secret, timestamp.encode("utf-8") + raw_body, hashlib.sha256).digest()).decode("ascii")
-        if not secret or not signature or not timestamp or not hmac.compare_digest(expected, signature):
+        if not signature or not timestamp or not hmac.compare_digest(expected, signature):
             return Response({"detail": "Invalid webhook signature."}, status=status.HTTP_400_BAD_REQUEST)
         try:
             payload = json.loads(raw_body.decode("utf-8"))
@@ -1377,13 +1450,15 @@ class CashfreeWebhookView(APIView):
         except (ValueError, KeyError, TypeError, CashfreeExamPayment.DoesNotExist):
             return Response({"detail": "Unknown or invalid Cashfree order."}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            paid = _confirm_cashfree_order(payment)
+            order = _confirm_cashfree_order(payment)
+            paid = bool(order)
             payment_data = payload.get("data", {}).get("payment", {})
             if paid:
-                if payment_data.get("cf_payment_id"):
-                    payment.cf_payment_id = str(payment_data["cf_payment_id"])
-                    payment.save(update_fields=["cf_payment_id", "updated_at"])
-                _finalize_paid_application(payment.application, payment.application.student.user)
+                _record_paid_cashfree_order(
+                    payment,
+                    payment.application.student.user,
+                    payment_data.get("cf_payment_id", ""),
+                )
             elif not paid and payment.status == CashfreeExamPayment.Status.PENDING:
                 status_map = {
                     "FAILED": CashfreeExamPayment.Status.FAILED,
@@ -1395,6 +1470,9 @@ class CashfreeWebhookView(APIView):
                     payment.save(update_fields=["status", "updated_at"])
         except (RuntimeError, ValueError) as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+        except Exception:
+            logger.exception("Cashfree webhook processing failed for order %s", order_id)
+            return Response({"detail": "Webhook could not be processed."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response({"received": True})
 
 
@@ -1514,19 +1592,6 @@ class QuickApplyView(APIView):
                 application.email = request.user.email
                 application.save()
 
-            existing_types = set(application.documents.values_list("document_type", flat=True))
-            for doc_type, profile_field in (("photo", "photo"), ("signature", "signature")):
-                if doc_type in existing_types:
-                    continue
-                source = getattr(profile, profile_field)
-                suffix = Path(source.name).suffix or ".jpg"
-                source.open("rb")
-                try:
-                    copied = ContentFile(source.read(), name=f"student-{profile.pk}-{doc_type}{suffix}")
-                finally:
-                    source.close()
-                ApplicationDocument.objects.create(application=application, document_type=doc_type, file=copied)
-
             if exam.fee > 0:
                 return Response(ApplicationSerializer(application, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
@@ -1544,18 +1609,16 @@ class QuickApplyView(APIView):
         return Response(ApplicationSerializer(application, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
 
-class MyApplicationDocumentView(generics.CreateAPIView):
+class MyApplicationDocumentView(APIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
-    serializer_class = ApplicationDocumentSerializer
     parser_classes = [MultiPartParser, FormParser]
 
-    def perform_create(self, serializer):
-        profile, _ = StudentProfile.objects.get_or_create(user=self.request.user)
-        application = ExamApplication.objects.get(pk=self.kwargs["pk"], student=profile)
-        if application.status not in [ExamApplication.Status.DRAFT, ExamApplication.Status.CORRECTION_REQUIRED, ExamApplication.Status.RESUBMITTED]:
-            raise serializers.ValidationError("Documents cannot be changed after approval or rejection.")
-        serializer.save(application=application)
+    def post(self, request, pk):
+        return Response(
+            {"detail": "Exam applications use the photo and signature saved in the student profile. No identity document is required."},
+            status=status.HTTP_410_GONE,
+        )
 
 
 class StaffSessionListCreateView(generics.ListCreateAPIView):

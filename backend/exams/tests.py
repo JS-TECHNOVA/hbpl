@@ -125,7 +125,7 @@ class ExaminationWorkflowTests(APITestCase):
         self.assertFalse(serializer.is_valid())
         self.assertIn("file", serializer.errors)
 
-    def test_quick_apply_enrolls_from_one_time_profile_and_copies_documents(self):
+    def test_quick_apply_enrolls_from_one_time_profile_without_application_documents(self):
         user = User.objects.create_user(
             "student@example.com", email="student@example.com", password="ValidPass123!",
             first_name="Asha", last_name="Kumar",
@@ -148,7 +148,7 @@ class ExaminationWorkflowTests(APITestCase):
             application = ExamApplication.objects.get(exam=self.exam, student=profile)
             self.assertEqual(application.status, ExamApplication.Status.SUBMITTED)
             self.assertEqual(application.full_name, "Asha Kumar")
-            self.assertEqual(set(application.documents.values_list("document_type", flat=True)), {"photo", "signature"})
+            self.assertFalse(application.documents.exists())
             self.assertTrue(application.application_number)
             self.assertEqual(response.data["payment_status"], CashfreeExamPayment.Status.PAID)
             payment = application.cashfree_payments.get()
