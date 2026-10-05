@@ -142,9 +142,6 @@ class ExamSettingsAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         return not ExamSettings.objects.exists()
 
-    def has_delete_permission(self, request, obj=None):
-        return False
-
     def get_urls(self):
         urls = super().get_urls()
         custom_urls = [

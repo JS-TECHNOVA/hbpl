@@ -44,7 +44,6 @@ class StudentProfileAdmin(admin.ModelAdmin):
 class CashfreeExamPaymentInline(admin.TabularInline):
     model = CashfreeExamPayment
     extra = 0
-    can_delete = False
     fields = ["order_id", "amount", "currency", "status", "cf_payment_id", "paid_at", "created_at"]
     readonly_fields = fields
 
@@ -97,10 +96,6 @@ class CashfreeExamPaymentAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
-
 
 @admin.register(StudentEmailVerification)
 class StudentEmailVerificationAdmin(admin.ModelAdmin):

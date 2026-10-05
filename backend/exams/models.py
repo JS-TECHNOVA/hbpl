@@ -99,7 +99,7 @@ class Exam(models.Model):
         ExaminationSession,
         null=True,
         blank=True,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="exams",
     )
     centres = models.ManyToManyField("ExamCentre", blank=True, related_name="exams")
@@ -237,8 +237,8 @@ class ExamApplication(models.Model):
         REJECTED = "rejected", "Rejected"
         WITHDRAWN = "withdrawn", "Withdrawn"
 
-    exam = models.ForeignKey(Exam, on_delete=models.PROTECT, related_name="applications")
-    student = models.ForeignKey(StudentProfile, on_delete=models.PROTECT, related_name="applications")
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name="applications")
+    student = models.ForeignKey(StudentProfile, on_delete=models.CASCADE, related_name="applications")
     centre = models.ForeignKey(ExamCentre, null=True, blank=True, on_delete=models.SET_NULL, related_name="applications")
     application_number = models.CharField(max_length=80, unique=True, null=True, blank=True)
     status = models.CharField(max_length=30, choices=Status.choices, default=Status.DRAFT)

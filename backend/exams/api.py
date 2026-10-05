@@ -1281,7 +1281,9 @@ def _finalize_paid_application(application, user):
     or capacity change must not strand a paid student's enrollment in Draft.
     """
     with transaction.atomic():
-        application = ExamApplication.objects.select_for_update().select_related("exam", "exam__session", "student").get(pk=application.pk)
+        # Do not join the nullable exam.session relation in a FOR UPDATE query;
+        # PostgreSQL cannot lock the nullable side of that outer join.
+        application = ExamApplication.objects.select_for_update().get(pk=application.pk)
         if application.status not in {
             ExamApplication.Status.DRAFT,
             ExamApplication.Status.CORRECTION_REQUIRED,

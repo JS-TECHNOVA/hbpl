@@ -482,6 +482,25 @@ class ExaminationWorkflowTests(APITestCase):
         self.assertEqual(application.status, ExamApplication.Status.SUBMITTED)
         self.assertEqual(application.cashfree_payments.get().status, CashfreeExamPayment.Status.PAID)
 
+    def test_deleting_an_exam_removes_its_enrollments_and_payments(self):
+        student = User.objects.create_user("delete-exam-student@example.com")
+        application = ExamApplication.objects.create(
+            exam=self.exam,
+            student=StudentProfile.objects.create(user=student),
+            full_name="Delete Test Student",
+        )
+        payment = CashfreeExamPayment.objects.create(
+            application=application,
+            order_id="delete-exam-payment",
+            payment_session_id="test-session",
+            amount="1.00",
+        )
+
+        self.exam.delete()
+
+        self.assertFalse(ExamApplication.objects.filter(pk=application.pk).exists())
+        self.assertFalse(CashfreeExamPayment.objects.filter(pk=payment.pk).exists())
+
     @override_settings(CASHFREE_SECRET_KEY="test-webhook-secret")
     def test_cashfree_webhook_requires_a_valid_signature_and_confirms_payment(self):
         student = User.objects.create_user("webhook-student@example.com", email="webhook-student@example.com")
