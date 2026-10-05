@@ -1339,9 +1339,9 @@ def _confirm_cashfree_order(payment):
 def _record_paid_cashfree_order(payment, user, cf_payment_id=""):
     """Persist the gateway payment and submitted enrollment as one atomic operation."""
     with transaction.atomic():
-        payment = CashfreeExamPayment.objects.select_for_update().select_related(
-            "application__student__user", "application__exam__session",
-        ).get(pk=payment.pk)
+        # Lock only the payment row. Joining the nullable exam.session relation
+        # makes PostgreSQL reject SELECT ... FOR UPDATE on the outer-join side.
+        payment = CashfreeExamPayment.objects.select_for_update().get(pk=payment.pk)
         payment.status = CashfreeExamPayment.Status.PAID
         payment.paid_at = payment.paid_at or timezone.now()
         if cf_payment_id:
