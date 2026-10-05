@@ -30,6 +30,7 @@ def registration_data(email):
         "email": email,
         "password": "ValidPass123!",
         "full_name": "Test Student",
+        "gender": "female",
         "date_of_birth": "2010-01-01",
         "class_name": "10",
         "address": "12 Main Road",
@@ -347,8 +348,10 @@ class ExaminationWorkflowTests(APITestCase):
             register = self.client.post("/api/v1/auth/register/", registration_data("student@example.com"), format="multipart")
         self.assertEqual(register.status_code, 201)
         self.assertNotIn("token", register.data)
+        self.assertEqual(register.data["user"]["gender"], "female")
         profile = StudentProfile.objects.get(user__email="student@example.com")
         self.assertEqual(profile.class_name, "10")
+        self.assertEqual(profile.gender, "female")
         self.assertEqual(profile.school_name, "Central School")
         self.assertEqual(profile.father_name, "Test Father")
         self.assertEqual(profile.mother_name, "Test Mother")

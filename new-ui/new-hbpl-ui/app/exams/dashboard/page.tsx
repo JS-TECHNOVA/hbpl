@@ -12,7 +12,7 @@ import {
 import { openCashfreeCheckout } from "@/src/lib/cashfree-checkout";
 
 type DashboardSection = "overview" | "profile" | "exams" | "enrollments" | "results";
-type ProfileForm = Pick<StudentAccount, "full_name" | "class_name" | "phone" | "father_name" | "mother_name" | "date_of_birth" | "school_name" | "address">;
+type ProfileForm = Pick<StudentAccount, "full_name" | "gender" | "class_name" | "phone" | "father_name" | "mother_name" | "date_of_birth" | "school_name" | "address">;
 const classOptions = Array.from({ length: 12 }, (_, index) => String(index + 1));
 
 const navItems: { id: DashboardSection; label: string; marker: string }[] = [
@@ -28,7 +28,7 @@ const labelClass = "block text-[10px] font-bold uppercase tracking-wide text-[#7
 
 export default function StudentDashboardPage() {
   const [profile, setProfile] = useState<StudentAccount | null>(null);
-  const [profileForm, setProfileForm] = useState<ProfileForm>({ full_name: "", class_name: "", phone: "", father_name: "", mother_name: "", date_of_birth: "", school_name: "", address: "" });
+  const [profileForm, setProfileForm] = useState<ProfileForm>({ full_name: "", gender: "", class_name: "", phone: "", father_name: "", mother_name: "", date_of_birth: "", school_name: "", address: "" });
   const [photo, setPhoto] = useState<File | null>(null);
   const [signature, setSignature] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState("");
@@ -55,7 +55,7 @@ export default function StudentDashboardPage() {
       fetchApplicationHistory(studentToken), fetchMyResults(studentToken), fetchSchoolSuggestions(),
     ]).then(([student, availableSessions, eligible, history, studentResults, schoolSuggestions]) => {
       setProfile(student);
-      setProfileForm({ full_name: student.full_name, class_name: student.class_name, phone: student.phone, father_name: student.father_name, mother_name: student.mother_name, date_of_birth: student.date_of_birth ?? "", school_name: student.school_name, address: student.address });
+      setProfileForm({ full_name: student.full_name, gender: student.gender ?? "", class_name: student.class_name, phone: student.phone, father_name: student.father_name, mother_name: student.mother_name, date_of_birth: student.date_of_birth ?? "", school_name: student.school_name, address: student.address });
       setPhotoPreview(student.photo_url ?? "");
       setSignaturePreview(student.signature_url ?? "");
       const query = new URLSearchParams(window.location.search);
@@ -83,7 +83,7 @@ export default function StudentDashboardPage() {
     setSaving(true); setNotice(""); setError("");
     try {
       const returnTo = new URLSearchParams(window.location.search).get("return_to") ?? "";
-      if (returnTo.startsWith("/exams/") && (!profileForm.full_name.trim() || !profileForm.phone || !profileForm.date_of_birth || !profileForm.father_name || !profileForm.school_name || !profileForm.class_name || !profileForm.address || (!photo && !profile?.photo_url) || (!signature && !profile?.signature_url))) {
+      if (returnTo.startsWith("/exams/") && (!profileForm.full_name.trim() || !profileForm.gender || !profileForm.phone || !profileForm.date_of_birth || !profileForm.father_name || !profileForm.school_name || !profileForm.class_name || !profileForm.address || (!photo && !profile?.photo_url) || (!signature && !profile?.signature_url))) {
         throw new Error("Complete the required profile details, photo, and signature before continuing to apply.");
       }
       const updated = await updateStudentProfile(studentToken, profileForm, photo, signature);
@@ -157,6 +157,7 @@ export default function StudentDashboardPage() {
           <div className="grid gap-x-5 gap-y-4 p-5 sm:grid-cols-2 sm:p-7">
             <label className={labelClass}>Student name<input required value={profileForm.full_name} onChange={(event) => setProfileField("full_name", event.target.value)} className={inputClass} autoComplete="name"/></label>
             <label className={labelClass}>Class<select required value={profileForm.class_name} onChange={(event) => setProfileField("class_name", event.target.value)} className={inputClass}><option value="" disabled>Select your class</option>{profileForm.class_name && !classOptions.includes(profileForm.class_name) && <option value={profileForm.class_name}>{profileForm.class_name}</option>}{classOptions.map((className) => <option key={className} value={className}>Class {className}</option>)}</select></label>
+            <label className={labelClass}>Gender<select required value={profileForm.gender} onChange={(event) => setProfileField("gender", event.target.value)} className={inputClass}><option value="" disabled>Select gender</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option><option value="prefer_not_to_say">Prefer not to say</option></select></label>
             <label className={labelClass}>Phone number<input required value={profileForm.phone} onChange={(event) => setProfileField("phone", event.target.value)} className={inputClass} autoComplete="tel"/></label>
             <label className={labelClass}>Date of birth<input required type="date" value={profileForm.date_of_birth ?? ""} onChange={(event) => setProfileField("date_of_birth", event.target.value)} className={inputClass}/></label>
             <label className={labelClass}>School name<input required list="profile-school-suggestions" value={profileForm.school_name} onChange={(event) => setProfileField("school_name", event.target.value)} className={inputClass} autoComplete="organization"/><datalist id="profile-school-suggestions">{schools.map((school) => <option key={school.id} value={school.name}/>)}</datalist></label>

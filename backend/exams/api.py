@@ -243,7 +243,7 @@ class StudentProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudentProfile
         fields = [
-            "id", "username", "email", "full_name", "phone", "date_of_birth", "father_name", "mother_name",
+            "id", "username", "email", "full_name", "gender", "phone", "date_of_birth", "father_name", "mother_name",
             "school_name", "class_name", "address", "photo", "photo_url", "signature", "signature_url", "email_verified",
         ]
         read_only_fields = ["id", "username", "email", "email_verified", "full_name", "photo_url", "signature_url"]
@@ -522,6 +522,7 @@ class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(min_length=8, write_only=True)
     full_name = serializers.CharField(max_length=200)
+    gender = serializers.ChoiceField(choices=StudentProfile.Gender.choices)
     phone = serializers.CharField(max_length=30)
     date_of_birth = serializers.DateField()
     father_name = serializers.CharField(max_length=200)
@@ -552,7 +553,7 @@ class RegisterSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         profile_fields = (
-            "phone", "date_of_birth", "father_name", "mother_name", "school_name",
+            "gender", "phone", "date_of_birth", "father_name", "mother_name", "school_name",
             "class_name", "address", "photo", "signature",
         )
         profile_data = {field: validated_data.pop(field) for field in profile_fields}

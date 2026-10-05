@@ -12,6 +12,7 @@ const classOptions = Array.from({ length: 12 }, (_, index) => String(index + 1))
 type PersonalDetails = {
   full_name: string;
   email: string;
+  gender: string;
   date_of_birth: string;
   class_name: string;
   address: string;
@@ -32,7 +33,7 @@ function StudentAccountRegisterContent() {
   const next = requestedNext.startsWith("/exams/") && !requestedNext.startsWith("//") ? requestedNext : "";
   const authQuery = next ? `?next=${encodeURIComponent(next)}` : exam ? `?exam=${encodeURIComponent(exam)}` : "";
   const [details, setDetails] = useState<PersonalDetails>({
-    full_name: "", email: "", date_of_birth: "", class_name: "", address: "", school_name: "",
+    full_name: "", email: "", gender: "", date_of_birth: "", class_name: "", address: "", school_name: "",
     father_name: "", mother_name: "", phone: "",
   });
   const [schools, setSchools] = useState<SchoolSuggestion[]>([]);
@@ -121,6 +122,7 @@ function StudentAccountRegisterContent() {
               <label className={labelCls}>Student name<input required maxLength={200} autoComplete="name" value={details.full_name} onChange={(event) => setField("full_name", event.target.value)} className={`${inputCls} mt-1.5 normal-case tracking-normal`} /></label>
               <label className={labelCls}>Email address<input required type="email" autoComplete="email" value={details.email} onChange={(event) => setField("email", event.target.value)} className={`${inputCls} mt-1.5 normal-case tracking-normal`} /></label>
               <label className={labelCls}>Date of birth<input required type="date" autoComplete="bday" value={details.date_of_birth} onChange={(event) => setField("date_of_birth", event.target.value)} className={`${inputCls} mt-1.5 normal-case tracking-normal`} /></label>
+              <label className={labelCls}>Gender<select required value={details.gender} onChange={(event) => setField("gender", event.target.value)} className={`${inputCls} mt-1.5 normal-case tracking-normal`}><option value="" disabled>Select gender</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option><option value="prefer_not_to_say">Prefer not to say</option></select></label>
               <label className={labelCls}>Class<select required value={details.class_name} onChange={(event) => setField("class_name", event.target.value)} className={`${inputCls} mt-1.5 normal-case tracking-normal`}><option value="" disabled>Select your class</option>{classOptions.map((className) => <option key={className} value={className}>Class {className}</option>)}</select></label>
               <label className={labelCls}>School name<input required list="registration-school-suggestions" autoComplete="organization" value={details.school_name} onChange={(event) => setField("school_name", event.target.value)} className={`${inputCls} mt-1.5 normal-case tracking-normal`} /><datalist id="registration-school-suggestions">{schools.map((school) => <option key={school.id} value={school.name} />)}</datalist></label>
               <label className={labelCls}>Phone number<input required type="tel" inputMode="tel" autoComplete="tel" value={details.phone} onChange={(event) => setField("phone", event.target.value)} className={`${inputCls} mt-1.5 normal-case tracking-normal`} /></label>

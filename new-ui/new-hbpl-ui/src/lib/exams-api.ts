@@ -77,6 +77,7 @@ export interface StudentAccount {
   username: string;
   email: string;
   full_name: string;
+  gender: string;
   phone: string;
   date_of_birth: string | null;
   father_name: string;
@@ -442,7 +443,7 @@ export async function quickApplyStudent(studentToken: string, examId: number): P
 }
 
 export async function registerStudentAccount(data: {
-  email: string; password: string; full_name: string; phone: string; date_of_birth: string;
+  email: string; password: string; full_name: string; gender: string; phone: string; date_of_birth: string;
   father_name: string; mother_name: string; school_name: string; class_name: string; address: string;
   photo: File; signature: File;
 }): Promise<{ detail: string; user: StudentAccount }> {

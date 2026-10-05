@@ -58,7 +58,7 @@ export default function PublicExamDetailPage() {
     setProgress("preparing");
     try {
       const profile = await fetchStudentProfile(token);
-      const complete = Boolean(profile.full_name.trim() && profile.phone && profile.date_of_birth && profile.father_name && profile.school_name && profile.class_name && profile.address && profile.photo_url && profile.signature_url);
+      const complete = Boolean(profile.full_name.trim() && profile.gender && profile.phone && profile.date_of_birth && profile.father_name && profile.school_name && profile.class_name && profile.address && profile.photo_url && profile.signature_url);
       if (!complete) {
         window.location.href = `/exams/dashboard?section=profile&return_to=${encodeURIComponent(returnPath)}`;
         return;

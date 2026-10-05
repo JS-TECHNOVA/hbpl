@@ -173,8 +173,15 @@ class School(models.Model):
 
 
 class StudentProfile(models.Model):
+    class Gender(models.TextChoices):
+        MALE = "male", "Male"
+        FEMALE = "female", "Female"
+        OTHER = "other", "Other"
+        PREFER_NOT_TO_SAY = "prefer_not_to_say", "Prefer not to say"
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="student_profile")
     email_verified = models.BooleanField(default=False)
+    gender = models.CharField(max_length=24, choices=Gender.choices, blank=True, default="")
     phone = models.CharField(max_length=30, blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
     father_name = models.CharField(max_length=200, blank=True)
