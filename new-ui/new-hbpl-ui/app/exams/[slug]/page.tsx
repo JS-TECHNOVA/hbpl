@@ -1,23 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import ExamDescriptionRenderer, { parseExamDescription } from "@/src/components/ExamDescriptionRenderer";
-import { createCashfreePaymentOrder, fetchPublicExam, fetchStudentProfile, ManagedExam, normalizeAllowedClasses, quickApplyStudent } from "@/src/lib/exams-api";
-import { openCashfreeCheckout } from "@/src/lib/cashfree-checkout";
+import { fetchPublicExam, ManagedExam, normalizeAllowedClasses } from "@/src/lib/exams-api";
 
 export default function PublicExamDetailPage() {
+  return <Suspense fallback={<div className="min-h-screen bg-[#f4f3ee]" />}><PublicExamDetailContent /></Suspense>;
+}
+
+function PublicExamDetailContent() {
   const params = useParams<{ slug: string }>();
+  const searchParams = useSearchParams();
   const slug = params.slug;
   const [exam, setExam] = useState<ManagedExam | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [applying, setApplying] = useState(false);
-  const [progress, setProgress] = useState<"idle" | "preparing" | "checkout" | "success">("idle");
-  const [successApplicationNumber, setSuccessApplicationNumber] = useState("");
-  const [applicationNotice, setApplicationNotice] = useState("");
-  const [applicationError, setApplicationError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -45,51 +44,19 @@ export default function PublicExamDetailPage() {
     { label: "Results expected", value: formatDate(exam.result_date) },
   ];
   const remainingSeats = exam.max_registrations === null ? null : Math.max(0, exam.max_registrations - exam.application_count);
+  const needsApplicationConfirmation = searchParams.get("apply") === "1";
 
-  async function applyNow() {
-    setApplicationError(""); setApplicationNotice("");
+  function applyNow() {
     const token = localStorage.getItem("student_token") ?? "";
-    const returnPath = `/exams/${currentExam.slug}`;
+    const returnPath = `/exams/${currentExam.slug}?apply=1`;
     if (!token) {
       window.location.href = `/exams/login?next=${encodeURIComponent(returnPath)}`;
       return;
     }
-    setApplying(true);
-    setProgress("preparing");
-    try {
-      const profile = await fetchStudentProfile(token);
-      const complete = Boolean(profile.full_name.trim() && profile.gender && profile.phone && profile.date_of_birth && profile.father_name && profile.school_name && profile.class_name && profile.address && profile.photo_url && profile.signature_url);
-      if (!complete) {
-        window.location.href = `/exams/dashboard?section=profile&return_to=${encodeURIComponent(returnPath)}`;
-        return;
-      }
-      const application = await quickApplyStudent(token, currentExam.id);
-      if (application.status !== "draft") {
-        setApplicationNotice(`You are already enrolled. Application number: ${application.application_number ?? "pending"}.`);
-        setSuccessApplicationNumber(application.application_number ?? "");
-        setProgress("success");
-        return;
-      }
-      if (Number(currentExam.fee) > 0) {
-        const order = await createCashfreePaymentOrder(token, application.id);
-        if (order.already_paid) {
-          window.location.href = "/exams/dashboard?section=enrollments";
-          return;
-        }
-        setProgress("checkout");
-        await openCashfreeCheckout(order);
-        setProgress("idle");
-        setApplicationError("Checkout closed before confirmation. You can resume payment from your student dashboard.");
-        return;
-      }
-      setApplicationNotice(`You’re enrolled. Application number: ${application.application_number ?? "pending"}.`);
-      setSuccessApplicationNumber(application.application_number ?? "");
-      setProgress("success");
-    } catch (err) {
-      setProgress("idle");
-      setApplicationError(err instanceof Error ? err.message : "Unable to submit your enrollment.");
-    } finally { setApplying(false); }
+    window.location.href = `/exams/register?exam=${encodeURIComponent(String(currentExam.id))}`;
   }
+
+  if (needsApplicationConfirmation) return <main className="grid min-h-screen place-items-center bg-[#f4f3ee] px-5 py-10 text-[#172438]"><section className="w-full max-w-xl overflow-hidden rounded-3xl border border-[#e3e2dc] bg-white shadow-[0_18px_55px_rgba(23,36,56,.07)]"><div className="bg-[#172438] px-7 py-8 text-white sm:px-9"><p className="text-[10px] font-bold uppercase tracking-[.2em] text-[#dfb75f]">Account ready</p><h1 className="mt-2 font-heading text-[30px] font-extrabold tracking-tight">Continue your application</h1><p className="mt-3 text-[13px] leading-6 text-white/65">Your student account has been created. Your enrollment has not been submitted yet.</p></div><div className="px-7 py-7 sm:px-9"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-[#9b6d20]">Selected examination</p><h2 className="mt-2 font-heading text-[20px] font-extrabold">{currentExam.name}</h2><p className="mt-2 text-[12px] leading-6 text-[#687486]">Review your prefilled details, complete the confirmation form, then submit or pay securely to finish your enrollment.</p><button type="button" onClick={applyNow} className="mt-6 w-full rounded-xl bg-[#a36d17] px-5 py-3.5 text-[12px] font-extrabold text-white transition hover:bg-[#8c5b10]">Continue to enrollment form →</button><Link href={`/exams/${encodeURIComponent(currentExam.slug)}`} className="mt-4 block text-center text-[11px] font-bold text-[#687486] hover:text-[#172438]">Back to examination details</Link></div></section></main>;
 
   return <div className="min-h-screen bg-[#f4f3ee] text-[#172438]">
     <section className="relative isolate overflow-hidden bg-[#172438] text-white">
@@ -108,19 +75,11 @@ export default function PublicExamDetailPage() {
         <section className="grid gap-4 sm:grid-cols-2"><InfoCard label="Who can apply" value={allowedClasses.length ? allowedClasses.join(", ") : "Open to all classes"} detail={allowedClasses.length ? "Eligible classes" : "No class restriction specified"}/><InfoCard label="Applications" value={exam.max_registrations ? `${exam.application_count} of ${exam.max_registrations}` : `${exam.application_count} received`} detail={remainingSeats === null ? "Applications received" : `${remainingSeats} places remaining`}/></section>
       </div>
 
-        <aside className="space-y-4 lg:sticky lg:top-6"><section className="overflow-hidden rounded-2xl border border-[#e2e1da] bg-white"><div className="bg-[#ebe9e1] px-5 py-4"><p className="text-[9px] font-bold uppercase tracking-[.16em] text-[#8c5b10]">Application window</p><p className="mt-1 font-heading text-[16px] font-extrabold">{registrationOpen ? "Applications are open" : statusText(exam.status)}</p></div><div className="space-y-3 p-5"><DateLine label="Opens" value={formatDate(exam.registration_start, true)}/><DateLine label="Closes" value={formatDate(exam.registration_end, true)}/><DateLine label="Exam day" value={formatDate(exam.exam_date)}/><div className="border-t border-[#efeee9] pt-4">{registrationOpen ? <button type="button" onClick={applyNow} disabled={applying || Boolean(applicationNotice)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#a36d17] px-4 py-3.5 text-[12px] font-extrabold text-white transition hover:bg-[#8c5b10] disabled:cursor-wait disabled:opacity-70">{applying ? "Checking your profile…" : applicationNotice ? "Application submitted" : "Apply now →"}</button> : <button type="button" disabled className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-[#e6e5e0] px-4 py-3.5 text-[12px] font-extrabold text-[#8b9198]">{exam.status === "registration_closed" ? "Registration closed" : "Applications not open"}</button>}{applicationNotice && <p role="status" className="mt-3 rounded-lg bg-emerald-50 p-3 text-[10px] leading-5 text-emerald-800">{applicationNotice} <Link href="/exams/dashboard" className="font-bold underline">View enrollments</Link></p>}{applicationError && <p role="alert" className="mt-3 rounded-lg bg-red-50 p-3 text-[10px] leading-5 text-red-700">{applicationError}</p>}<p className="mt-3 text-center text-[9px] leading-4 text-[#89929c]">Sign in or create your student account to apply. Your profile and documents are saved once and reused for future exams.</p></div></div></section>
+        <aside className="space-y-4 lg:sticky lg:top-6"><section className="overflow-hidden rounded-2xl border border-[#e2e1da] bg-white"><div className="bg-[#ebe9e1] px-5 py-4"><p className="text-[9px] font-bold uppercase tracking-[.16em] text-[#8c5b10]">Application window</p><p className="mt-1 font-heading text-[16px] font-extrabold">{registrationOpen ? "Applications are open" : statusText(exam.status)}</p></div><div className="space-y-3 p-5"><DateLine label="Opens" value={formatDate(exam.registration_start, true)}/><DateLine label="Closes" value={formatDate(exam.registration_end, true)}/><DateLine label="Exam day" value={formatDate(exam.exam_date)}/><div className="border-t border-[#efeee9] pt-4">{registrationOpen ? <button type="button" onClick={applyNow} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#a36d17] px-4 py-3.5 text-[12px] font-extrabold text-white transition hover:bg-[#8c5b10]">Apply now →</button> : <button type="button" disabled className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-[#e6e5e0] px-4 py-3.5 text-[12px] font-extrabold text-[#8b9198]">{exam.status === "registration_closed" ? "Registration closed" : "Applications not open"}</button>}<p className="mt-3 text-center text-[9px] leading-4 text-[#89929c]">Sign in or create your student account to apply. You will review your enrollment details before submitting or paying.</p></div></div></section>
         <section className="rounded-2xl bg-[#1b2b43] p-5 text-white"><p className="text-[9px] font-bold uppercase tracking-[.16em] text-[#dfb75f]">Your student account</p><h2 className="mt-2 font-heading text-[14px] font-bold">One account for every session</h2><p className="mt-2 text-[10px] leading-5 text-white/60">Track this application, your exam centre, admit card, and result from your dashboard.</p><Link href="/exams/dashboard" className="mt-4 inline-flex text-[10px] font-bold text-[#dfb75f] hover:underline">Go to student dashboard →</Link></section>
       </aside>
     </main>
     {exam.sample_papers && exam.sample_papers.length > 0 && <section className="mx-auto max-w-7xl px-5 pb-10 sm:px-8 sm:pb-12"><div className="rounded-2xl border border-[#e2e1da] bg-white p-5 sm:p-7"><div className="mb-4 border-b border-[#efeee9] pb-4"><p className="text-[9px] font-bold uppercase tracking-[.16em] text-[#9b6d20]">Preparation material</p><h2 className="mt-1 font-heading text-[19px] font-extrabold">Sample papers</h2><p className="mt-1 text-[11px] text-[#778293]">Practice with papers shared for this examination.</p></div><ul className="divide-y divide-[#efeee9]">{exam.sample_papers.map((paper) => <li key={paper.id} className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-1 last:pb-1"><div className="flex min-w-0 items-start gap-3"><span aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#f7f1e5] text-[10px] font-extrabold tracking-wide text-[#8c5b10]">PDF</span><div className="min-w-0"><h3 className="text-[12px] font-bold text-[#344258]">{paper.title}</h3>{paper.caption && <p className="mt-1 whitespace-pre-wrap text-[10px] leading-5 text-[#778293]">{paper.caption}</p>}</div></div>{paper.file_url && <a href={paper.file_url} target="_blank" rel="noreferrer" className="shrink-0 rounded-lg border border-[#d8e1ec] bg-[#f7f9fb] px-3 py-2.5 text-[10px] font-bold text-[#315b82] transition hover:bg-[#edf3f8]">View paper <span aria-hidden="true">↗</span></a>}</li>)}</ul></div></section>}
-    {progress !== "idle" && <div className="fixed inset-0 z-[100] grid place-items-center bg-[#101c2e]/70 px-4 py-8 backdrop-blur-sm" role="presentation"><section role="dialog" aria-modal="true" aria-labelledby="application-progress-title" className="w-full max-w-md rounded-3xl border border-[#e8e5dc] bg-[#fffefa] p-7 text-center shadow-2xl sm:p-9">
-      {progress === "success" ? <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-emerald-100 text-3xl font-bold text-emerald-700" aria-hidden="true">✓</div> : <div className="mx-auto h-12 w-12 animate-spin rounded-full border-[3px] border-[#e6dfd0] border-t-[#a36d17]" aria-hidden="true" />}
-      <p className="mt-5 text-[9px] font-bold uppercase tracking-[.18em] text-[#9b6d20]">HBPL · Examination entry</p>
-      <h2 id="application-progress-title" className="mt-2 font-heading text-[22px] font-extrabold text-[#172438]">{progress === "success" ? "Your seat is confirmed" : progress === "checkout" ? "Opening secure payment" : "Preparing your application"}</h2>
-      <p className="mt-2 text-[12px] leading-6 text-[#687486]">{progress === "success" ? "Your enrollment has been submitted successfully." : progress === "checkout" ? "Your application is saved. Complete payment in the secure Cashfree window; we’ll confirm your seat when you return." : "We’re checking your profile and saving your exam enrollment. Please keep this page open."}</p>
-      {progress === "success" && successApplicationNumber && <p className="mt-5 rounded-xl border border-[#eee8db] bg-[#f8f5ed] px-4 py-3 text-[11px] font-bold text-[#344258]">Application number · {successApplicationNumber}</p>}
-      {progress === "success" && <div className="mt-6 flex flex-wrap justify-center gap-2"><Link href="/exams/dashboard?section=enrollments" className="rounded-xl bg-[#172438] px-4 py-3 text-[11px] font-bold text-white">View my enrollment</Link><button type="button" onClick={() => setProgress("idle")} className="rounded-xl border border-[#deded7] px-4 py-3 text-[11px] font-semibold text-[#687486]">Close</button></div>}
-    </section></div>}
   </div>;
 }
 

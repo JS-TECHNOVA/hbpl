@@ -54,6 +54,7 @@ from .models import (
     StudentEmailVerification,
     StudentProfile,
 )
+from core.models import MediaAsset
 from core.emailing import send_configured_email, send_templated_email
 from api.models import ExamRegistration
 from api.admit_card import generate_admit_card
@@ -506,15 +507,24 @@ class StaffExamResultSerializer(serializers.ModelSerializer):
     application_number = serializers.CharField(source="application.application_number", read_only=True)
     student_name = serializers.CharField(source="application.full_name", read_only=True)
     exam_name = serializers.CharField(source="exam.name", read_only=True)
+    copy_file_name = serializers.CharField(source="copy_file.name", read_only=True, allow_null=True)
+    copy_file_url = serializers.SerializerMethodField()
 
     class Meta:
         model = ExamResult
         fields = [
             "id", "exam", "exam_name", "application_id", "application_number", "student_name",
             "roll_number", "total_marks", "obtained_marks", "percentage", "rank", "grade",
-            "is_pass", "remarks", "updated_at",
+            "is_pass", "copy_status", "copy_file_name", "copy_file_url", "remarks", "updated_at",
         ]
         read_only_fields = ["id", "exam", "exam_name", "application_number", "student_name", "updated_at"]
+
+    def get_copy_file_url(self, obj):
+        if not obj.copy_file_id or not obj.copy_file.file:
+            return None
+        request = self.context.get("request")
+        url = obj.copy_file.file.url
+        return request.build_absolute_uri(url) if request else url
 
     def validate_application_id(self, application):
         if application.status != ExamApplication.Status.APPROVED:
@@ -2097,9 +2107,9 @@ class StaffApplicationPublicationView(APIView):
                     for application_id in published_ids:
                         send_exam_application_admit_card_email.delay(application_id)
                 else:
-                    from .tasks import issue_exam_application_certificate
+                    from .tasks import send_exam_application_result_email
                     for application_id in published_ids:
-                        issue_exam_application_certificate.delay(application_id)
+                        send_exam_application_result_email.delay(application_id)
             except Exception:
                 logger.exception("Could not queue %s publication emails", document)
 
@@ -2132,6 +2142,96 @@ class StaffExamResultDetailView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsStaffUser]
     serializer_class = StaffExamResultSerializer
     queryset = ExamResult.objects.select_related("exam", "application").all()
+
+
+MAX_RESULT_COPY_SIZE = 25 * 1024 * 1024
+
+
+def _save_exam_result_copy(result, uploaded_file, user):
+    if Path(uploaded_file.name).suffix.lower() != ".pdf":
+        raise serializers.ValidationError({"file": "Exam copies must be PDF files."})
+    if uploaded_file.size > MAX_RESULT_COPY_SIZE:
+        raise serializers.ValidationError({"file": "Each exam copy must be 25 MB or smaller."})
+    asset = MediaAsset.objects.create(
+        name=uploaded_file.name[:300], file=uploaded_file,
+        asset_type=MediaAsset.AssetType.DOCUMENT, mime_type="application/pdf",
+        file_size=uploaded_file.size, uploaded_by=user,
+    )
+    result.copy_file = asset
+    result.copy_status = ExamResult.CopyStatus.UPLOADED
+    result.save(update_fields=["copy_file", "copy_status", "updated_at"])
+    return result
+
+
+class StaffExamResultCopyUploadView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, pk):
+        result = get_object_or_404(ExamResult.objects.select_related("application"), pk=pk)
+        uploaded_file = request.FILES.get("file")
+        if not uploaded_file:
+            return Response({"detail": "Choose a PDF exam copy to upload."}, status=status.HTTP_400_BAD_REQUEST)
+        _save_exam_result_copy(result, uploaded_file, request.user)
+        return Response(StaffExamResultSerializer(result, context={"request": request}).data)
+
+
+class StaffExamResultCopyImportView(APIView):
+    """Attach PDF copies whose filenames match approved enrollment numbers."""
+
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        try:
+            exam_id = int(request.data.get("exam_id"))
+        except (TypeError, ValueError):
+            return Response({"detail": "Select an exam before importing exam copies."}, status=status.HTTP_400_BAD_REQUEST)
+        files = request.FILES.getlist("files")
+        if not files:
+            return Response({"detail": "Choose one or more PDF exam copies."}, status=status.HTTP_400_BAD_REQUEST)
+        applications = ExamApplication.objects.filter(exam_id=exam_id, status=ExamApplication.Status.APPROVED).only("id", "exam_id", "application_number")
+        by_roll_number = {item.application_number.strip().casefold(): item for item in applications if item.application_number}
+        uploaded, not_found, rejected = 0, [], []
+        for uploaded_file in files:
+            roll_number = Path(uploaded_file.name).stem.strip()
+            application = by_roll_number.get(roll_number.casefold())
+            if not application:
+                not_found.append(roll_number or uploaded_file.name)
+                continue
+            try:
+                result, _ = ExamResult.objects.get_or_create(application=application, defaults={"exam_id": exam_id, "roll_number": application.application_number or ""})
+                _save_exam_result_copy(result, uploaded_file, request.user)
+                uploaded += 1
+            except serializers.ValidationError as exc:
+                rejected.append({"file": uploaded_file.name, "error": str(exc.detail.get("file", "Invalid file."))})
+        return Response({"uploaded": uploaded, "not_found": not_found, "rejected": rejected})
+
+
+class StaffExamResultEmailResendView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsStaffUser]
+
+    def post(self, request):
+        attachment_mode = str(request.data.get("attachments", "all")).strip()
+        if attachment_mode not in {"all", "certificate", "copy"}:
+            return Response({"detail": "Choose certificate, copy, or all attachments."}, status=status.HTTP_400_BAD_REQUEST)
+        result_ids = request.data.get("result_ids") or []
+        if not isinstance(result_ids, list) or not result_ids:
+            return Response({"detail": "Select at least one result email to resend."}, status=status.HTTP_400_BAD_REQUEST)
+        application_ids = list(ExamApplication.objects.filter(status=ExamApplication.Status.APPROVED, results_published=True, result__id__in=result_ids).values_list("id", flat=True))
+        if not application_ids:
+            return Response({"detail": "Select published results to resend."}, status=status.HTTP_400_BAD_REQUEST)
+
+        def queue_emails():
+            from .tasks import send_exam_application_result_email
+            for application_id in application_ids:
+                send_exam_application_result_email.delay(application_id, attachment_mode, True)
+
+        transaction.on_commit(queue_emails)
+        return Response({"queued": len(application_ids)})
 
 
 class StaffApplicationTransitionView(APIView):

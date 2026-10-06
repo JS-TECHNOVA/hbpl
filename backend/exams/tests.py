@@ -19,7 +19,12 @@ from rest_framework.test import APITestCase
 
 from .api import ApplicationDocumentSerializer, _send_verification_code
 from .models import ApplicationEvent, CashfreeExamPayment, Exam, ExamApplication, ExamCentre, ExamResult, ExamSamplePaper, ExaminationSession, StudentEmailVerification, StudentProfile
-from .tasks import send_exam_application_confirmation_email, send_exam_application_status_email, send_exam_payment_confirmation_email
+from .tasks import (
+    send_exam_application_confirmation_email,
+    send_exam_application_result_email,
+    send_exam_application_status_email,
+    send_exam_payment_confirmation_email,
+)
 
 
 def registration_data(email):
@@ -246,16 +251,83 @@ class ExaminationWorkflowTests(APITestCase):
         self.assertEqual(response.data["published"], 1)
         self.assertTrue(send_card.called)
 
-        with patch("exams.tasks.issue_exam_application_certificate.delay") as send_certificate, self.captureOnCommitCallbacks(execute=True):
+        with patch("exams.tasks.send_exam_application_result_email.delay") as send_result, self.captureOnCommitCallbacks(execute=True):
             response = self.client.post("/api/v1/staff/applications/publish/", {
                 "document": "results", "application_ids": [application.pk],
             }, format="json")
         self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(response.data["published"], 1)
-        self.assertTrue(send_certificate.called)
+        self.assertTrue(send_result.called)
         application.refresh_from_db()
         self.assertTrue(application.admit_card_published)
         self.assertTrue(application.results_published)
+
+    def test_staff_can_import_exam_copies_and_resend_published_results(self):
+        student = User.objects.create_user("copy@example.com", email="copy@example.com")
+        application = ExamApplication.objects.create(
+            exam=self.exam,
+            student=StudentProfile.objects.create(user=student),
+            application_number="HBPL26-00012",
+            status=ExamApplication.Status.APPROVED,
+            results_published=True,
+            full_name="Copy Student",
+            email=student.email,
+        )
+        self.client.force_authenticate(user=self.staff)
+
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            imported = self.client.post("/api/v1/staff/exam-results/import-copies/", {
+                "exam_id": self.exam.id,
+                "files": SimpleUploadedFile("HBPL26-00012.pdf", b"%PDF-1.4 exam copy", content_type="application/pdf"),
+            }, format="multipart")
+            self.assertEqual(imported.status_code, 200, imported.data)
+            self.assertEqual(imported.data["uploaded"], 1)
+            result = ExamResult.objects.get(application=application)
+            self.assertEqual(result.copy_status, ExamResult.CopyStatus.UPLOADED)
+            self.assertTrue(result.copy_file)
+
+            with patch("exams.tasks.send_exam_application_result_email.delay") as send_result, self.captureOnCommitCallbacks(execute=True):
+                resent = self.client.post("/api/v1/staff/exam-results/resend-email/", {
+                    "result_ids": [result.id], "attachments": "all",
+                }, format="json")
+            self.assertEqual(resent.status_code, 200, resent.data)
+            self.assertEqual(resent.data["queued"], 1)
+            send_result.assert_called_once_with(application.id, "all", True)
+
+    @override_settings(EXAM_PORTAL_URL="https://portal.example")
+    def test_result_email_includes_marks_and_certificate_and_copy_attachments(self):
+        student = User.objects.create_user("result-email@example.com", email="result-email@example.com")
+        application = ExamApplication.objects.create(
+            exam=self.exam,
+            student=StudentProfile.objects.create(user=student),
+            application_number="HBPL26-00013",
+            status=ExamApplication.Status.APPROVED,
+            results_published=True,
+            full_name="Result Student",
+            email=student.email,
+        )
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            from core.models import MediaAsset
+
+            copy = MediaAsset.objects.create(
+                name="HBPL26-00013.pdf",
+                file=SimpleUploadedFile("HBPL26-00013.pdf", b"%PDF-1.4 exam copy", content_type="application/pdf"),
+                asset_type=MediaAsset.AssetType.DOCUMENT,
+                mime_type="application/pdf",
+                file_size=19,
+                uploaded_by=self.staff,
+            )
+            ExamResult.objects.create(
+                exam=self.exam, application=application, total_marks=100, obtained_marks=87,
+                percentage=87, rank=2, grade="A", is_pass=True, copy_file=copy,
+            )
+            with patch("api.certificate.generate_participation_certificate", return_value=b"%PDF-1.4 certificate"), patch("exams.tasks.send_templated_email", return_value=1) as send_email:
+                self.assertEqual(send_exam_application_result_email.run(application.id), "sent")
+
+        self.assertEqual(send_email.call_args.kwargs["subject"], f"Your HBPL result is out: {self.exam.name}")
+        self.assertEqual(send_email.call_args.kwargs["context"]["obtained_marks"], 87)
+        self.assertTrue(send_email.call_args.kwargs["context"]["copy_attached"])
+        self.assertEqual(len(send_email.call_args.kwargs["attachments"]), 2)
 
     def test_student_can_have_results_for_multiple_exam_enrollments(self):
         student_user = User.objects.create_user(

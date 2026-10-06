@@ -1,5 +1,6 @@
 import logging
 from datetime import date
+from pathlib import Path
 from types import SimpleNamespace
 
 from celery import shared_task
@@ -203,16 +204,6 @@ def _email_admit_card(*, recipient, full_name, roll_number, pdf_bytes):
     )
 
 
-def _email_certificate(*, recipient, full_name, certificate_number, pdf_bytes):
-    return send_configured_email(
-        subject="Your HBPL examination certificate is ready",
-        body=(f"Dear {full_name},\n\nYour examination certificate has been issued. "
-              f"Certificate number: {certificate_number}\nA PDF copy is attached.\n\nRegards,\nHBPL Examination Team"),
-        recipients=[recipient],
-        attachments=[(f"certificate-{certificate_number}.pdf", pdf_bytes, "application/pdf")],
-    )
-
-
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 5})
 def send_exam_application_admit_card_email(self, application_id):
     from .models import Exam, ExamApplication
@@ -287,15 +278,14 @@ def queue_exam_admit_card_emails(exam_id):
     return queued
 
 
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 5})
-def issue_exam_application_certificate(self, application_id):
+def _send_exam_application_result_email(application_id, attachments="all", force=False):
     from .models import Exam, ExamApplication, ExamResult
 
-    application = ExamApplication.objects.select_related("exam").get(pk=application_id)
+    application = ExamApplication.objects.select_related("exam", "exam__session", "student", "result__copy_file").get(pk=application_id)
     result = ExamResult.objects.filter(application=application).first()
     if application.status != ExamApplication.Status.APPROVED or not application.results_published or not result:
         return "not-ready"
-    if application.certificate_email_sent_at:
+    if application.certificate_email_sent_at and not force:
         return "already-sent"
     if not application.email:
         application.certificate_email_last_error = "The application has no email address."
@@ -303,41 +293,79 @@ def issue_exam_application_certificate(self, application_id):
         return "missing-email"
 
     try:
-        from api.certificate import generate_participation_certificate
+        email_attachments = []
+        certificate_number = application.certificate_number or ""
+        if attachments in {"all", "certificate"}:
+            from api.certificate import generate_participation_certificate
 
-        certificate_number = application.certificate_number or f"{(application.exam.code or 'HBPL').upper()}-CERT-{application.application_number or application.pk}"
-        issued_at = application.certificate_issued_at or timezone.now()
-        # Certificates are rendered into the email attachment only; no PDF is
-        # written to media storage.
-        pdf = generate_participation_certificate(SimpleNamespace(
-            full_name=application.full_name,
-            class_name=application.class_name or "",
-            school_name=application.school_name,
-            student_photo=application.student.photo,
-            rank=result.rank,
-            certificate_issued_at=issued_at,
-        ), template_path=application.exam.certificate_template.path if application.exam.certificate_template else None,
-            exam=application.exam, result=result, certificate_number=certificate_number)
-        if not application.certificate_number:
-            application.certificate_number = certificate_number
-            application.certificate_issued_at = issued_at
-            application.save(update_fields=["certificate_number", "certificate_issued_at", "updated_at"])
-        _email_certificate(
-            recipient=application.email,
-            full_name=application.full_name,
-            certificate_number=application.certificate_number or f"CERT-{application.pk}",
-            pdf_bytes=pdf,
+            certificate_number = certificate_number or f"{(application.exam.code or 'HBPL').upper()}-CERT-{application.application_number or application.pk}"
+            issued_at = application.certificate_issued_at or timezone.now()
+            pdf = generate_participation_certificate(SimpleNamespace(
+                full_name=application.full_name, class_name=application.class_name or "",
+                school_name=application.school_name, student_photo=application.student.photo,
+                rank=result.rank, certificate_issued_at=issued_at,
+            ), template_path=application.exam.certificate_template.path if application.exam.certificate_template else None,
+                exam=application.exam, result=result, certificate_number=certificate_number)
+            if not application.certificate_number:
+                application.certificate_number = certificate_number
+                application.certificate_issued_at = issued_at
+                application.save(update_fields=["certificate_number", "certificate_issued_at", "updated_at"])
+            email_attachments.append((f"certificate-{certificate_number}.pdf", pdf, "application/pdf"))
+        copy_asset = result.copy_file
+        copy_attached = False
+        if attachments in {"all", "copy"} and copy_asset and copy_asset.file:
+            copy_asset.file.open("rb")
+            try:
+                copy_bytes = copy_asset.file.read()
+            finally:
+                copy_asset.file.close()
+            email_attachments.append((Path(copy_asset.file.name).name, copy_bytes, copy_asset.mime_type or "application/pdf"))
+            copy_attached = True
+        sent = send_templated_email(
+            subject=f"Your HBPL result is out: {application.exam.name}",
+            recipients=[application.email],
+            template_name="core/emails/exam_result_ready",
+            context={
+                "student_name": application.full_name,
+                "exam_name": application.exam.name,
+                "session_name": application.exam.session.name if application.exam.session_id else "",
+                "application_number": application.application_number or f"APP-{application.pk}",
+                "obtained_marks": result.obtained_marks if result.obtained_marks is not None else "—",
+                "total_marks": result.total_marks if result.total_marks is not None else "—",
+                "percentage": f"{result.percentage}%" if result.percentage is not None else "—",
+                "rank": result.rank or "—",
+                "grade": result.grade or "—",
+                "outcome": "Pass" if result.is_pass is True else "Fail" if result.is_pass is False else "Result declared",
+                "remarks": result.remarks,
+                "certificate_attached": attachments in {"all", "certificate"},
+                "copy_attached": copy_attached,
+                "dashboard_url": f"{settings.EXAM_PORTAL_URL}/exams/dashboard",
+            },
+            attachments=email_attachments,
         )
+        if not sent:
+            raise RuntimeError("The email backend did not accept the result email.")
     except Exception as exc:
         application.certificate_email_last_error = str(exc)[:4000]
         application.save(update_fields=["certificate_email_last_error", "updated_at"])
-        logger.exception("Certificate email failed for application id=%s", application_id)
+        logger.exception("Result email failed for application id=%s", application_id)
         raise
 
     application.certificate_email_sent_at = timezone.now()
     application.certificate_email_last_error = ""
     application.save(update_fields=["certificate_email_sent_at", "certificate_email_last_error", "updated_at"])
     return "sent"
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 5})
+def send_exam_application_result_email(self, application_id, attachments="all", force=False):
+    return _send_exam_application_result_email(application_id, attachments, force)
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 5})
+def issue_exam_application_certificate(self, application_id):
+    """Compatibility task name for result emails already queued before this update."""
+    return _send_exam_application_result_email(application_id)
 
 
 @shared_task
@@ -354,7 +382,7 @@ def queue_exam_certificate_emails(exam_id):
     ).exclude(email="").values_list("id", flat=True)
     queued = 0
     for application_id in application_ids.iterator(chunk_size=500):
-        issue_exam_application_certificate.delay(application_id)
+        send_exam_application_result_email.delay(application_id)
         queued += 1
     return queued
 

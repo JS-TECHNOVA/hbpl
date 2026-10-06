@@ -46,5 +46,8 @@ urlpatterns = [
     path("staff/applications/<int:pk>/", api.StaffApplicationDetailView.as_view(), name="staff-application-detail"),
     path("staff/applications/<int:pk>/transition/", api.StaffApplicationTransitionView.as_view(), name="staff-application-transition"),
     path("staff/exam-results/", api.StaffExamResultListCreateView.as_view(), name="staff-exam-results"),
+    path("staff/exam-results/import-copies/", api.StaffExamResultCopyImportView.as_view(), name="staff-exam-result-copy-import"),
+    path("staff/exam-results/resend-email/", api.StaffExamResultEmailResendView.as_view(), name="staff-exam-result-email-resend"),
+    path("staff/exam-results/<int:pk>/copy/", api.StaffExamResultCopyUploadView.as_view(), name="staff-exam-result-copy-upload"),
     path("staff/exam-results/<int:pk>/", api.StaffExamResultDetailView.as_view(), name="staff-exam-result-detail"),
 ]

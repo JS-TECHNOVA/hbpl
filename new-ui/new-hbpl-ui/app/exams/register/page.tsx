@@ -43,7 +43,8 @@ function ExamRegister() {
   useEffect(() => {
     const token = localStorage.getItem("student_token") ?? "";
     if (!token) {
-      window.location.href = `/exams/login?exam=${requestedExam}`;
+      const returnPath = `/exams/register?exam=${encodeURIComponent(String(requestedExam))}`;
+      window.location.href = `/exams/login?next=${encodeURIComponent(returnPath)}`;
       return;
     }
     Promise.all([fetchEligibleExams(token), fetchApplicationHistory(token), fetchStudentProfile(token), fetchSchoolSuggestions()])

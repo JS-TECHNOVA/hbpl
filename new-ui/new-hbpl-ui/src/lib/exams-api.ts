@@ -198,6 +198,9 @@ export interface StaffExamResult {
   rank: number | null;
   grade: string;
   is_pass: boolean | null;
+  copy_status: "not_uploaded" | "uploaded" | "verified" | "rejected";
+  copy_file_name: string | null;
+  copy_file_url: string | null;
   remarks: string;
   updated_at: string;
 }
@@ -646,5 +649,24 @@ export async function saveStaffExamResult(adminToken: string, data: Partial<Staf
   const existing = data.id;
   return request<StaffExamResult>(adminToken, existing ? `/api/v1/staff/exam-results/${existing}/` : "/api/v1/staff/exam-results/", {
     method: existing ? "PATCH" : "POST", body: JSON.stringify(data),
+  });
+}
+
+export async function uploadStaffExamResultCopy(adminToken: string, resultId: number, file: File): Promise<StaffExamResult> {
+  const form = new FormData();
+  form.append("file", file);
+  return request<StaffExamResult>(adminToken, `/api/v1/staff/exam-results/${resultId}/copy/`, { method: "POST", body: form });
+}
+
+export async function importStaffExamCopies(adminToken: string, examId: number, files: File[]): Promise<{ uploaded: number; not_found: string[]; rejected: Array<{ file: string; error: string }> }> {
+  const form = new FormData();
+  form.append("exam_id", String(examId));
+  files.forEach((file) => form.append("files", file));
+  return request<{ uploaded: number; not_found: string[]; rejected: Array<{ file: string; error: string }> }>(adminToken, "/api/v1/staff/exam-results/import-copies/", { method: "POST", body: form });
+}
+
+export async function resendStaffResultEmails(adminToken: string, resultIds: number[], attachments: "all" | "certificate" | "copy"): Promise<{ queued: number }> {
+  return request(adminToken, "/api/v1/staff/exam-results/resend-email/", {
+    method: "POST", body: JSON.stringify({ result_ids: resultIds, attachments }),
   });
 }

@@ -65,7 +65,7 @@ def send_configured_email(subject, body, recipients, *, html_body=None, attachme
         return 0
 
 
-def send_templated_email(subject, recipients, template_name, context, *, fail_silently=False):
+def send_templated_email(subject, recipients, template_name, context, *, attachments=(), fail_silently=False):
     context = {"portal_url": settings.EXAM_PORTAL_URL, **context}
     html_body = render_to_string(f"{template_name}.html", context)
     text_body = render_to_string(f"{template_name}.txt", context)
@@ -74,5 +74,6 @@ def send_templated_email(subject, recipients, template_name, context, *, fail_si
         text_body,
         recipients,
         html_body=html_body,
+        attachments=attachments,
         fail_silently=fail_silently,
     )

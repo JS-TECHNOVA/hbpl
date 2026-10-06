@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Suspense, ChangeEvent, FormEvent, useEffect, useState } from "react";
+import { Suspense, ChangeEvent, FormEvent, KeyboardEvent, ClipboardEvent, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { fetchSchoolSuggestions, registerStudentAccount, resendStudentVerification, SchoolSuggestion, verifyStudentEmail } from "@/src/lib/exams-api";
 
@@ -80,6 +80,10 @@ function StudentAccountRegisterContent() {
 
   async function verify(event: FormEvent) {
     event.preventDefault();
+    if (code.length !== 6) {
+      setError("Enter the 6-digit verification code.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -150,7 +154,10 @@ function StudentAccountRegisterContent() {
         </form> : <form onSubmit={verify} className="space-y-5 px-6 py-6 sm:px-9 sm:py-8">
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[12px] leading-5 text-emerald-800">{notice || `A verification code was sent to ${details.email}.`}</div>
           <label className={labelCls}>Email address<input type="email" value={details.email} readOnly className={`${inputCls} mt-1.5 normal-case tracking-normal opacity-70`} /></label>
-          <label className={labelCls}>Verification code<input inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} className={`${inputCls} mt-1.5 normal-case tracking-normal`} /></label>
+          <div>
+            <p id="verification-code-label" className={labelCls}>Verification code</p>
+            <OtpCodeInput onChange={setCode} disabled={loading} />
+          </div>
           {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[12px] text-red-700">{error}</div>}
           <button disabled={loading} className="w-full rounded-xl bg-[#172438] px-6 py-3.5 text-[12px] font-bold text-white disabled:opacity-60">{loading ? "Verifying…" : "Verify email"}</button>
           <button type="button" onClick={resend} disabled={loading} className="w-full text-[11px] font-bold text-[#8c5b10] disabled:opacity-60">Resend code</button>
@@ -197,5 +204,60 @@ function ProfileImageUpload({ label, maxBytes, onChange }: { label: string; maxB
       <input id={id} type="file" required accept="image/jpeg,image/png,image/webp" onChange={chooseFile} className="sr-only" />
     </label>
     {error && <p role="alert" className="mt-1.5 text-[9px] font-semibold normal-case tracking-normal text-red-700">{error}</p>}
+  </div>;
+}
+
+function OtpCodeInput({ onChange, disabled }: { onChange: (value: string) => void; disabled?: boolean }) {
+  const length = 6;
+  const refs = useRef<Array<HTMLInputElement | null>>([]);
+  const [digits, setDigits] = useState<string[]>(() => Array(length).fill(""));
+
+  function setCode(nextDigits: string[]) {
+    setDigits(nextDigits);
+    onChange(nextDigits.join(""));
+  }
+
+  function update(index: number, next: string) {
+    const nextDigits = [...digits];
+    nextDigits[index] = next;
+    setCode(nextDigits);
+  }
+
+  function enter(index: number, rawValue: string) {
+    const entered = rawValue.replace(/\D/g, "");
+    if (!entered) return update(index, "");
+    const nextDigits = [...digits];
+    entered.slice(0, length - index).split("").forEach((digit, offset) => { nextDigits[index + offset] = digit; });
+    setCode(nextDigits);
+    refs.current[Math.min(index + entered.length, length - 1)]?.focus();
+  }
+
+  function handlePaste(event: ClipboardEvent<HTMLInputElement>, index: number) {
+    event.preventDefault();
+    enter(index, event.clipboardData.getData("text"));
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>, index: number) {
+    if (event.key === "Backspace" && !digits[index] && index > 0) refs.current[index - 1]?.focus();
+    if (event.key === "ArrowLeft" && index > 0) refs.current[index - 1]?.focus();
+    if (event.key === "ArrowRight" && index < length - 1) refs.current[index + 1]?.focus();
+  }
+
+  return <div role="group" aria-labelledby="verification-code-label" className="mt-2 flex gap-2 sm:gap-3">
+    {digits.map((digit, index) => <input
+      key={index}
+      ref={(element) => { refs.current[index] = element; }}
+      autoFocus={index === 0}
+      aria-label={`Verification code digit ${index + 1}`}
+      autoComplete={index === 0 ? "one-time-code" : "off"}
+      disabled={disabled}
+      inputMode="numeric"
+      maxLength={1}
+      value={digit}
+      onChange={(event) => enter(index, event.target.value)}
+      onPaste={(event) => handlePaste(event, index)}
+      onKeyDown={(event) => handleKeyDown(event, index)}
+      className="h-12 w-11 rounded-xl border border-[#d9dcd9] bg-white text-center text-xl font-bold text-[#172438] outline-none transition focus:border-[#a36d17] focus:ring-2 focus:ring-[#a36d17]/15 disabled:cursor-not-allowed disabled:bg-[#f3f2ed] sm:h-14 sm:w-12"
+    />)}
   </div>;
 }

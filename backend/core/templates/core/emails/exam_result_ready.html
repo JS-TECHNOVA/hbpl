@@ -1,0 +1,18 @@
+{% extends "core/emails/base.html" %}
+{% block email_title %}Your HBPL examination result is out{% endblock %}
+{% block preheader %}Your result for {{ exam_name }} is now available.{% endblock %}
+{% block eyebrow %}Result declared{% endblock %}
+{% block heading %}Your HBPL result is out{% endblock %}
+{% block content %}
+<p style="margin:0 0 18px;">Dear {{ student_name }},</p>
+<p style="margin:0 0 18px;">Your result for <strong>{{ exam_name }}</strong>{% if session_name %} · {{ session_name }}{% endif %} is now available.</p>
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="width:100%;border:1px solid #e8e4d9;border-radius:12px;border-collapse:separate;overflow:hidden;margin:0 0 18px;">
+  <tr><td style="padding:13px 14px;border-bottom:1px solid #e8e4d9;color:#6f7b89;font-size:10px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">Marks obtained</td><td align="right" style="padding:13px 14px;border-bottom:1px solid #e8e4d9;color:#172438;font-size:16px;font-weight:bold;">{{ obtained_marks }} / {{ total_marks }}</td></tr>
+  <tr><td style="padding:13px 14px;border-bottom:1px solid #e8e4d9;color:#6f7b89;font-size:10px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">Percentage</td><td align="right" style="padding:13px 14px;border-bottom:1px solid #e8e4d9;color:#172438;font-size:14px;font-weight:bold;">{{ percentage }}</td></tr>
+  <tr><td style="padding:13px 14px;border-bottom:1px solid #e8e4d9;color:#6f7b89;font-size:10px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">Rank / grade</td><td align="right" style="padding:13px 14px;border-bottom:1px solid #e8e4d9;color:#172438;font-size:14px;font-weight:bold;">{{ rank }} · {{ grade }}</td></tr>
+  <tr><td style="padding:13px 14px;color:#6f7b89;font-size:10px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">Outcome</td><td align="right" style="padding:13px 14px;color:#8c5b10;font-size:14px;font-weight:bold;">{{ outcome }}</td></tr>
+</table>
+{% if remarks %}<p style="margin:0 0 18px;"><strong>Remarks:</strong> {{ remarks }}</p>{% endif %}
+<p style="margin:0 0 18px;">{% if certificate_attached %}Your certificate is attached.{% endif %}{% if copy_attached %} Your checked exam copy is also attached.{% endif %}</p>
+{% endblock %}
+{% block action %}<p style="margin:22px 0 0;"><a href="{{ dashboard_url }}" style="display:inline-block;border-radius:7px;background-color:#a36d17;padding:11px 16px;color:#ffffff;text-decoration:none;font-size:12px;font-weight:bold;">Open my result</a></p>{% endblock %}

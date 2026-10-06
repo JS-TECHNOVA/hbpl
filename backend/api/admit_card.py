@@ -10,6 +10,7 @@ import mimetypes
 import io
 import os
 from datetime import date
+from functools import lru_cache
 
 from django.conf import settings
 from django.template import Context, Template
@@ -27,6 +28,9 @@ except ImportError:
 # ---------------------------------------------------------------------------
 TEMPLATE_PATH = os.path.join(
     settings.BASE_DIR, "static", "assets", "HBPL ADMIT CARD1.pdf"
+)
+DEVANAGARI_FONT_PATH = os.path.join(
+    settings.BASE_DIR, "api", "assets", "fonts", "NotoSansDevanagari-Regular.ttf"
 )
 
 # ---------------------------------------------------------------------------
@@ -156,6 +160,17 @@ def _file_data_uri(upload):
     return f"data:{content_type};base64,{base64.b64encode(data).decode('ascii')}"
 
 
+@lru_cache(maxsize=1)
+def _devanagari_font_data_uri():
+    """Return the bundled Hindi font as a safe, renderer-local data URI."""
+    try:
+        with open(DEVANAGARI_FONT_PATH, "rb") as source:
+            encoded = base64.b64encode(source.read()).decode("ascii")
+    except OSError:
+        return ""
+    return f"data:font/ttf;base64,{encoded}"
+
+
 def _render_html_admit_card(registration, template_path, exam=None) -> bytes:
     try:
         from weasyprint import HTML
@@ -200,6 +215,7 @@ def _render_html_admit_card(registration, template_path, exam=None) -> bytes:
         "student_signature_data_uri": _file_data_uri(
             getattr(registration, "student_signature", None) or getattr(registration, "signature_image", None)
         ),
+        "devanagari_font_data_uri": _devanagari_font_data_uri(),
     }
 
     with open(template_path, "r", encoding="utf-8-sig") as source:

@@ -1,0 +1,22 @@
+HBPL examination result
+
+Dear {{ student_name }},
+
+Your result for {{ exam_name }}{% if session_name %} · {{ session_name }}{% endif %} is now available.
+
+Marks: {{ obtained_marks }} / {{ total_marks }}
+Percentage: {{ percentage }}
+Rank: {{ rank }}
+Grade: {{ grade }}
+Outcome: {{ outcome }}
+{% if remarks %}
+Remarks: {{ remarks }}
+{% endif %}
+
+{% if certificate_attached %}Your certificate is attached.{% endif %}
+{% if copy_attached %} Your checked exam copy is also attached.{% endif %}
+
+View your result: {{ dashboard_url }}
+
+Regards,
+HBPL Examination Team
